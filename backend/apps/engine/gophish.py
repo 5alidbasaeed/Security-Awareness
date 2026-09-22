@@ -55,6 +55,7 @@ class GophishClient(PhishingEngineClient):
         template_id: str,
         target_group_id: str,
         send_profile_id: str,
+        page_id: str,
         url: str,
         launch_immediately: bool = True,
     ) -> ExternalCampaignRef:
@@ -67,7 +68,7 @@ class GophishClient(PhishingEngineClient):
         payload = {
             "name": name,
             "template": {"name": template_id},
-            "page": {"name": target_group_id},
+            "page": {"name": page_id},
             "url": url,
             "smtp": {"name": send_profile_id},
             "groups": [{"name": target_group_id}],

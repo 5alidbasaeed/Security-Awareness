@@ -25,7 +25,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     # Project apps — see the backend-conventions skill for what each owns.
-    # Phase 0: registered as empty app skeletons only, no models yet.
+    # apps.training and apps.risk_scoring are still empty skeletons (Phase 2/4).
     "apps.core",
     "apps.employees",
     "apps.campaigns",
@@ -101,6 +101,17 @@ CELERY_RESULT_BACKEND = env("REDIS_URL")
 CELERY_TASK_SERIALIZER = "json"
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TIMEZONE = TIME_ZONE
+
+# Reconciliation fallback per CLAUDE.md invariant #3 — webhooks are the
+# primary event-ingestion path; this exists only to catch a missed delivery.
+# Without this schedule, apps.events.tasks.reconcile_campaign is dead code
+# that never runs on its own.
+CELERY_BEAT_SCHEDULE = {
+    "reconcile-active-campaigns": {
+        "task": "apps.events.tasks.reconcile_all_active_campaigns",
+        "schedule": 900.0,  # every 15 minutes
+    },
+}
 
 # --- Gophish adapter config (consumed by apps.engine.GophishClient, Phase 1) ---
 GOPHISH_API_URL = env("GOPHISH_API_URL", default="")

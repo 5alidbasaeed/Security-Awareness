@@ -20,6 +20,21 @@ logger = logging.getLogger(__name__)
 
 
 @shared_task
+def reconcile_all_active_campaigns():
+    """
+    Celery Beat entry point — see CELERY_BEAT_SCHEDULE in settings/base.py.
+    Fans out to reconcile_campaign per launched campaign. "Active" here means
+    "launched" — there's no separate completion/closed state yet, so this
+    keeps reconciling launched campaigns indefinitely. Revisit once campaigns
+    gain a terminal state worth excluding.
+    """
+    campaign_ids = list(Campaign.objects.filter(status=Campaign.Status.LAUNCHED).values_list("pk", flat=True))
+    for campaign_id in campaign_ids:
+        reconcile_campaign.delay(campaign_id)
+    logger.info("reconcile_all_active_campaigns: queued %d campaign(s)", len(campaign_ids))
+
+
+@shared_task
 def reconcile_campaign(campaign_id: int):
     try:
         campaign = Campaign.objects.get(pk=campaign_id)

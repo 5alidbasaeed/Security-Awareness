@@ -2,7 +2,7 @@
 
 Internal, self-hosted defensive security tool: runs simulated phishing campaigns against company employees, auto-assigns training on failure, and reports on organizational risk. **Not** a commercial product, not for actual malicious use. Full architecture rationale lives in [phishing-training-platform-plan.md](phishing-training-platform-plan.md) — read it for anything not covered below.
 
-**Status**: Phase 0 infra portion complete and verified (domain/deliverability portion still pending real infra — see README.md). **Phase 1 first slice done and verified live**: `Employee`/`Department`/`Campaign`/`Event`/`AuditLogEntry` models + migrations; a real `GophishClient` adapter (`apps/engine/gophish.py`); Gophish webhook ingestion with signature verification, DB-level idempotency, and defensive credential stripping — tested against a running Gophish/Postgres stack, not just unit tests; basic `Admin`/`Viewer` RBAC via `setup_groups`; audit logging on campaign launch, employee/department CRUD, and CSV export. Django admin is the interim UI — no custom dashboard templates yet. **Not yet done** (deferred on purpose, see the Phase 1 addendum in the plan file): custom HTMX dashboard, `django-allauth`/MFA admin auth, granular RBAC beyond Admin/Viewer, risk scoring.
+**Status**: Phase 0 infra portion complete and verified (domain/deliverability portion still pending real infra — see README.md). **Phase 1 first slice done, bug-reviewed, and fixed**: `Employee`/`Department`/`Campaign`/`Event`/`AuditLogEntry` models + migrations; a real `GophishClient` adapter (`apps/engine/gophish.py`) that sends the correct landing-page name to Gophish (an earlier version incorrectly reused the department name — fixed); Gophish webhook ingestion with signature verification, DB-level idempotency, and defensive credential stripping; reconciliation now actually scheduled via `CELERY_BEAT_SCHEDULE` (previously dead code); `gophish_campaign_id` is DB-unique; basic `Admin`/`Viewer` RBAC via `setup_groups` (CSV export correctly restricted to Admin); audit logging on campaign launch, employee/department CRUD, and CSV export. Django admin is the interim UI — no custom dashboard templates yet. **Not yet done**: custom HTMX dashboard, granular RBAC beyond Admin/Viewer, risk scoring. MFA is **explicitly out of scope for now** (invariant #7), not merely deferred.
 
 ## Non-negotiable invariants
 
@@ -14,7 +14,7 @@ These come from explicit decisions in the plan doc. Don't relitigate them withou
 4. **Never persist real passwords.** Gophish landing pages use `capture_credentials=true, capture_passwords=false`. Defense in depth: webhook-ingestion code must also explicitly strip any password-like field before storing `metadata`, never rely solely on Gophish-side config. Any cloned/imported landing page template must be manually checked to confirm it uses a native `<form>` + `type="password"` input (a JS-based submission can bypass the stripping).
 5. **`email_opened` is excluded from risk scoring** (or weighted ~0) — tracking-pixel prefetching by mail clients makes it unreliable as a behavior signal. Fine for delivery diagnostics only.
 6. **Risk scores are versioned snapshots computed from the event log**, not a hardcoded formula (`employee_id, score, computed_at, algorithm_version, contributing_metrics`) — must be recomputable if the algorithm changes.
-7. **Admin auth requires MFA** (`allauth.mfa`) — an admin account can launch simulated attacks org-wide. Employee training login uses SSO/OIDC via the company's existing IdP.
+7. ~~Admin auth requires MFA~~ — **dropped for now, by explicit user decision (2026-09-22)**, not an oversight. Admin login is currently plain Django session auth with no MFA, even though an admin account can launch simulated attacks org-wide. Revisit before this platform handles anything beyond local dev/testing. Employee training login (not yet built) was planned to use SSO/OIDC via the company's IdP — that piece is unaffected by this decision.
 8. **Network isolation is a hard requirement, not hardening.** Two Docker networks: `public` (Nginx + Gophish's phishing listener only) and `internal` (Django, Celery, Postgres, Redis, Gophish admin/API — no published ports). Driven by an unpatched HIGH-severity CVE (GO-2026-4455) that leaks the Gophish admin API key in rendered dashboard HTML; isolating the admin UI is the mitigation.
 9. **Never use `:latest` for the Gophish image.** Pin an exact version/digest.
 10. **Secrets (Gophish API key, webhook HMAC secret) live in the deployment's secret store**, never in code or committed config.
@@ -27,7 +27,7 @@ These come from explicit decisions in the plan doc. Don't relitigate them withou
 | Custom app | Django + Postgres |
 | Phishing engine | Gophish (pinned version) + its own MySQL |
 | Task queue | Celery + Celery Beat, Redis broker |
-| Auth | django-allauth (MFA for admin, OIDC/SSO for employees) |
+| Auth | Django session auth for now (MFA dropped — see invariant #7). OIDC/SSO for employees still planned, not built. |
 | Frontend | Django templates + HTMX + Chart.js |
 | Reverse proxy | Nginx + Let's Encrypt |
 | Containerization | Docker Compose, single server |

@@ -30,10 +30,12 @@ Define it as an abstract interface (ABC or Protocol) in `engine/base.py`, with a
 
 ```python
 class PhishingEngineClient(ABC):
-    def create_campaign(self, name, template_id, target_group_id, send_profile_id, url) -> ExternalCampaignRef: ...
+    def create_campaign(self, name, template_id, target_group_id, send_profile_id, page_id, url) -> ExternalCampaignRef: ...
     def get_campaign_results(self, external_campaign_id) -> list[EngineEvent]: ...
     def launch_campaign(self, external_campaign_id) -> None: ...
 ```
+
+`page_id` (the Gophish landing-page *name*) and `url` (the redirect URL) are separate parameters — don't collapse them or reuse `target_group_id` for the page. That was a real bug found in Phase 1's first cut: it silently sent the department name as the landing-page name.
 
 Views, models, and Celery tasks depend on this interface via dependency injection or a settings-configured factory — never `import gophish_sdk` outside `engine/`.
 
@@ -47,7 +49,7 @@ Views, models, and Celery tasks depend on this interface via dependency injectio
 
 ## Celery tasks
 
-- `events.tasks.reconcile_campaign(campaign_id)` — Celery Beat scheduled, polls `PhishingEngineClient.get_campaign_results` and inserts any event missing by `external_id`. This is a fallback, not the primary path — don't build features that assume it runs frequently.
+- `events.tasks.reconcile_campaign(campaign_id)` — polls `PhishingEngineClient.get_campaign_results` and inserts any event missing by `external_id`. This is a fallback, not the primary path — don't build features that assume it runs frequently. **Adding a task isn't enough — it must actually appear in `CELERY_BEAT_SCHEDULE`** (see `config/settings/base.py`); a task that exists but isn't scheduled is silent dead code, which is exactly what happened in Phase 1's first cut. `events.tasks.reconcile_all_active_campaigns` is the scheduled entry point that fans out to `reconcile_campaign` per launched campaign.
 - `risk_scoring.tasks.recompute_score(employee_id, algorithm_version=None)` — inserts a new `RiskScoreSnapshot` row, never updates an existing one. Triggered on new relevant events (credential_attempt, link_clicked, phishing_reported, training_completed), not on a blanket schedule for every employee.
 - Name tasks by `<app>.tasks.<verb>_<noun>` consistently; keep task bodies thin — real logic lives in a plain function/service the task calls, so it's unit-testable without Celery's test harness.
 

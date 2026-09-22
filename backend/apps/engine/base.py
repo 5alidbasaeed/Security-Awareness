@@ -28,7 +28,14 @@ class EngineEvent:
 class PhishingEngineClient(ABC):
     @abstractmethod
     def create_campaign(
-        self, *, name: str, template_id: str, target_group_id: str, send_profile_id: str, url: str
+        self,
+        *,
+        name: str,
+        template_id: str,
+        target_group_id: str,
+        send_profile_id: str,
+        page_id: str,
+        url: str,
     ) -> ExternalCampaignRef: ...
 
     @abstractmethod

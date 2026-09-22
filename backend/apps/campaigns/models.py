@@ -16,8 +16,11 @@ class Campaign(models.Model):
         LAUNCHED = "launched"
 
     name = models.CharField(max_length=200)
-    gophish_campaign_id = models.CharField(max_length=64, null=True, blank=True)
+    gophish_campaign_id = models.CharField(max_length=64, null=True, blank=True, unique=True)
     template_name = models.CharField(max_length=200, help_text="Must match an existing Gophish email template name.")
+    landing_page_name = models.CharField(
+        max_length=200, help_text="Must match an existing Gophish landing page name — distinct from the URL below."
+    )
     landing_page_url = models.URLField(help_text="Landing page URL, per Gophish's create-campaign API.")
     target_department = models.ForeignKey(
         Department, on_delete=models.SET_NULL, null=True, blank=True, related_name="campaigns"

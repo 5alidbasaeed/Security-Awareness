@@ -45,6 +45,7 @@ class CampaignAdmin(AuditedAdminMixin, admin.ModelAdmin):
                     template_id=campaign.template_name,
                     target_group_id=campaign.target_department.name,
                     send_profile_id=settings.GOPHISH_DEFAULT_SEND_PROFILE,
+                    page_id=campaign.landing_page_name,
                     url=campaign.landing_page_url,
                 )
             except Exception as exc:  # noqa: BLE001 — surface any adapter failure to the admin, don't swallow it

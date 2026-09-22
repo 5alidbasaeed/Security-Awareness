@@ -13,7 +13,7 @@ class FakePhishingEngineClient(PhishingEngineClient):
         self.results_by_campaign_id: dict[str, list[EngineEvent]] = {}
         self._next_id = 1
 
-    def create_campaign(self, *, name, template_id, target_group_id, send_profile_id, url, **kwargs):
+    def create_campaign(self, *, name, template_id, target_group_id, send_profile_id, page_id, url, **kwargs):
         external_id = str(self._next_id)
         self._next_id += 1
         self.created_campaigns.append(
@@ -23,6 +23,7 @@ class FakePhishingEngineClient(PhishingEngineClient):
                 "template_id": template_id,
                 "target_group_id": target_group_id,
                 "send_profile_id": send_profile_id,
+                "page_id": page_id,
                 "url": url,
             }
         )

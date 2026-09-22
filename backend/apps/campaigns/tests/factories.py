@@ -10,5 +10,6 @@ class CampaignFactory(factory.django.DjangoModelFactory):
 
     name = factory.Sequence(lambda n: f"Campaign {n}")
     template_name = "Q1 Security Awareness"
+    landing_page_name = "Q1 Security Awareness Landing Page"
     landing_page_url = "https://phish.example.com/landing"
     target_department = factory.SubFactory(DepartmentFactory)

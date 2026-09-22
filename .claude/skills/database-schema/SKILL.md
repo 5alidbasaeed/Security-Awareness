@@ -16,7 +16,9 @@ Django owns this schema. Gophish's MySQL database is a completely separate syste
 `id, email (unique), full_name, department_id (FK), is_exempt (bool), created_at`
 
 **`campaigns_campaign`**
-`id, name, gophish_campaign_id (plain field, not FK), template_name, target_department_id (FK, nullable), status, scheduled_at, launched_at, created_by_id (FK → auth user)`
+`id, name, gophish_campaign_id (plain field, not FK, unique — see below), template_name, landing_page_name, landing_page_url, target_department_id (FK, nullable), status, scheduled_at, launched_at, created_by_id (FK → auth user)`
+
+`gophish_campaign_id` is `unique=True` (nulls allowed) — it's the join key back to Gophish for webhook/reconciliation event attribution; two Django rows sharing one Gophish campaign ID would silently misattribute events. `landing_page_name` and `landing_page_url` are distinct fields — Gophish's create-campaign API needs a landing page *name* (an existing Gophish object reference, like `template_name`) separately from the redirect *URL*; conflating them was a real Phase 1 bug (reusing the target group name as the page name), fixed after live review.
 
 **`events_event`** — append-only, the most important table in the schema
 ```

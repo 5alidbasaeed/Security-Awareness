@@ -67,7 +67,8 @@ All five checks above were run and passed against this exact scaffold. Tear down
 - **Sending-domain SPF/DKIM/DMARC + a real mail-security-gateway test.** Needs a real domain and real infra this repo can't provide — do this against the actual deployment host before Phase 0 is considered complete for real use.
 - **VPN/SSH-tunnel access to the Django dashboard on a real host.** Also host infrastructure, not something Docker Compose alone can set up.
 - **Gophish's actual admin setup**: on first boot Gophish generates an admin password (check its logs: `docker compose logs gophish`) and an API key. Copy the API key into `.env` (`GOPHISH_API_KEY`) once you have it — the `GophishClient` adapter needs it to actually launch campaigns.
-- **Custom HTMX dashboard templates, `django-allauth`/MFA admin login, granular RBAC beyond Admin/Viewer, risk scoring** — deliberately deferred past this Phase 1 slice; Django admin is the interim UI. See the Phase 1 addendum in the plan file for why.
+- **Custom HTMX dashboard templates, granular RBAC beyond Admin/Viewer, risk scoring** — deliberately deferred past this Phase 1 slice; Django admin is the interim UI.
+- **MFA on admin login** — explicitly out of scope for now by user decision (see CLAUDE.md invariant #7), not a deferral. Admin login is plain Django session auth. Revisit before this handles anything beyond local dev/testing.
 - `apps/training` — still an empty app skeleton, Phase 2.
 
 ## Open decisions carried from the plan doc
