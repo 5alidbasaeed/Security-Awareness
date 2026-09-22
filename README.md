@@ -15,7 +15,11 @@ docker compose run --rm django python manage.py setup_groups     # creates Admin
 docker compose run --rm django python manage.py createsuperuser  # for /admin/
 ```
 
-This brings up: Postgres (Django's DB), MySQL (Gophish's DB), Redis (Celery broker), Django, Celery worker + beat, Gophish (builds from pinned source, see `gophish/Dockerfile`), and Nginx. `/admin/` is Phase 1's interim UI for employees, departments, campaigns, and read-only event/audit-log browsing.
+This brings up: Postgres (Django's DB), MySQL (Gophish's DB), Redis (Celery broker), Django, Celery worker + beat, Gophish (builds from pinned source, see `gophish/Dockerfile`), and Nginx. `/admin/` is Phase 1/2's interim UI for employees, departments, campaigns, training, and read-only event/audit-log browsing.
+
+## Viewing the admin UI in a browser
+
+`docker-compose.override.yml` (loaded automatically, local-dev-only — see its header comment) publishes Django on **http://localhost:8000/admin/**. Log in with the superuser created above. This override exists because Django has no published port in the base `docker-compose.yml` by design (the `internal` network is meant to stay unreachable from the host, matching the real deployment's VPN/tunnel-only access) — it gives Django a second, non-internal network purely for local browsing without changing that.
 
 **Generating new migrations**: `docker compose run` containers are ephemeral — files written inside one (like a freshly generated migration) don't persist to the host unless you bind-mount the source. Use:
 ```bash

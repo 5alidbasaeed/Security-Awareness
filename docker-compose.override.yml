@@ -1,0 +1,30 @@
+# LOCAL DEV ONLY — not used in a real deployment. Gives the Django admin a
+# browser-reachable URL on this machine without touching the production
+# network topology in docker-compose.yml. A real deployment reaches Django
+# via VPN/SSH tunnel into the `internal` network (see CLAUDE.md invariant
+# #8) — this override exists purely so a developer can open
+# http://localhost:8000/admin/ locally.
+#
+# Why not just add `ports:` to django in docker-compose.yml directly?
+# Docker Desktop doesn't forward host-published ports onto a network marked
+# `internal: true` (see CLAUDE.md "Known deployment quirks") — publishing a
+# port there silently does nothing. This override instead puts django on a
+# second, non-internal bridge network dedicated to local dev access, in
+# addition to `internal` (not instead of it), so its existing
+# service-to-service communication (Postgres, Redis, etc.) is unaffected.
+#
+# docker compose automatically loads this file alongside docker-compose.yml
+# — no extra flag needed. Delete or ignore it for anything resembling a real
+# deployment.
+
+services:
+  django:
+    networks:
+      - internal
+      - devaccess
+    ports:
+      - "8000:8000"
+
+networks:
+  devaccess:
+    driver: bridge

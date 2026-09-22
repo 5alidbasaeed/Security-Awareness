@@ -30,8 +30,11 @@ Run this checklist on top of (not instead of) general code quality review. Each 
 - [ ] Are `training_completed`/`quiz_completed` folded into the risk score itself, or kept as separate compliance metrics? → should be separate.
 
 ## Auth
-- [ ] Does a new admin-facing view bypass MFA enforcement (e.g. a view not covered by the `allauth.mfa`-required middleware/decorator)?
-- [ ] Is any auth logic hand-rolled instead of going through `django-allauth`?
+- [ ] MFA is explicitly out of scope for now (CLAUDE.md invariant #7, dropped by user decision) — don't flag its absence as a finding; do flag any hand-rolled auth logic that bypasses Django's own session auth.
+
+## New model / new app (added after Phase 2 review found this gap twice-removed)
+- [ ] Is every new model added to `apps/core/management/commands/setup_groups.py`'s `MANAGED_MODELS`? A model missing from that list gets **zero** Admin/Viewer permissions — even the "Admin" group can't touch it without superuser. This was missed for all six Phase 2 training models on first landing; there's no system check that catches it, so it has to be checked by hand every time.
+- [ ] Does every new `ModelAdmin` that supports create/update/delete use `AuditedAdminMixin` for consistency with the rest of the codebase? If a custom admin action does a bulk `.update()`/`.delete()` (bypasses `save_model`/`delete_model`), does it log explicitly (see `CampaignAdmin.launch_campaign`, `TrainingAssignmentAdmin.mark_started` for the pattern)?
 
 ## Network / secrets
 - [ ] Does a Docker Compose or Nginx change publish a port for Postgres, Redis, MySQL, or Gophish's admin/API outside the `internal` network?

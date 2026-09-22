@@ -22,6 +22,9 @@ class Quiz(models.Model):
     module = models.OneToOneField(TrainingModule, on_delete=models.CASCADE, related_name="quiz")
     passing_score_percent = models.PositiveIntegerField(default=80)
 
+    class Meta:
+        verbose_name_plural = "quizzes"
+
     def __str__(self):
         return f"Quiz for {self.module}"
 

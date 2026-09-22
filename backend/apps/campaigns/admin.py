@@ -12,7 +12,7 @@ from .models import Campaign
 @admin.register(Campaign)
 class CampaignAdmin(AuditedAdminMixin, admin.ModelAdmin):
     audit_object_name = "campaign"
-    list_display = ("name", "status", "target_department", "gophish_campaign_id", "launched_at")
+    list_display = ("name", "status", "target_department", "training_module", "gophish_campaign_id", "launched_at")
     list_filter = ("status", "target_department")
     search_fields = ("name",)
     actions = ["launch_campaign"]
