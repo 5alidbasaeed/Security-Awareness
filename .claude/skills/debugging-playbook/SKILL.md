@@ -27,7 +27,7 @@ This is almost always the public/internal Docker network split, not application 
 
 ## Symptom: risk score looks wrong
 
-1. Don't assume the scoring algorithm is broken — first check which row is being displayed: `SELECT * FROM riskscoring_riskscoresnapshot WHERE employee_id = X ORDER BY computed_at DESC LIMIT 5;`. A UI bug showing a stale snapshot looks identical to a scoring bug.
+1. Don't assume the scoring algorithm is broken — first check which row is being displayed: `SELECT * FROM risk_scoring_riskscoresnapshot WHERE employee_id = X ORDER BY computed_at DESC LIMIT 5;`. A UI bug showing a stale snapshot looks identical to a scoring bug.
 2. Check `algorithm_version` on the displayed snapshot vs. the current version — a score computed under an old algorithm isn't automatically recomputed; if the expectation is "recompute everyone after an algorithm change," confirm that backfill job actually ran.
 3. Confirm `email_opened` events aren't contributing weight — grep the scoring function for `email_opened` to make sure it wasn't accidentally included.
 

@@ -15,10 +15,12 @@ apps/
 ├── campaigns/      # Campaign metadata, gophish_campaign_id reference field
 ├── events/         # append-only Event model, webhook ingestion view, reconciliation task
 ├── training/        # TrainingModule, Quiz, Assignment, completion tracking
-├── riskscoring/     # RiskScoreSnapshot model + scoring algorithm(s), versioned
+├── risk_scoring/    # RiskScoreSnapshot model + scoring algorithm(s), versioned
 ├── engine/          # PhishingEngineClient adapter + Gophish-specific implementation
 └── core/            # shared utilities, RBAC/permissions helpers, audit log
 ```
+
+Project-level infra that isn't a domain concern (the `/healthz` endpoint checking DB/Redis connectivity) lives in `config/` alongside settings/urls/wsgi, not inside an app — `config/health.py` is the existing example. Don't move it into `apps/core` later just for tidiness; it's deliberately outside the app layer because it checks infrastructure, not business logic.
 
 `engine/` is the only app allowed to import a Gophish HTTP client or know Gophish's API shape. Every other app depends on `engine.PhishingEngineClient`'s interface, never on Gophish specifics.
 
@@ -45,7 +47,7 @@ Views, models, and Celery tasks depend on this interface via dependency injectio
 ## Celery tasks
 
 - `events.tasks.reconcile_campaign(campaign_id)` — Celery Beat scheduled, polls `PhishingEngineClient.get_campaign_results` and inserts any event missing by `external_id`. This is a fallback, not the primary path — don't build features that assume it runs frequently.
-- `riskscoring.tasks.recompute_score(employee_id, algorithm_version=None)` — inserts a new `RiskScoreSnapshot` row, never updates an existing one. Triggered on new relevant events (credential_attempt, link_clicked, phishing_reported, training_completed), not on a blanket schedule for every employee.
+- `risk_scoring.tasks.recompute_score(employee_id, algorithm_version=None)` — inserts a new `RiskScoreSnapshot` row, never updates an existing one. Triggered on new relevant events (credential_attempt, link_clicked, phishing_reported, training_completed), not on a blanket schedule for every employee.
 - Name tasks by `<app>.tasks.<verb>_<noun>` consistently; keep task bodies thin — real logic lives in a plain function/service the task calls, so it's unit-testable without Celery's test harness.
 
 ## Settings / secrets

@@ -31,7 +31,7 @@ INSTALLED_APPS = [
     "apps.campaigns",
     "apps.events",
     "apps.training",
-    "apps.riskscoring",
+    "apps.risk_scoring",
     "apps.engine",
 ]
 

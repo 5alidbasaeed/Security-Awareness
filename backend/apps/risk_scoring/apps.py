@@ -1,6 +1,6 @@
 from django.apps import AppConfig
 
 
-class RiskscoringConfig(AppConfig):
+class RiskScoringConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
-    name = "apps.riskscoring"
+    name = "apps.risk_scoring"

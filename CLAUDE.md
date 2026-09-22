@@ -2,7 +2,7 @@
 
 Internal, self-hosted defensive security tool: runs simulated phishing campaigns against company employees, auto-assigns training on failure, and reports on organizational risk. **Not** a commercial product, not for actual malicious use. Full architecture rationale lives in [phishing-training-platform-plan.md](phishing-training-platform-plan.md) — read it for anything not covered below.
 
-**Status**: Planning complete. Phase 0 (infra proof) not started. No code, no `docker-compose.yml`, no git repo yet.
+**Status**: Phase 0 (infra proof) — **infra portion complete and verified**; domain/deliverability portion still pending. Docker Compose stack (network split, Postgres, MySQL, Redis, Django, Gophish, Nginx) builds and runs; the admin/API isolation requirement was verified live (Gophish's `:3333` unreachable from the host, reachable from Django over the `internal` network). **Not yet done**: sending-domain SPF/DKIM/DMARC setup and a real mail-security-gateway test — both need a real domain/host the dev environment doesn't have; see README.md. Phase 1 (core simulation loop) not started — `apps/` currently holds empty app skeletons only.
 
 ## Non-negotiable invariants
 
@@ -32,13 +32,18 @@ These come from explicit decisions in the plan doc. Don't relitigate them withou
 | Reverse proxy | Nginx + Let's Encrypt |
 | Containerization | Docker Compose, single server |
 
-## Open decisions (not yet resolved — see plan doc "Overall Readiness Assessment")
+## Open decisions (see plan doc "Overall Readiness Assessment")
 
-1. Event log schema finalization
-2. Credential-capture configuration sign-off
-3. Network isolation topology finalization
-4. Gophish version to pin (upstream vs. vetted fork, given GO-2026-4455)
-5. Whether basic audit logging/RBAC moves into Phase 1 (plan currently recommends yes)
+1. Event log schema finalization — not yet resolved.
+2. Credential-capture configuration sign-off — not yet resolved.
+3. ~~Network isolation topology finalization~~ — **resolved and verified**. Implemented in `docker-compose.yml` exactly as invariant #8 describes; live-tested (see README.md "Verifying the network isolation").
+4. Gophish version to pin (upstream vs. vetted fork, given GO-2026-4455) — **partially resolved**: pinned to upstream `v0.12.1`, built from source, confirmed it boots and migrates correctly (see "Known deployment quirks" below). The upstream-vs-fork provenance question itself is still open — revisit before any real campaign.
+5. Whether basic audit logging/RBAC moves into Phase 1 (plan currently recommends yes) — not yet resolved, still applies once Phase 1 starts.
+
+## Known deployment quirks (found by actually running the stack — see git history)
+
+- **Gophish requires a relaxed MySQL `sql_mode`.** Its oldest DB migrations insert zero-dates (`'0000-00-00'`) that MySQL 8's default strict mode rejects outright, crashing Gophish on first boot. Fixed with `--sql-mode=NO_ENGINE_SUBSTITUTION` on the `mysql` service in `docker-compose.yml` — another concrete data point that upstream Gophish predates current tooling defaults (see open decision #4).
+- **Docker Desktop does not forward host-published ports onto a network marked `internal: true`.** A container's `ports:` binding will show in `docker inspect`'s `HostConfig.PortBindings` but never actually listen. This is *why* `django` has no `ports:` entry in `docker-compose.yml` — verification goes through `docker compose exec <service> curl ...` instead, which also happens to match the real deployment's access pattern (VPN/tunnel, no published port) better than a host port would have.
 
 ## Project-specific subagents
 

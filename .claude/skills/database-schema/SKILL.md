@@ -36,7 +36,7 @@ Constraints: `UNIQUE (source, external_id) WHERE external_id IS NOT NULL` — th
 
 No `updated_at` column on this table — that's a deliberate signal that rows are never updated. If a future change adds one, that's a design regression, not a convenience.
 
-**`riskscoring_riskscoresnapshot`**
+**`risk_scoring_riskscoresnapshot`**
 ```
 id                 bigserial PK
 employee_id        FK -> employees_employee
