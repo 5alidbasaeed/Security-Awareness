@@ -41,6 +41,7 @@ Views, models, and Celery tasks depend on this interface via dependency injectio
 
 - One view per webhook endpoint, in `events/views.py`. Verify `X-Gophish-Signature` (HMAC-SHA256 against the shared secret from the secret store) **before** touching the payload — reject with 401 on mismatch, don't process-then-check.
 - Dedupe on `external_id` at the DB level (unique constraint scoped to `source`), not just an application-level check — a race between two webhook deliveries should fail at the DB, not silently double-insert.
+- **Wrap the dedup-relying insert in its own `transaction.atomic()` block**, not a bare `try/except IntegrityError` around `Event.objects.create(...)`. Without the savepoint, the constraint violation poisons any enclosing transaction (pytest-django's per-test wrapping, a future `ATOMIC_REQUESTS=True`, or any caller already inside `atomic()`) and the same-request `except` won't actually recover — every query after it raises `TransactionManagementError` instead. Found by running the real test suite against Postgres, not by inspection.
 - Strip any `password`-resembling key from the payload before it touches `metadata` — do this in a small shared function (`events/sanitize.py`), not inline in the view, so it's applied consistently everywhere a payload is stored.
 - Webhook views return fast (enqueue a Celery task for anything beyond validate+store) — don't do risk-score recomputation synchronously inside the webhook request.
 

@@ -4,8 +4,8 @@ on for phishing-engine operations. See CLAUDE.md invariant #1 and the
 backend-conventions skill: no code outside apps.engine may import a Gophish
 SDK/HTTP client or construct a Gophish API URL directly.
 
-Phase 0: interface stub only. The concrete GophishClient implementation and
-webhook signature verification land in Phase 1 alongside the event log.
+See gophish.py for the concrete implementation and factory.py for how to
+obtain a configured instance.
 """
 
 from abc import ABC, abstractmethod
