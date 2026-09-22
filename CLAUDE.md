@@ -1,0 +1,58 @@
+# Internal Phishing Simulation & Security Awareness Training Platform
+
+Internal, self-hosted defensive security tool: runs simulated phishing campaigns against company employees, auto-assigns training on failure, and reports on organizational risk. **Not** a commercial product, not for actual malicious use. Full architecture rationale lives in [phishing-training-platform-plan.md](phishing-training-platform-plan.md) — read it for anything not covered below.
+
+**Status**: Planning complete. Phase 0 (infra proof) not started. No code, no `docker-compose.yml`, no git repo yet.
+
+## Non-negotiable invariants
+
+These come from explicit decisions in the plan doc. Don't relitigate them without updating the plan doc first.
+
+1. **Gophish is only ever called through a `PhishingEngineClient` adapter.** No code outside that adapter calls Gophish's REST API directly. This is what keeps the engine replaceable.
+2. **Django and Gophish never share a database.** Gophish's own DB (MySQL) is never queried or joined by Django. Gophish IDs (`gophish_campaign_id`, etc.) are stored in Django as plain reference fields, not FKs.
+3. **The event log is append-only and immutable.** Events are never updated or deleted — this is what makes retroactive risk-score recalculation possible. Webhook ingestion must be idempotent using Gophish's `external_id` (webhooks can be delivered more than once).
+4. **Never persist real passwords.** Gophish landing pages use `capture_credentials=true, capture_passwords=false`. Defense in depth: webhook-ingestion code must also explicitly strip any password-like field before storing `metadata`, never rely solely on Gophish-side config. Any cloned/imported landing page template must be manually checked to confirm it uses a native `<form>` + `type="password"` input (a JS-based submission can bypass the stripping).
+5. **`email_opened` is excluded from risk scoring** (or weighted ~0) — tracking-pixel prefetching by mail clients makes it unreliable as a behavior signal. Fine for delivery diagnostics only.
+6. **Risk scores are versioned snapshots computed from the event log**, not a hardcoded formula (`employee_id, score, computed_at, algorithm_version, contributing_metrics`) — must be recomputable if the algorithm changes.
+7. **Admin auth requires MFA** (`allauth.mfa`) — an admin account can launch simulated attacks org-wide. Employee training login uses SSO/OIDC via the company's existing IdP.
+8. **Network isolation is a hard requirement, not hardening.** Two Docker networks: `public` (Nginx + Gophish's phishing listener only) and `internal` (Django, Celery, Postgres, Redis, Gophish admin/API — no published ports). Driven by an unpatched HIGH-severity CVE (GO-2026-4455) that leaks the Gophish admin API key in rendered dashboard HTML; isolating the admin UI is the mitigation.
+9. **Never use `:latest` for the Gophish image.** Pin an exact version/digest.
+10. **Secrets (Gophish API key, webhook HMAC secret) live in the deployment's secret store**, never in code or committed config.
+11. **No SPA.** Frontend is Django templates + HTMX + Chart.js — deliberately rejected React for this project's scale/traffic pattern.
+
+## Tech stack (condensed — see plan doc for full rationale)
+
+| Layer | Choice |
+|---|---|
+| Custom app | Django + Postgres |
+| Phishing engine | Gophish (pinned version) + its own MySQL |
+| Task queue | Celery + Celery Beat, Redis broker |
+| Auth | django-allauth (MFA for admin, OIDC/SSO for employees) |
+| Frontend | Django templates + HTMX + Chart.js |
+| Reverse proxy | Nginx + Let's Encrypt |
+| Containerization | Docker Compose, single server |
+
+## Open decisions (not yet resolved — see plan doc "Overall Readiness Assessment")
+
+1. Event log schema finalization
+2. Credential-capture configuration sign-off
+3. Network isolation topology finalization
+4. Gophish version to pin (upstream vs. vetted fork, given GO-2026-4455)
+5. Whether basic audit logging/RBAC moves into Phase 1 (plan currently recommends yes)
+
+## Project-specific subagents
+
+`.claude/agents/` has seven subagents scoped to this stack: `backend-engineer`, `frontend-engineer`, `architecture-reviewer`, `database-engineer`, `security-code-reviewer`, `debugger`, `test-engineer`. Prefer them over the generic `claude`/`general-purpose` agent for work that clearly falls in their lane.
+
+## Project-specific skills
+
+`.claude/skills/` has detailed reference material each subagent loads for its lane — design tokens, schema shapes, conventions, checklists, playbooks — kept separate from the subagent prompts so those stay lean:
+
+| Skill | Content |
+|---|---|
+| `frontend-design` | Type scale, spacing scale, color tokens, component patterns, HTMX conventions |
+| `backend-conventions` | App layout, `PhishingEngineClient` interface shape, Celery/webhook conventions |
+| `database-schema` | Concrete table shapes, constraints, indexing, migration rules |
+| `code-review-checklist` | Itemized project-specific review checklist (credential handling, engine boundary, network isolation, etc.) |
+| `debugging-playbook` | Symptom → likely cause → concrete command/query, for this stack's common failure modes |
+| `testing-conventions` | Test layout, adapter mocking, required-coverage list |
