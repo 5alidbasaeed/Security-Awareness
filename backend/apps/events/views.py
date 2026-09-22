@@ -13,7 +13,6 @@ import json
 import logging
 
 from django.conf import settings
-from django.db import IntegrityError, transaction
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
 from django.utils.dateparse import parse_datetime
 from django.views.decorators.csrf import csrf_exempt
@@ -25,6 +24,7 @@ from apps.engine.gophish import GOPHISH_MESSAGE_TO_EVENT_TYPE, build_gophish_ext
 
 from .models import Event
 from .sanitize import strip_sensitive_fields
+from .services import record_event
 
 logger = logging.getLogger(__name__)
 
@@ -78,22 +78,16 @@ def gophish_webhook(request):
     )
     metadata = strip_sensitive_fields(payload.get("details", {}) or {})
 
-    try:
-        # A savepoint, not a bare create(): IntegrityError from the unique
-        # constraint would otherwise poison any enclosing transaction (e.g.
-        # ATOMIC_REQUESTS, or a caller running inside its own atomic block)
-        # and this same-request catch wouldn't actually recover from it.
-        with transaction.atomic():
-            Event.objects.create(
-                event_type=event_type,
-                employee=employee,
-                campaign=campaign,
-                source=Event.Source.GOPHISH,
-                external_id=external_id,
-                occurred_at=occurred_at,
-                metadata=metadata,
-            )
-    except IntegrityError:
+    event = record_event(
+        event_type=event_type,
+        employee=employee,
+        campaign=campaign,
+        source=Event.Source.GOPHISH,
+        external_id=external_id,
+        occurred_at=occurred_at,
+        metadata=metadata,
+    )
+    if event is None:
         # Expected on redelivery of an already-ingested event — not an error.
         logger.debug("Gophish webhook: duplicate delivery for external_id=%s — deduped", external_id)
 

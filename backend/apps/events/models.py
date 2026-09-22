@@ -1,8 +1,5 @@
 from django.db import models
 
-from apps.campaigns.models import Campaign
-from apps.employees.models import Employee
-
 from .managers import EventQuerySet
 
 
@@ -31,8 +28,8 @@ class Event(models.Model):
         MANUAL = "manual"
 
     event_type = models.CharField(max_length=32, choices=EventType.choices)
-    employee = models.ForeignKey(Employee, on_delete=models.PROTECT, related_name="events")
-    campaign = models.ForeignKey(Campaign, on_delete=models.PROTECT, related_name="events")
+    employee = models.ForeignKey("employees.Employee", on_delete=models.PROTECT, related_name="events")
+    campaign = models.ForeignKey("campaigns.Campaign", on_delete=models.PROTECT, related_name="events")
     source = models.CharField(max_length=16, choices=Source.choices)
     external_id = models.CharField(max_length=255, null=True, blank=True)
     occurred_at = models.DateTimeField()

@@ -1,6 +1,6 @@
 import csv
 
-from django.contrib import admin, messages
+from django.contrib import admin
 from django.http import HttpResponse
 
 from apps.core.admin_mixins import AuditedAdminMixin
@@ -22,8 +22,9 @@ class EmployeeAdmin(AuditedAdminMixin, admin.ModelAdmin):
         # PII export is Admin-only, not just "can view employees" — a Viewer
         # (view_employee only, per setup_groups) must not be able to pull
         # the raw employee list even though the action is visible to them.
-        if not request.user.has_perm("employees.change_employee"):
-            self.message_user(request, "You don't have permission to export employee data.", level=messages.ERROR)
+        if not self.require_permission(
+            request, "employees.change_employee", "You don't have permission to export employee data."
+        ):
             return
 
         response = HttpResponse(content_type="text/csv")

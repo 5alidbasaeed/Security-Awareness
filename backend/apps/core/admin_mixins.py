@@ -1,3 +1,5 @@
+from django.contrib import messages
+
 from .audit import log_action
 
 
@@ -12,6 +14,20 @@ class AuditedAdminMixin:
     """
 
     audit_object_name = None
+
+    def require_permission(self, request, perm: str, error_message: str) -> bool:
+        """
+        Returns True if request.user has `perm`; otherwise shows
+        `error_message` via the admin messages framework and returns False.
+        Use at the top of a custom admin action — Django's default action
+        visibility only requires *some* permission on the model, which is
+        looser than what a specific action (e.g. launching a real campaign)
+        should require.
+        """
+        if request.user.has_perm(perm):
+            return True
+        self.message_user(request, error_message, level=messages.ERROR)
+        return False
 
     def save_model(self, request, obj, form, change):
         super().save_model(request, obj, form, change)

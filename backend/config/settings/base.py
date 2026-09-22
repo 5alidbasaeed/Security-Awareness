@@ -111,7 +111,17 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.events.tasks.reconcile_all_active_campaigns",
         "schedule": 900.0,  # every 15 minutes
     },
+    "send-training-reminders": {
+        "task": "apps.training.tasks.send_training_reminders",
+        "schedule": 3600.0,  # hourly — the task itself enforces the 24h-per-assignment cooldown
+    },
 }
+
+# --- Email (training reminders) ---
+# Console backend by default — real SMTP via env override on a real
+# deployment, same pattern as DJANGO_SETTINGS_MODULE per-environment.
+EMAIL_BACKEND = env("DJANGO_EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
+DEFAULT_FROM_EMAIL = env("DJANGO_DEFAULT_FROM_EMAIL", default="noreply@example.com")
 
 # --- Gophish adapter config (consumed by apps.engine.GophishClient, Phase 1) ---
 GOPHISH_API_URL = env("GOPHISH_API_URL", default="")

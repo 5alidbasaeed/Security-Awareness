@@ -1,8 +1,6 @@
 from django.conf import settings
 from django.db import models
 
-from apps.employees.models import Department
-
 
 class Campaign(models.Model):
     """
@@ -23,7 +21,15 @@ class Campaign(models.Model):
     )
     landing_page_url = models.URLField(help_text="Landing page URL, per Gophish's create-campaign API.")
     target_department = models.ForeignKey(
-        Department, on_delete=models.SET_NULL, null=True, blank=True, related_name="campaigns"
+        "employees.Department", on_delete=models.SET_NULL, null=True, blank=True, related_name="campaigns"
+    )
+    training_module = models.ForeignKey(
+        "training.TrainingModule",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="campaigns",
+        help_text="Auto-assigned to an employee who fails this campaign's simulation (clicks or submits data).",
     )
     status = models.CharField(max_length=16, choices=Status.choices, default=Status.DRAFT)
     scheduled_at = models.DateTimeField(null=True, blank=True)

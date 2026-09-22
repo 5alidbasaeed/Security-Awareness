@@ -14,11 +14,13 @@ apps/
 ├── employees/      # Employee, Department models
 ├── campaigns/      # Campaign metadata, gophish_campaign_id reference field
 ├── events/         # append-only Event model, webhook ingestion view, reconciliation task
-├── training/        # TrainingModule, Quiz, Assignment, completion tracking
-├── risk_scoring/    # RiskScoreSnapshot model + scoring algorithm(s), versioned
+├── training/        # TrainingModule, Quiz, TrainingAssignment, completion tracking (Phase 2)
+├── risk_scoring/    # RiskScoreSnapshot model + scoring algorithm(s), versioned (Phase 4, not built yet)
 ├── engine/          # PhishingEngineClient adapter + Gophish-specific implementation
 └── core/            # shared utilities, RBAC/permissions helpers, audit log
 ```
+
+**Cross-app model FKs are Django's lazy string form** (`ForeignKey("employees.Employee", ...)`), never a direct class import (`from apps.employees.models import Employee` then `ForeignKey(Employee, ...)`). The direct-import style was Phase 1's original pattern and it would have created a real circular import once Phase 2 needed `Campaign → TrainingModule` and `TrainingAssignment → Employee`/`→ Event` at the same time (campaigns → training → events → campaigns). String references sidestep this entirely — apply it to every cross-app FK, not just the ones that happen to cycle today.
 
 Project-level infra that isn't a domain concern (the `/healthz` endpoint checking DB/Redis connectivity) lives in `config/` alongside settings/urls/wsgi, not inside an app — `config/health.py` is the existing example. Don't move it into `apps/core` later just for tidiness; it's deliberately outside the app layer because it checks infrastructure, not business logic.
 
@@ -46,12 +48,18 @@ Views, models, and Celery tasks depend on this interface via dependency injectio
 - **Wrap the dedup-relying insert in its own `transaction.atomic()` block**, not a bare `try/except IntegrityError` around `Event.objects.create(...)`. Without the savepoint, the constraint violation poisons any enclosing transaction (pytest-django's per-test wrapping, a future `ATOMIC_REQUESTS=True`, or any caller already inside `atomic()`) and the same-request `except` won't actually recover — every query after it raises `TransactionManagementError` instead. Found by running the real test suite against Postgres, not by inspection.
 - Strip any `password`-resembling key from the payload before it touches `metadata` — do this in a small shared function (`events/sanitize.py`), not inline in the view, so it's applied consistently everywhere a payload is stored.
 - Webhook views return fast (enqueue a Celery task for anything beyond validate+store) — don't do risk-score recomputation synchronously inside the webhook request.
+- The atomic-insert-plus-dedupe pattern above lives in one place, `events/services.py::record_event()` — both the webhook view and the reconciliation task call it rather than each keeping their own copy of the transaction/IntegrityError logic. If you're about to write `transaction.atomic()` around an `Event.objects.create(...)` anywhere else, you're probably duplicating this — call `record_event()` instead.
 
 ## Celery tasks
 
 - `events.tasks.reconcile_campaign(campaign_id)` — polls `PhishingEngineClient.get_campaign_results` and inserts any event missing by `external_id`. This is a fallback, not the primary path — don't build features that assume it runs frequently. **Adding a task isn't enough — it must actually appear in `CELERY_BEAT_SCHEDULE`** (see `config/settings/base.py`); a task that exists but isn't scheduled is silent dead code, which is exactly what happened in Phase 1's first cut. `events.tasks.reconcile_all_active_campaigns` is the scheduled entry point that fans out to `reconcile_campaign` per launched campaign.
-- `risk_scoring.tasks.recompute_score(employee_id, algorithm_version=None)` — inserts a new `RiskScoreSnapshot` row, never updates an existing one. Triggered on new relevant events (credential_attempt, link_clicked, phishing_reported, training_completed), not on a blanket schedule for every employee.
+- `risk_scoring.tasks.recompute_score(employee_id, algorithm_version=None)` — inserts a new `RiskScoreSnapshot` row, never updates an existing one. Triggered on new relevant events (credential_attempt, link_clicked, phishing_reported, training_completed), not on a blanket schedule for every employee. Not built yet (Phase 4).
+- `training.tasks.send_training_reminders` — hourly per `CELERY_BEAT_SCHEDULE`; the task itself enforces a per-assignment 24h reminder cooldown (`TrainingAssignment.last_reminded_at`), so the schedule interval and the cooldown are two independent knobs — don't assume tightening one changes the other.
 - Name tasks by `<app>.tasks.<verb>_<noun>` consistently; keep task bodies thin — real logic lives in a plain function/service the task calls, so it's unit-testable without Celery's test harness.
+
+## Auto-assignment via signals
+
+`apps/training/signals.py` connects a `post_save` receiver on `events.Event` (wired in `apps/training/apps.py::ready()`) that creates a `TrainingAssignment` when a qualifying event (`link_clicked`, `credential_attempt`) fires on a campaign with a `training_module` set. Dedupes against an already-outstanding (incomplete) assignment for the same employee+module — a second failure doesn't spam a second assignment. This is the one cross-app signal in the codebase; if you're tempted to add another app-to-app `post_save` receiver, first check whether a direct service-function call (like `record_event()`) would be more traceable than an implicit signal connection.
 
 ## Settings / secrets
 

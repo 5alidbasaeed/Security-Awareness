@@ -6,7 +6,6 @@ primary ingestion path, this exists only to catch a missed delivery.
 import logging
 
 from celery import shared_task
-from django.db import IntegrityError, transaction
 from django.utils.dateparse import parse_datetime
 
 from apps.campaigns.models import Campaign
@@ -15,6 +14,7 @@ from apps.engine.factory import get_client
 
 from .models import Event
 from .sanitize import strip_sensitive_fields
+from .services import record_event
 
 logger = logging.getLogger(__name__)
 
@@ -58,19 +58,18 @@ def reconcile_campaign(campaign_id: int):
             skipped += 1
             continue
 
-        try:
-            with transaction.atomic():  # savepoint — see views.py for why this matters
-                Event.objects.create(
-                    event_type=engine_event.event_type,
-                    employee=employee,
-                    campaign=campaign,
-                    source=Event.Source.GOPHISH,
-                    external_id=engine_event.external_id,
-                    occurred_at=occurred_at,
-                    metadata=strip_sensitive_fields(engine_event.raw),
-                )
+        event = record_event(
+            event_type=engine_event.event_type,
+            employee=employee,
+            campaign=campaign,
+            source=Event.Source.GOPHISH,
+            external_id=engine_event.external_id,
+            occurred_at=occurred_at,
+            metadata=strip_sensitive_fields(engine_event.raw),
+        )
+        if event is not None:
             created += 1
-        except IntegrityError:
+        else:
             deduped += 1
 
     logger.info(

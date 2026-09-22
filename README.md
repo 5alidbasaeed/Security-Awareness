@@ -1,6 +1,6 @@
 # Internal Phishing Simulation & Security Awareness Training Platform
 
-Phase 0 (infra proof) + Phase 1 first slice (core simulation loop backbone). See [phishing-training-platform-plan.md](phishing-training-platform-plan.md) for the full architecture and [CLAUDE.md](CLAUDE.md) for the non-negotiable invariants this implements.
+Phase 0 (infra proof) + Phase 1 (core simulation loop backbone) + Phase 2 (training loop). See [phishing-training-platform-plan.md](phishing-training-platform-plan.md) for the full architecture and [CLAUDE.md](CLAUDE.md) for the non-negotiable invariants this implements.
 
 ## Running the stack locally
 
@@ -24,6 +24,14 @@ docker compose run --rm -v "$(pwd)/backend:/app" django python manage.py makemig
 then rebuild (`docker compose build django`) so the migration is baked into the image for normal runs.
 
 **Running tests**: `docker compose run --rm django pytest`
+
+## Training loop (Phase 2)
+
+Set a `Campaign.training_module` (via `/admin/campaigns/campaign/`) to auto-assign that `TrainingModule` whenever an employee clicks the link or submits data on that campaign — this fires from a `post_save` signal on `Event`, so it works through both the webhook path and the reconciliation fallback. Verified live: a signed `credential_attempt` webhook produced a real `TrainingAssignment` row end-to-end.
+
+Reminders run hourly (`apps.training.tasks.send_training_reminders`, `CELERY_BEAT_SCHEDULE`) for assignments outstanding >2 days, capped at one reminder per 24h per assignment. `EMAIL_BACKEND` defaults to the console backend — reminders print to the `django`/`celery-worker` container logs rather than sending real mail; set `DJANGO_EMAIL_BACKEND` in `.env` to a real SMTP backend for production.
+
+Completion is staff-recorded via `/admin/training/quizattempt/` for now — there's no employee self-service quiz UI (needs the still-pending auth/SSO decision plus the still-deferred custom dashboard).
 
 ## Verifying the network isolation (Phase 0's actual exit criterion)
 
@@ -67,9 +75,10 @@ All five checks above were run and passed against this exact scaffold. Tear down
 - **Sending-domain SPF/DKIM/DMARC + a real mail-security-gateway test.** Needs a real domain and real infra this repo can't provide — do this against the actual deployment host before Phase 0 is considered complete for real use.
 - **VPN/SSH-tunnel access to the Django dashboard on a real host.** Also host infrastructure, not something Docker Compose alone can set up.
 - **Gophish's actual admin setup**: on first boot Gophish generates an admin password (check its logs: `docker compose logs gophish`) and an API key. Copy the API key into `.env` (`GOPHISH_API_KEY`) once you have it — the `GophishClient` adapter needs it to actually launch campaigns.
-- **Custom HTMX dashboard templates, granular RBAC beyond Admin/Viewer, risk scoring** — deliberately deferred past this Phase 1 slice; Django admin is the interim UI.
+- **Custom HTMX dashboard templates, granular RBAC beyond Admin/Viewer, risk scoring** — deliberately deferred; Django admin is the interim UI.
 - **MFA on admin login** — explicitly out of scope for now by user decision (see CLAUDE.md invariant #7), not a deferral. Admin login is plain Django session auth. Revisit before this handles anything beyond local dev/testing.
-- `apps/training` — still an empty app skeleton, Phase 2.
+- **Employee self-service training/quiz UI, real SMTP for reminders, training content authoring** — Phase 2 scope, deliberately deferred (see CLAUDE.md).
+- `apps/risk_scoring` — still an empty app skeleton, Phase 4.
 
 ## Open decisions carried from the plan doc
 

@@ -49,8 +49,22 @@ contributing_metrics jsonb
 ```
 No unique constraint on `employee_id` — multiple rows per employee over time are expected. "Current score" = most recent row per employee (`DISTINCT ON (employee_id) ... ORDER BY employee_id, computed_at DESC`), not a field that gets updated. Index `(employee_id, computed_at)`.
 
-**`training_trainingmodule`** / **`training_quiz`** / **`training_assignment`**
-`assignment`: `id, employee_id (FK), module_id (FK), assigned_at, due_at, started_at (nullable), completed_at (nullable), triggered_by_event_id (FK -> events_event, nullable)` — links a training assignment back to the failing event that caused it, without making the event mutable.
+**`training_trainingmodule`**
+`id, title, description, content_url, duration_minutes, is_active` — content lives off-platform (external LMS/video link) for now, this isn't a content authoring tool.
+
+**`training_quiz`**
+`id, module_id (OneToOne -> training_trainingmodule), passing_score_percent`
+
+**`training_quizquestion`** / **`training_quizchoice`**
+`quizquestion`: `id, quiz_id (FK), text, order`. `quizchoice`: `id, question_id (FK), text, is_correct`. Scored by the pure function `apps.training.scoring.score_quiz(quiz, answers)` — no DB write, directly unit-testable.
+
+**`training_trainingassignment`** (built, Phase 2)
+`id, employee_id (FK), module_id (FK), assigned_at, due_at (nullable), started_at (nullable), completed_at (nullable), last_reminded_at (nullable), triggered_by_event_id (FK -> events_event, nullable)` — `triggered_by_event_id` links a training assignment back to the failing event that caused it, without making the event mutable. Auto-created by a `post_save` signal on `Event` (see `apps.training.signals`) when a qualifying event (`link_clicked`/`credential_attempt`) fires on a campaign with a `training_module` set; deduped against an already-outstanding assignment for the same employee+module. Index `(employee_id, module_id)`.
+
+**`training_quizattempt`**
+`id, assignment_id (FK), score_percent, passed, completed_at` — staff-recorded for now (no employee self-service quiz UI yet); recording a passing attempt marks the assignment's `completed_at`.
+
+**`campaigns_campaign.training_module_id`** (added Phase 2, FK -> `training_trainingmodule`, nullable) — which module to auto-assign when this campaign's simulation is failed. All of the FKs above use Django's lazy string reference form (`"employees.Employee"`, `"events.Event"`, `"training.TrainingModule"`), not a direct model import — see the `backend-conventions` skill for why (avoids a real circular import between campaigns/training/events).
 
 **`core_auditlogentry`** (pulled into Phase 1 per the plan)
 `id, actor_id (FK -> auth user), action, target_description, occurred_at, metadata (jsonb)` — covers campaign launches, target-list changes, data exports at minimum.
