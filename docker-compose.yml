@@ -21,6 +21,7 @@ volumes:
 services:
   postgres:
     image: postgres:16
+    restart: unless-stopped
     networks: [internal]
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
@@ -36,6 +37,7 @@ services:
 
   mysql:
     image: mysql:8.4
+    restart: unless-stopped
     networks: [internal]
     # Gophish's oldest migrations (last touched pre-2024) insert zero-dates
     # ('0000-00-00') that MySQL 8's default strict sql_mode rejects outright.
@@ -58,6 +60,7 @@ services:
 
   redis:
     image: redis:8
+    restart: unless-stopped
     networks: [internal]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
@@ -69,6 +72,14 @@ services:
     build:
       context: ./gophish
       dockerfile: Dockerfile
+    # unless-stopped, not just left to die: Gophish's mail-sending worker
+    # can panic and crash the whole process on a bad/unreachable sending
+    # profile (confirmed live — see CLAUDE.md "Known deployment quirks").
+    # Without a restart policy a crash like that is silent until someone
+    # happens to check; auto-restart at least bounds the downtime. It does
+    # not fix the underlying campaign stuck mid-send — that still needs
+    # operator attention.
+    restart: unless-stopped
     networks: [public, internal] # both, per the plan doc's own network description — see CLAUDE.md
     depends_on:
       mysql:
@@ -86,6 +97,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    restart: unless-stopped
     networks: [internal]
     depends_on:
       postgres:
@@ -108,6 +120,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    restart: unless-stopped
     networks: [internal]
     depends_on:
       redis:
@@ -121,6 +134,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
+    restart: unless-stopped
     networks: [internal]
     depends_on:
       redis:
@@ -132,6 +146,7 @@ services:
 
   nginx:
     image: nginx:1.27-alpine
+    restart: unless-stopped
     networks: [public]
     depends_on: [gophish]
     ports:

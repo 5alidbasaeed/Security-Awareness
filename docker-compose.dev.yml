@@ -30,6 +30,18 @@ services:
       - devaccess
     ports:
       - "8000:8000"
+  # Same rationale as django above: lets a developer reach Gophish's admin
+  # UI (:3333) locally to configure templates/landing pages/sending
+  # profiles/groups and fetch the API key — none of that has a Django-side
+  # equivalent yet. Gophish keeps its existing public+internal membership
+  # from docker-compose.yml; this only adds a third, dev-only network.
+  gophish:
+    networks:
+      - public
+      - internal
+      - devaccess
+    ports:
+      - "3333:3333"
 
 networks:
   devaccess:
