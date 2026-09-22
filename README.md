@@ -19,7 +19,13 @@ This brings up: Postgres (Django's DB), MySQL (Gophish's DB), Redis (Celery brok
 
 ## Viewing the admin UI in a browser
 
-`docker-compose.override.yml` (loaded automatically, local-dev-only — see its header comment) publishes Django on **http://localhost:8000/admin/**. Log in with the superuser created above. This override exists because Django has no published port in the base `docker-compose.yml` by design (the `internal` network is meant to stay unreachable from the host, matching the real deployment's VPN/tunnel-only access) — it gives Django a second, non-internal network purely for local browsing without changing that.
+By default (`docker compose up`, no flags) Django has **no** browser-reachable port — matching the real deployment, where the admin is VPN/tunnel-only (invariant #8). To browse it locally, opt in explicitly:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
+```
+
+This publishes Django on **http://localhost:8000/admin/**. Log in with the superuser created above. `docker-compose.dev.yml` is deliberately *not* named `docker-compose.override.yml` — that filename is auto-loaded by plain `docker compose up`, which would mean a real deployment running the standard command on a fresh clone gets the admin silently exposed on :8000. Requiring the explicit `-f` flag makes local browser access something you opt into, not something that happens unless you remember to delete a file first. See the file's header comment for the full rationale.
 
 **Generating new migrations**: `docker compose run` containers are ephemeral — files written inside one (like a freshly generated migration) don't persist to the host unless you bind-mount the source. Use:
 ```bash

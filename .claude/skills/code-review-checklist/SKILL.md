@@ -38,6 +38,7 @@ Run this checklist on top of (not instead of) general code quality review. Each 
 
 ## Network / secrets
 - [ ] Does a Docker Compose or Nginx change publish a port for Postgres, Redis, MySQL, or Gophish's admin/API outside the `internal` network?
+- [ ] Is any new dev-convenience Compose file named `docker-compose.override.yml`? That exact filename is auto-loaded by plain `docker compose up` with no flag — a real deployment running the standard command on a fresh clone would silently inherit whatever it publishes. Dev-only network/port overrides must use a different filename (`docker-compose.dev.yml` is the existing convention) and be loaded explicitly via `-f`. Found and fixed once already — see git history.
 - [ ] Does the Gophish image tag remain pinned (not `:latest`)?
 - [ ] Do the Gophish API key, webhook secret, or DB credentials appear in a committed file, default value, or hardcoded string?
 

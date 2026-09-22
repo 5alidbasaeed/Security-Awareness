@@ -13,9 +13,15 @@
 # addition to `internal` (not instead of it), so its existing
 # service-to-service communication (Postgres, Redis, etc.) is unaffected.
 #
-# docker compose automatically loads this file alongside docker-compose.yml
-# — no extra flag needed. Delete or ignore it for anything resembling a real
-# deployment.
+# DELIBERATELY named *.dev.yml, not *.override.yml: `docker compose` only
+# auto-loads a file literally named `docker-compose.override.yml`. Naming it
+# that would mean a real deployment running the plain, standard
+# `docker compose up` command — exactly what someone does on a fresh
+# `git clone` of this repo — silently gets Django's admin exposed on :8000
+# with no explicit opt-in. Given invariant #8 calls network isolation "a
+# hard requirement, not hardening," relying on "remember to delete this file
+# before deploying" is not good enough. Load it explicitly:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d --build
 
 services:
   django:
