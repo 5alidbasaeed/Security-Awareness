@@ -2,11 +2,10 @@
 # phishing-training-platform-plan.md "Security Isolation" for the network
 # topology this file implements.
 #
-# NOTE (local-dev-only exception): django publishes 8000:8000 directly to the
-# host so this stack can be verified without VPN infrastructure. A real
-# deployment removes that `ports:` entry — Django's admin/dashboard is reached
-# via VPN/SSH tunnel into the `internal` network, never a published host port.
-# See README.md.
+# Nothing on the `internal` network publishes a host port, by design — Django's
+# admin/dashboard is reached via VPN/SSH tunnel into that network on a real
+# deployment, never a published host port. Locally, verify via
+# `docker compose exec <service> curl ...` — see README.md.
 
 networks:
   public:
@@ -38,6 +37,12 @@ services:
   mysql:
     image: mysql:8.4
     networks: [internal]
+    # Gophish's oldest migrations (last touched pre-2024) insert zero-dates
+    # ('0000-00-00') that MySQL 8's default strict sql_mode rejects outright.
+    # Relaxing it is what makes an unmaintained upstream project boot on a
+    # current MySQL at all — another concrete reason to revisit the
+    # upstream-vs-fork decision (see CLAUDE.md open decision #4).
+    command: --sql-mode=NO_ENGINE_SUBSTITUTION
     environment:
       MYSQL_DATABASE: ${MYSQL_DATABASE}
       MYSQL_USER: ${MYSQL_USER}
@@ -88,8 +93,13 @@ services:
       redis:
         condition: service_healthy
     env_file: .env
-    ports:
-      - "8000:8000" # local-dev-only exception, see file header
+    # No `ports:` entry: Docker Desktop doesn't forward host-published ports
+    # onto a network marked `internal: true` anyway (verified empirically —
+    # the binding shows in HostConfig but never actually listens), so the
+    # "local-dev convenience port" this used to have didn't work in practice.
+    # Verify Django via `docker compose exec django curl ...` (see README) —
+    # which also better matches the real deployment (VPN/tunnel, no published
+    # port) than a host port ever did.
     command: >
       sh -c "python manage.py migrate --noinput &&
              gunicorn config.wsgi:application --bind 0.0.0.0:8000"
