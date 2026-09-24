@@ -65,3 +65,31 @@ class GeneratedReport(models.Model):
 
     def __str__(self):
         return self.filename
+
+
+class ReportSchedule(models.Model):
+    """
+    Emails an aggregate report to named recipients on a schedule (Phase 6.2). Only
+    report kinds that don't name individuals can be scheduled — the scheduler has no
+    user, and generate_report() refuses employee-level kinds without one.
+    """
+
+    class Frequency(models.TextChoices):
+        WEEKLY = "weekly", "Weekly (last 7 days, sent Mondays)"
+        MONTHLY = "monthly", "Monthly (previous month, sent on the 1st)"
+
+    name = models.CharField(max_length=200)
+    kind = models.CharField(max_length=32, choices=GeneratedReport.Kind.choices)
+    frequency = models.CharField(max_length=16, choices=Frequency.choices, default=Frequency.MONTHLY)
+    recipients = models.TextField(help_text="Email addresses, one per line or comma-separated.")
+    is_active = models.BooleanField(default=True)
+    last_period_end = models.DateField(null=True, blank=True, editable=False)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True)
+
+    def __str__(self):
+        return self.name
+
+    def recipient_list(self) -> list[str]:
+        import re
+
+        return [a for a in re.split(r"[\s,;]+", self.recipients) if "@" in a]

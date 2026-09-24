@@ -7,5 +7,6 @@
   {% if perms.employees.view_employee %}<a href="{% url 'manage:employees' %}"{% if manage_section == "employees" %} aria-current="page"{% endif %}>Employees</a>{% endif %}
   {% if perms.employees.view_department %}<a href="{% url 'manage:departments' %}"{% if manage_section == "departments" %} aria-current="page"{% endif %}>Departments</a>{% endif %}
   {% if perms.intake.view_reportedemail %}<a href="{% url 'manage:reported' %}"{% if manage_section == "reported" %} aria-current="page"{% endif %}>Reported emails</a>{% endif %}
+  {% if perms.reporting.view_reportschedule %}<a href="{% url 'manage:schedules' %}"{% if manage_section == "schedules" %} aria-current="page"{% endif %}>Scheduled reports</a>{% endif %}
   <a href="{% url 'manage:api-keys' %}"{% if manage_section == "api-keys" %} aria-current="page"{% endif %}>API keys</a>
 </nav>

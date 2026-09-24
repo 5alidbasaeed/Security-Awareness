@@ -59,6 +59,7 @@ def index(request):
             ("Employees", "manage:employees", "People and their departments.", can("employees.change_employee")),
             ("Departments", "manage:departments", "Organizational units.", can("employees.view_department")),
             ("Reported emails", "manage:reported", "Triage suspicious emails employees reported.", can("intake.view_reportedemail")),
+            ("Scheduled reports", "manage:schedules", "Email reports to leadership on a schedule.", can("reporting.view_reportschedule")),
             ("API keys", "manage:api-keys", "Keys for drafting content programmatically.", request.user.is_staff),
         ],
     })
@@ -482,4 +483,39 @@ def policy_edit(request, pk=None):
     return render(request, "manage/simple_form.html", {
         "active": "manage", "form": form, "title": f"Edit {policy}" if policy else "New training policy",
         "back": reverse("manage:policies"),
+    })
+
+
+# --- scheduled reports ------------------------------------------------------------------
+
+
+@manage_access("reporting.view_reportschedule", methods=("GET",))
+def schedules(request):
+    from apps.reporting.models import ReportSchedule
+
+    return render(request, "manage/schedules.html", {"active": "manage", "schedules": ReportSchedule.objects.order_by("name")})
+
+
+@manage_access("reporting.change_reportschedule")
+def schedule_edit(request, pk=None):
+    from apps.reporting.models import ReportSchedule
+
+    from .forms import ReportScheduleForm
+
+    schedule = get_object_or_404(ReportSchedule, pk=pk) if pk else None
+    if request.method == "POST":
+        form = ReportScheduleForm(request.POST, instance=schedule)
+        if form.is_valid():
+            schedule = form.save(commit=False)
+            if schedule.created_by_id is None:
+                schedule.created_by = request.user
+            schedule.save()
+            log_action(actor=request.user, action="report_schedule_saved", target_description=str(schedule))
+            messages.success(request, "Saved.")
+            return redirect("manage:schedules")
+    else:
+        form = ReportScheduleForm(instance=schedule)
+    return render(request, "manage/simple_form.html", {
+        "active": "manage", "form": form, "title": f"Edit {schedule}" if schedule else "New scheduled report",
+        "back": reverse("manage:schedules"),
     })

@@ -221,3 +221,33 @@ def reported_emails(request):
     )
     _audit(request, "email_reported", report.subject or report.sender or "(no subject)")
     return JsonResponse({"id": report.id, "verdict": report.verdict}, status=201)
+
+
+# --- Read-only reporting (BI / SIEM) ----------------------------------------------------
+# Same numbers and the same row scoping as the dashboard: a Department Manager's key only
+# ever sees their own departments.
+
+
+@api_endpoint(scope=Scope.READ)
+def analytics_summary(request):
+    from apps.core.scoping import visible_employees
+    from apps.risk_scoring import analytics
+
+    return JsonResponse(analytics.scope_summary(visible_employees(request.user)))
+
+
+@api_endpoint(scope=Scope.READ)
+def analytics_departments(request):
+    from apps.risk_scoring import analytics
+
+    return JsonResponse({"departments": [analytics.department_summary(d) for d in visible_departments(request.user).order_by("name")]})
+
+
+@api_endpoint(scope=Scope.READ)
+def campaign_results(request, pk):
+    from django.shortcuts import get_object_or_404
+
+    from apps.risk_scoring import analytics
+
+    campaign = get_object_or_404(visible_campaigns(request.user), pk=pk)
+    return JsonResponse(analytics.campaign_summary(campaign))

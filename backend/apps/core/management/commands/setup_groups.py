@@ -38,7 +38,7 @@ TRAINING_MODELS = [
     ("training", "trainingpolicy"),
 ]
 RISK_MODELS = [("risk_scoring", "riskscoresnapshot")]  # computed, read-only in the admin
-REPORT_MODELS = [("reporting", "generatedreport")]  # immutable archive, read-only in the admin
+REPORT_MODELS = [("reporting", "generatedreport"), ("reporting", "reportschedule")]  # immutable archive, read-only in the admin
 API_MODELS = [("api", "apikey")]
 INTAKE_MODELS = [("intake", "reportedemail")]
 MANAGED_MODELS = EMPLOYEE_MODELS + CAMPAIGN_MODELS + EVENT_MODELS + CORE_MODELS + TRAINING_MODELS + RISK_MODELS + REPORT_MODELS + API_MODELS + INTAKE_MODELS

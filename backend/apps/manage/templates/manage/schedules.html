@@ -1,0 +1,16 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Scheduled reports · Manage{% endblock %}
+{% block content %}
+{% include "manage/_subnav.html" with manage_section="schedules" %}
+<header class="page-header"><div><h1>Scheduled reports</h1>
+<p class="page-header__sub">Aggregate reports emailed automatically. Reports that name individuals can't be scheduled.</p></div>
+{% if perms.reporting.change_reportschedule %}<a class="button" href="{% url 'manage:schedule-new' %}">New schedule</a>{% endif %}</header>
+<div class="card"><div class="table-wrap"><table class="table">
+  <thead><tr><th>Name</th><th>Report</th><th>Frequency</th><th>Recipients</th><th>Last period sent</th><th class="num"></th></tr></thead>
+  <tbody>{% for s in schedules %}
+    <tr><td>{{ s.name }}{% if not s.is_active %} <span class="badge">Paused</span>{% endif %}</td><td>{{ s.get_kind_display }}</td><td>{{ s.get_frequency_display }}</td>
+      <td>{{ s.recipient_list|join:", " }}</td><td>{{ s.last_period_end|default:"—" }}</td>
+      <td class="num">{% if perms.reporting.change_reportschedule %}<a href="{% url 'manage:schedule-edit' s.pk %}">Edit</a>{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="6"><div class="empty"><strong>No schedules</strong>e.g. a monthly executive summary to the CISO.</div></td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

@@ -39,6 +39,10 @@ urlpatterns = [
     path("departments/new/", views.department_edit, name="department-new"),
     path("departments/<int:pk>/edit/", views.department_edit, name="department-edit"),
 
+    path("scheduled-reports/", views.schedules, name="schedules"),
+    path("scheduled-reports/new/", views.schedule_edit, name="schedule-new"),
+    path("scheduled-reports/<int:pk>/edit/", views.schedule_edit, name="schedule-edit"),
+
     path("reported/", views.reported, name="reported"),
     path("reported/<int:pk>/triage/", views.reported_triage, name="reported-triage"),
 

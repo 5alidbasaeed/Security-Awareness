@@ -185,6 +185,26 @@ def test_the_api_has_no_launch_approve_or_send_endpoint():
     from apps.api import urls
 
     names = {p.name for p in urls.urlpatterns}
-    assert names == {"whoami", "training-modules", "email-templates", "landing-pages", "campaigns", "reported-emails"}
+    assert names == {"whoami", "training-modules", "email-templates", "landing-pages", "campaigns", "reported-emails",
+                     "analytics-summary", "analytics-departments", "campaign-results"}
     for word in ("launch", "approve", "send", "submit", "delete"):
         assert not any(word in (p.name or "") or word in str(p.pattern) for p in urls.urlpatterns)
+
+
+def test_read_scope_returns_scoped_analytics(client, django_user_model):
+    from apps.employees.tests.factories import EmployeeFactory
+
+    mine, other = DepartmentFactory(name="Mine"), DepartmentFactory(name="Other")
+    key, raw = make_key(django_user_model, group="Department Manager", scopes=[Scope.READ])
+    mine.managers.add(key.owner)
+    EmployeeFactory(department=mine), EmployeeFactory(department=other)
+    other_campaign = Campaign.objects.create(name="x", template_name="t", landing_page_name="p",
+                                             landing_page_url="https://p.example", target_department=other)
+
+    summary = call(client, "analytics-summary", raw).json()
+    departments = call(client, "analytics-departments", raw).json()["departments"]
+    hidden = client.get(reverse("api:campaign-results", args=[other_campaign.pk]), HTTP_AUTHORIZATION=f"Api-Key {raw}")
+
+    assert summary["employees"] == 1
+    assert [d["name"] for d in departments] == ["Mine"]
+    assert hidden.status_code == 404

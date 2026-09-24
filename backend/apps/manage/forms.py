@@ -5,6 +5,8 @@ Department Managers get their department choices scoped in __init__, the same
 rule the admin and API enforce.
 """
 
+import re
+
 from django import forms
 
 from apps.campaigns.models import Campaign
@@ -141,3 +143,32 @@ class TrainingPolicyForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["module"].queryset = TrainingModule.objects.filter(is_active=True)
         _style(self)
+
+
+class ReportScheduleForm(forms.ModelForm):
+    class Meta:
+        from apps.reporting.models import ReportSchedule
+
+        model = ReportSchedule
+        fields = ["name", "kind", "frequency", "recipients", "is_active"]
+        widgets = {"recipients": forms.Textarea(attrs={"rows": 3})}
+
+    def __init__(self, *args, **kwargs):
+        from apps.reporting.services import KINDS
+
+        kwargs.pop("user", None)
+        super().__init__(*args, **kwargs)
+        # Only aggregate reports can be emailed on a schedule — never ones that name people.
+        self.fields["kind"].choices = [(k, s.label) for k, s in KINDS.items() if not s.employee_level]
+        _style(self)
+
+    def clean_recipients(self):
+        from django.core.validators import validate_email
+
+        value = self.cleaned_data["recipients"]
+        addresses = [a for a in re.split(r"[\s,;]+", value) if a]
+        if not addresses:
+            raise forms.ValidationError("Add at least one email address.")
+        for address in addresses:
+            validate_email(address)
+        return "\n".join(addresses)
