@@ -139,6 +139,14 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.reporting.tasks.generate_monthly_executive_summary",
         "schedule": 86400.0,
     },
+    "enforce-training-policies": {
+        "task": "apps.training.tasks.enforce_training_policies",
+        "schedule": 86400.0,
+    },
+    "escalate-overdue-training": {
+        "task": "apps.training.tasks.escalate_overdue_training",
+        "schedule": 86400.0,  # the task itself limits each department to one email per 7 days
+    },
     "launch-scheduled-campaigns": {
         "task": "apps.campaigns.tasks.launch_scheduled_campaigns",
         "schedule": 300.0,  # every 5 minutes

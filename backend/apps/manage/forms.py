@@ -127,3 +127,17 @@ class LandingPageForm(forms.Form):
     )
     redirect_url = forms.URLField(required=False, widget=forms.URLInput(attrs=_TEXT),
                                   help_text="Where to send the employee after submitting (e.g. a teachable-moment page).")
+
+
+class TrainingPolicyForm(forms.ModelForm):
+    class Meta:
+        from apps.training.models import TrainingPolicy
+
+        model = TrainingPolicy
+        fields = ["name", "module", "department", "repeat_every_days", "due_days", "is_active"]
+
+    def __init__(self, *args, **kwargs):
+        kwargs.pop("user", None)
+        super().__init__(*args, **kwargs)
+        self.fields["module"].queryset = TrainingModule.objects.filter(is_active=True)
+        _style(self)

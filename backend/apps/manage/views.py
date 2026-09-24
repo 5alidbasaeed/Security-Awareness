@@ -448,3 +448,38 @@ def reported_triage(request, pk):
         log_action(actor=request.user, action="reported_email_triaged", target_description=str(report), verdict=verdict)
         messages.success(request, f"Marked as {report.get_verdict_display().lower()}.")
     return redirect(f"{reverse('manage:reported')}?verdict=new")
+
+
+# --- training policies ------------------------------------------------------------------
+
+
+@manage_access("training.view_trainingpolicy", methods=("GET",))
+def policies(request):
+    from apps.training.models import TrainingPolicy
+
+    return render(request, "manage/policies.html", {
+        "active": "manage", "policies": TrainingPolicy.objects.select_related("module", "department").order_by("name"),
+    })
+
+
+@manage_access("training.change_trainingpolicy")
+def policy_edit(request, pk=None):
+    from apps.training.models import TrainingPolicy
+
+    from .forms import TrainingPolicyForm
+
+    policy = get_object_or_404(TrainingPolicy, pk=pk) if pk else None
+    if request.method == "POST":
+        form = TrainingPolicyForm(request.POST, instance=policy)
+        if form.is_valid():
+            policy = form.save()
+            log_action(actor=request.user, action="training_policy_updated" if pk else "training_policy_created",
+                       target_description=str(policy))
+            messages.success(request, "Saved. People in scope are enrolled by the next daily run.")
+            return redirect("manage:policies")
+    else:
+        form = TrainingPolicyForm(instance=policy)
+    return render(request, "manage/simple_form.html", {
+        "active": "manage", "form": form, "title": f"Edit {policy}" if policy else "New training policy",
+        "back": reverse("manage:policies"),
+    })

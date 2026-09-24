@@ -26,6 +26,10 @@ urlpatterns = [
     path("training/<int:pk>/questions/add/", views.question_add, name="question-add"),
     path("training/<int:pk>/questions/<int:question_pk>/delete/", views.question_delete, name="question-delete"),
 
+    path("training/policies/", views.policies, name="policies"),
+    path("training/policies/new/", views.policy_edit, name="policy-new"),
+    path("training/policies/<int:pk>/edit/", views.policy_edit, name="policy-edit"),
+
     path("employees/", views.employees, name="employees"),
     path("employees/new/", views.employee_edit, name="employee-new"),
     path("employees/import/", views.employee_import, name="employee-import"),

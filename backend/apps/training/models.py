@@ -97,3 +97,29 @@ class QuizAttempt(models.Model):
 
     def __str__(self):
         return f"{self.assignment} — {self.score_percent}% ({'passed' if self.passed else 'failed'})"
+
+
+class TrainingPolicy(models.Model):
+    """
+    Mandatory training that isn't triggered by a failed simulation — e.g. annual
+    awareness training for everyone, or onboarding training for new hires. A daily
+    task (tasks.enforce_training_policies) enrols every active employee in scope who
+    hasn't had this module assigned within `repeat_every_days`.
+    """
+
+    name = models.CharField(max_length=200)
+    module = models.ForeignKey(TrainingModule, on_delete=models.PROTECT, related_name="policies")
+    department = models.ForeignKey(
+        "employees.Department", on_delete=models.CASCADE, null=True, blank=True, related_name="training_policies",
+        help_text="Blank = everyone.",
+    )
+    repeat_every_days = models.PositiveIntegerField(default=365, help_text="Re-enrol after this many days (365 = annual).")
+    due_days = models.PositiveIntegerField(default=30, help_text="Days each person has to complete it.")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name_plural = "training policies"
+
+    def __str__(self):
+        return self.name

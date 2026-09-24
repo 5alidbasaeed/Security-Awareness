@@ -3,7 +3,8 @@
 {% block content %}
 {% include "manage/_subnav.html" with manage_section="training" %}
 <header class="page-header"><div><h1>Training modules</h1></div>
-{% if perms.training.change_trainingmodule %}<a class="button" href="{% url 'manage:module-new' %}">New module</a>{% endif %}</header>
+<div class="header-actions">{% if perms.training.view_trainingpolicy %}<a class="button button--quiet" href="{% url 'manage:policies' %}">Mandatory training</a>{% endif %}
+{% if perms.training.change_trainingmodule %}<a class="button" href="{% url 'manage:module-new' %}">New module</a>{% endif %}</div></header>
 <div class="card"><div class="table-wrap"><table class="table">
   <thead><tr><th>Title</th><th>Minutes</th><th>Quiz</th><th>Active</th><th class="num">Actions</th></tr></thead>
   <tbody>

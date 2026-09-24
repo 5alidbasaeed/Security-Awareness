@@ -35,6 +35,7 @@ TRAINING_MODELS = [
     ("training", "quizchoice"),
     ("training", "trainingassignment"),
     ("training", "quizattempt"),
+    ("training", "trainingpolicy"),
 ]
 RISK_MODELS = [("risk_scoring", "riskscoresnapshot")]  # computed, read-only in the admin
 REPORT_MODELS = [("reporting", "generatedreport")]  # immutable archive, read-only in the admin
