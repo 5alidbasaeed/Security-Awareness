@@ -14,17 +14,13 @@ import logging
 
 from django.conf import settings
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseForbidden, JsonResponse
-from django.utils.dateparse import parse_datetime
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from apps.campaigns.models import Campaign
-from apps.employees.models import Employee
 from apps.engine.gophish import GOPHISH_MESSAGE_TO_EVENT_TYPE, build_gophish_external_id
 
-from .models import Event
-from .sanitize import strip_sensitive_fields
-from .services import record_event
+from .services import IngestOutcome, ingest_engine_event
 
 logger = logging.getLogger(__name__)
 
@@ -53,7 +49,7 @@ def gophish_webhook(request):
         return HttpResponseBadRequest("expected a JSON object")
 
     message = payload.get("message")
-    event_type = GOPHISH_MESSAGE_TO_EVENT_TYPE.get(message)
+    event_type = GOPHISH_MESSAGE_TO_EVENT_TYPE.get(message) if isinstance(message, str) else None
     if event_type is None:
         logger.info("Gophish webhook: unrecognized message %r — ignored", message)
         return HttpResponse(status=200)  # ack — don't make Gophish retry an event we'll never understand
@@ -64,33 +60,22 @@ def gophish_webhook(request):
         logger.warning("Gophish webhook: no Campaign for gophish_campaign_id=%s — skipped", gophish_campaign_id)
         return HttpResponse(status=200)
 
-    email = payload.get("email", "")
-    employee = Employee.objects.filter(email__iexact=email).first()
-    if employee is None:
-        logger.warning("Gophish webhook: no Employee for email=%s — skipped", email)
-        return HttpResponse(status=200)
-
-    occurred_at = parse_datetime(payload.get("time", "")) if payload.get("time") else None
-    if occurred_at is None:
-        logger.warning("Gophish webhook: unparseable time=%r — skipped", payload.get("time"))
-        return HttpResponse(status=200)
-
-    external_id = build_gophish_external_id(
-        campaign_id=gophish_campaign_id, email=email, message=message, time=payload.get("time")
-    )
-    metadata = strip_sensitive_fields(payload.get("details", {}) or {})
-
-    event = record_event(
-        event_type=event_type,
-        employee=employee,
+    email, time = payload.get("email"), payload.get("time")
+    external_id = build_gophish_external_id(campaign_id=gophish_campaign_id, email=email, message=message, time=time)
+    outcome = ingest_engine_event(
         campaign=campaign,
-        source=Event.Source.GOPHISH,
+        email=email,
+        event_type=event_type,
         external_id=external_id,
-        occurred_at=occurred_at,
-        metadata=metadata,
+        time=time,
+        metadata=payload.get("details") or {},
     )
-    if event is None:
+    if outcome == IngestOutcome.UNKNOWN_EMPLOYEE:
+        logger.warning("Gophish webhook: no Employee for email=%r — skipped", email)
+    elif outcome == IngestOutcome.BAD_TIME:
+        logger.warning("Gophish webhook: unparseable time=%r — skipped", time)
+    elif outcome == IngestOutcome.DUPLICATE:
         # Expected on redelivery of an already-ingested event — not an error.
         logger.debug("Gophish webhook: duplicate delivery for external_id=%s — deduped", external_id)
-
+    # Always ack: a skipped event would be skipped again on every redelivery.
     return JsonResponse({"ok": True})

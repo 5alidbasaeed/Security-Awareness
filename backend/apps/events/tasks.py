@@ -6,15 +6,11 @@ primary ingestion path, this exists only to catch a missed delivery.
 import logging
 
 from celery import shared_task
-from django.utils.dateparse import parse_datetime
 
 from apps.campaigns.models import Campaign
-from apps.employees.models import Employee
 from apps.engine.factory import get_client
 
-from .models import Event
-from .sanitize import strip_sensitive_fields
-from .services import record_event
+from .services import IngestOutcome, ingest_engine_event
 
 logger = logging.getLogger(__name__)
 
@@ -50,27 +46,20 @@ def reconcile_campaign(campaign_id: int):
 
     created, deduped, skipped = 0, 0, 0
     for engine_event in events:
-        email = engine_event.raw.get("email")
-        employee = Employee.objects.filter(email__iexact=email).first() if email else None
-        occurred_at = parse_datetime(engine_event.occurred_at) if engine_event.occurred_at else None
-
-        if employee is None or occurred_at is None:
-            skipped += 1
-            continue
-
-        event = record_event(
-            event_type=engine_event.event_type,
-            employee=employee,
+        outcome = ingest_engine_event(
             campaign=campaign,
-            source=Event.Source.GOPHISH,
+            email=engine_event.raw.get("email"),
+            event_type=engine_event.event_type,
             external_id=engine_event.external_id,
-            occurred_at=occurred_at,
-            metadata=strip_sensitive_fields(engine_event.raw),
+            time=engine_event.occurred_at,
+            metadata=engine_event.raw,
         )
-        if event is not None:
+        if outcome == IngestOutcome.CREATED:
             created += 1
-        else:
+        elif outcome == IngestOutcome.DUPLICATE:
             deduped += 1
+        else:
+            skipped += 1
 
     logger.info(
         "reconcile_campaign(%s): %d created, %d already present, %d skipped",

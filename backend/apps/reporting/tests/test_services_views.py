@@ -264,3 +264,13 @@ def test_full_evidence_package_through_the_service(django_user_model):
 
     assert report.file_format == "zip" and report.content_type == "application/zip"
     assert bytes(report.content)[:2] == b"PK"
+
+
+def test_scope_label_for_a_manager_of_many_departments_fits_the_column(django_user_model):
+    user = make_user(django_user_model, "Department Manager")
+    for i in range(30):
+        DepartmentFactory(name=f"A department with a fairly long name {i}").managers.add(user)
+
+    report = services.generate_report(kind=Kind.DEPARTMENT_SUMMARY, user=user, period_start=START_NOW, period_end=END_NOW)
+
+    assert report.is_scoped and len(report.scope_label) <= 200 and report.scope_label.endswith("…")

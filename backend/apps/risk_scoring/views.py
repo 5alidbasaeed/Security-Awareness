@@ -12,9 +12,7 @@ from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import get_object_or_404
 from django.views.decorators.http import require_GET
 
-from apps.campaigns.models import Campaign
-from apps.core.scoping import managed_departments
-from apps.employees.models import Department, Employee
+from apps.core.scoping import visible_campaigns, visible_departments, visible_employees
 
 from . import analytics
 
@@ -31,20 +29,15 @@ def analytics_access(view):
     return wrapper
 
 
-def _visible_departments(request):
-    managed = managed_departments(request.user)
-    return managed if managed is not None else Department.objects.all()
-
-
 @analytics_access
 def departments(request):
-    summaries = [analytics.department_summary(d) for d in _visible_departments(request).order_by("name")]
+    summaries = [analytics.department_summary(d) for d in visible_departments(request.user).order_by("name")]
     return JsonResponse({"departments": summaries})
 
 
 @analytics_access
 def department_trend(request, department_id):
-    department = get_object_or_404(_visible_departments(request), pk=department_id)
+    department = get_object_or_404(visible_departments(request.user), pk=department_id)
     raw_weeks = request.GET.get("weeks", "12")
     weeks = min(max(int(raw_weeks), 1), 104) if raw_weeks.isdigit() else 12
     return JsonResponse({"department": department.name, "trend": analytics.department_trend(department, weeks=weeks)})
@@ -52,14 +45,12 @@ def department_trend(request, department_id):
 
 @analytics_access
 def campaign(request, campaign_id):
-    visible = Campaign.objects.filter(target_department__in=_visible_departments(request))
-    return JsonResponse(analytics.campaign_summary(get_object_or_404(visible, pk=campaign_id)))
+    return JsonResponse(analytics.campaign_summary(get_object_or_404(visible_campaigns(request.user), pk=campaign_id)))
 
 
 @analytics_access
 def employee_history(request, employee_id):
-    visible = Employee.objects.filter(department__in=_visible_departments(request))
-    employee = get_object_or_404(visible, pk=employee_id)
+    employee = get_object_or_404(visible_employees(request.user), pk=employee_id)
     history = analytics.score_history(employee)
     return JsonResponse(
         {

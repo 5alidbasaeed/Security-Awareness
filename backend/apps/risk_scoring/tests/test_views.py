@@ -92,3 +92,14 @@ def test_trend_weeks_parameter_is_clamped(client, django_user_model, weeks, expe
     data = client.get(reverse("analytics:department-trend", args=[department.pk]), {"weeks": weeks}).json()
 
     assert len(data["trend"]) == expected
+
+
+def test_org_wide_roles_can_open_records_without_a_department(client, django_user_model):
+    # Same visibility as the dashboard (core.scoping): an unscoped role sees everything,
+    # including employees and campaigns that have no department.
+    employee = EmployeeFactory(department=None)
+    campaign = CampaignFactory(target_department=None)
+    _login(client, django_user_model, "Report Viewer")
+
+    assert client.get(reverse("analytics:employee-history", args=[employee.pk])).status_code == 200
+    assert client.get(reverse("analytics:campaign", args=[campaign.pk])).status_code == 200

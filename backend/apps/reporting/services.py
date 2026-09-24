@@ -13,7 +13,7 @@ from typing import Callable
 from django.utils import timezone
 
 from apps.campaigns.models import Campaign
-from apps.core.audit import log_action
+from apps.core.audit import log_action, truncate
 from apps.core.scoping import (
     managed_departments,
     visible_assignments,
@@ -21,7 +21,6 @@ from apps.core.scoping import (
     visible_departments,
     visible_employees,
 )
-
 from apps.employees.models import Employee
 from apps.training.models import TrainingAssignment
 
@@ -105,7 +104,8 @@ def _scope_for(user) -> ReportScope:
         label, scoped = "All departments", False
     else:
         names = ", ".join(sorted(managed.values_list("name", flat=True))) or "no departments"
-        label, scoped = f"Departments: {names}", True
+        label = truncate(f"Departments: {names}", GeneratedReport._meta.get_field("scope_label").max_length)
+        scoped = True
     return ReportScope(
         employees=visible_employees(user), campaigns=visible_campaigns(user), assignments=visible_assignments(user),
         departments=visible_departments(user), label=label, is_scoped=scoped,

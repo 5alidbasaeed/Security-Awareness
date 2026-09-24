@@ -14,6 +14,12 @@ from apps.events.models import Event
 pytestmark = pytest.mark.django_db
 
 
+@pytest.fixture(autouse=True)
+def _webhook_secret(settings):
+    # Don't depend on the deployment's .env — the view rejects everything when the secret is unset.
+    settings.GOPHISH_WEBHOOK_SECRET = "test-webhook-secret"
+
+
 def _sign(body: bytes) -> str:
     digest = hmac.new(settings.GOPHISH_WEBHOOK_SECRET.encode(), body, hashlib.sha256).hexdigest()
     return f"sha256={digest}"
@@ -85,3 +91,38 @@ def test_non_object_json_body_is_a_400_not_a_500(client, payload):
     response = _post(client, payload)
 
     assert response.status_code == 400
+
+
+@pytest.mark.parametrize("time", ["2026-13-45T10:00:00Z", 1727170000, ["2026-09-24T10:00:00Z"]])
+def test_malformed_time_is_acked_and_skipped_not_a_500(client, time):
+    # parse_datetime raises (not returns None) for an out-of-range date or a non-string; a 500
+    # would make Gophish redeliver the same bad event forever.
+    campaign = CampaignFactory(gophish_campaign_id="42")
+    employee = EmployeeFactory()
+
+    response = _post(client, _payload(campaign, employee, time=time))
+
+    assert response.status_code == 200
+    assert Event.objects.count() == 0
+
+
+def test_non_string_message_is_acked_and_ignored(client):
+    campaign = CampaignFactory(gophish_campaign_id="42")
+    employee = EmployeeFactory()
+
+    response = _post(client, _payload(campaign, employee, message=["Clicked Link"]))
+
+    assert response.status_code == 200
+    assert Event.objects.count() == 0
+
+
+def test_json_string_details_are_sanitized(client):
+    # Gophish sends `details` as a JSON-encoded string, not an object.
+    campaign = CampaignFactory(gophish_campaign_id="42")
+    employee = EmployeeFactory()
+    details = json.dumps({"payload": {"username": ["bob"], "password": ["hunter2"]}})
+
+    response = _post(client, _payload(campaign, employee, message="Submitted Data", details=details))
+
+    assert response.status_code == 200
+    assert "hunter2" not in json.dumps(Event.objects.get().metadata)
