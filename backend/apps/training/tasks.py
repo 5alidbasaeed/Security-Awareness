@@ -32,17 +32,21 @@ def send_training_reminders():
 
     sent = 0
     for assignment in due_for_reminder:
-        send_mail(
-            subject=f"Reminder: complete your security training — {assignment.module.title}",
-            message=(
-                f"Hi {assignment.employee.full_name},\n\n"
-                f'You have an outstanding security awareness training assignment: "{assignment.module.title}". '
-                "Please complete it at your earliest convenience.\n\n"
-                f"{assignment.module.content_url}"
-            ),
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[assignment.employee.email],
-        )
+        try:
+            send_mail(
+                subject=f"Reminder: complete your security training — {assignment.module.title}",
+                message=(
+                    f"Hi {assignment.employee.full_name},\n\n"
+                    f'You have an outstanding security awareness training assignment: "{assignment.module.title}". '
+                    "Please complete it at your earliest convenience.\n\n"
+                    f"{assignment.module.content_url}"
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[assignment.employee.email],
+            )
+        except Exception:  # noqa: BLE001 — one bad mailbox must not block everyone after it, every hour
+            logger.exception("send_training_reminders: could not email %s — will retry next run", assignment.employee)
+            continue
         assignment.last_reminded_at = now
         assignment.save(update_fields=["last_reminded_at"])
         sent += 1

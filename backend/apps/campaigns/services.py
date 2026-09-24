@@ -68,6 +68,11 @@ def launch_campaign(campaign: Campaign, *, actor, client) -> Campaign:
             # targeted." See CLAUDE.md Phase 3 notes on why this didn't exist before.
             employees = Employee.objects.filter(department=campaign.target_department, is_exempt=False)
             contacts = [_contact_from_employee(e) for e in employees]
+            if not contacts:
+                raise CampaignLaunchError(
+                    f"{campaign} has no eligible employees in {campaign.target_department} "
+                    "(everyone is exempt or the department is empty)."
+                )
 
             client.sync_target_group(name=campaign.target_department.name, contacts=contacts)
 

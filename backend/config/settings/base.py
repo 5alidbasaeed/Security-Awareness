@@ -132,6 +132,13 @@ CELERY_BEAT_SCHEDULE = {
 EMAIL_BACKEND = env("DJANGO_EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
 DEFAULT_FROM_EMAIL = env("DJANGO_DEFAULT_FROM_EMAIL", default="noreply@example.com")
 
+# --- Training ---
+TRAINING_DUE_DAYS = env.int("TRAINING_DUE_DAYS", default=14)
+
+# Anonymous hits on staff-only pages (the /analytics/ API) go to the admin login
+# until the Phase 4.1 dashboard has its own.
+LOGIN_URL = "admin:login"
+
 # --- Campaign launch rate limiting (Phase 3) ---
 # Applies to both the admin "Launch" action and the scheduler — see
 # apps/campaigns/services.py::launch_campaign(), the one shared launch path.

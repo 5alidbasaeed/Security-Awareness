@@ -67,6 +67,11 @@ class QuizAttemptAdmin(AuditedAdminMixin, admin.ModelAdmin):
     list_filter = ("passed",)
 
     def save_model(self, request, obj, form, change):
+        # The score is the fact; "passed" must agree with the quiz's threshold
+        # rather than trusting a checkbox that can contradict it.
+        quiz = getattr(obj.assignment.module, "quiz", None)
+        if quiz is not None:
+            obj.passed = obj.score_percent >= quiz.passing_score_percent
         super().save_model(request, obj, form, change)
         if obj.passed and obj.assignment.completed_at is None:
             obj.assignment.completed_at = timezone.now()

@@ -4,6 +4,7 @@ from django.contrib import admin, messages
 from django.http import HttpResponse
 
 from .audit import log_action
+from .csv_safe import csv_safe
 from .models import AuditLogEntry
 
 
@@ -37,7 +38,7 @@ class AuditLogEntryAdmin(admin.ModelAdmin):
         writer = csv.writer(response)
         writer.writerow(["occurred_at", "actor", "action", "target_description"])
         for entry in queryset:
-            writer.writerow([entry.occurred_at, entry.actor, entry.action, entry.target_description])
+            writer.writerow(csv_safe(v) for v in (entry.occurred_at, entry.actor, entry.action, entry.target_description))
 
         log_action(
             actor=request.user,

@@ -5,6 +5,7 @@ from django.http import HttpResponse
 
 from apps.core.admin_mixins import AuditedAdminMixin, DepartmentScopedAdminMixin
 from apps.core.audit import log_action
+from apps.core.csv_safe import csv_safe
 
 from .models import Department, Employee
 
@@ -34,7 +35,7 @@ class EmployeeAdmin(DepartmentScopedAdminMixin, AuditedAdminMixin, admin.ModelAd
         writer.writerow(["full_name", "email", "department", "is_exempt"])
         for employee in queryset:
             writer.writerow(
-                [employee.full_name, employee.email, employee.department, employee.is_exempt]
+                csv_safe(v) for v in (employee.full_name, employee.email, employee.department, employee.is_exempt)
             )
 
         log_action(

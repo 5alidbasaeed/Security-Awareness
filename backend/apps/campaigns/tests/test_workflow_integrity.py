@@ -18,7 +18,7 @@ from apps.campaigns.tests.factories import CampaignFactory
 from apps.core.management.commands.setup_groups import Command as SetupGroupsCommand
 from apps.employees.admin import EmployeeAdmin
 from apps.employees.models import Employee
-from apps.employees.tests.factories import DepartmentFactory
+from apps.employees.tests.factories import DepartmentFactory, EmployeeFactory
 from apps.engine.tests.fakes import FakePhishingEngineClient
 
 pytestmark = pytest.mark.django_db
@@ -140,6 +140,7 @@ def test_preview_response_is_sandboxed(rf, django_user_model):
 
 def test_stale_copy_of_a_launched_campaign_cannot_launch_twice():
     campaign = CampaignFactory(status=Campaign.Status.APPROVED)
+    EmployeeFactory(department=campaign.target_department)
     stale_copy = Campaign.objects.get(pk=campaign.pk)  # e.g. the scheduler's copy
     client = FakePhishingEngineClient()
 

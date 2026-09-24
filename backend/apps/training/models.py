@@ -1,4 +1,8 @@
+from datetime import timedelta
+
+from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 
 class TrainingModule(models.Model):
@@ -74,6 +78,12 @@ class TrainingAssignment(models.Model):
 
     class Meta:
         indexes = [models.Index(fields=["employee", "module"])]
+
+    def save(self, *args, **kwargs):
+        # Without a due date the "overdue" compliance metric can never fire.
+        if self._state.adding and self.due_at is None:
+            self.due_at = timezone.now() + timedelta(days=settings.TRAINING_DUE_DAYS)
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.employee} — {self.module}"
