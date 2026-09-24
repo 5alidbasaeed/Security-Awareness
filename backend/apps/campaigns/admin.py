@@ -10,7 +10,7 @@ from apps.core.admin_mixins import AuditedAdminMixin, DepartmentScopedAdminMixin
 from apps.core.audit import log_action
 from apps.engine.factory import get_client
 
-from .models import Campaign
+from .models import Campaign, CampaignTemplate, SmartGroup
 from .services import CampaignLaunchError, launch_campaign
 
 
@@ -162,3 +162,18 @@ class CampaignAdmin(DepartmentScopedAdminMixin, AuditedAdminMixin, admin.ModelAd
                 continue
             campaign.refresh_from_db()
             self.message_user(request, f"Launched {campaign} (Gophish campaign {campaign.gophish_campaign_id}).")
+
+
+@admin.register(CampaignTemplate)
+class CampaignTemplateAdmin(AuditedAdminMixin, admin.ModelAdmin):
+    audit_object_name = "campaign_template"
+    list_display = ("name", "category", "difficulty", "template_name", "landing_page_name", "times_used", "is_active")
+    list_filter = ("difficulty", "category", "is_active")
+    search_fields = ("name", "category")
+
+
+@admin.register(SmartGroup)
+class SmartGroupAdmin(AuditedAdminMixin, admin.ModelAdmin):
+    audit_object_name = "smart_group"
+    list_display = ("name", "rule", "department")
+    list_filter = ("rule",)

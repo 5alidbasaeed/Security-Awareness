@@ -4,7 +4,15 @@ from django.utils import timezone
 from apps.core.admin_mixins import AuditedAdminMixin
 from apps.core.audit import log_action
 
-from .models import Quiz, QuizAttempt, QuizChoice, QuizQuestion, TrainingAssignment, TrainingModule
+from .models import (
+    Quiz,
+    QuizAttempt,
+    QuizChoice,
+    QuizQuestion,
+    TrainingAssignment,
+    TrainingModule,
+    TrainingPolicy,
+)
 
 
 @admin.register(TrainingModule)
@@ -81,3 +89,10 @@ class QuizAttemptAdmin(AuditedAdminMixin, admin.ModelAdmin):
                 action="training_assignment_completed",
                 target_description=str(obj.assignment),
             )
+
+
+@admin.register(TrainingPolicy)
+class TrainingPolicyAdmin(AuditedAdminMixin, admin.ModelAdmin):
+    audit_object_name = "training_policy"
+    list_display = ("name", "module", "department", "repeat_every_days", "due_days", "is_active")
+    list_filter = ("is_active", "department")

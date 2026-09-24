@@ -124,3 +124,30 @@ Every scoring-relevant event (click, data submission, report) queues `risk_scori
 ## Campaign workflow & roles (Phase 3)
 
 `setup_groups` creates five groups: **Security Admin** (everything, incl. approving campaigns), **Campaign Manager** (create/edit/submit campaigns, cannot approve), **Training Manager** (training models), **Report Viewer** (view-only), **Department Manager** (change access scoped to departments listed in `Department.managers`; assign a user there *and* to the group). Campaign lifecycle: `Draft → Submit for approval → Approve (Security Admin only) → Launch` (manually, or automatically at `scheduled_at` via Celery Beat every 5 min). Launch syncs the target department's non-exempt employees into a Gophish group first, and is capped by `CAMPAIGN_LAUNCH_RATE_LIMIT` per 24h. Each campaign row has a **Preview** link that renders the landing page HTML fetched from Gophish.
+
+## Phase 6 — Adoption and program maturity
+
+### Management UI (`/manage/`)
+Day-to-day work no longer needs Django admin. Signed-in staff get **Manage** in the top nav (permissions decide what shows): a campaign builder (draft → submit → approve/reject → launch, all on the one audited `launch_campaign()` path), a content library (email templates and landing pages, with a sandboxed preview), a template catalog with category/difficulty tags, smart (dynamic) audiences, training modules + a quiz-question editor, mandatory-training policies, employees and departments, CSV import, a reported-email triage queue, scheduled reports, a deliverability pre-flight, and API keys. Django admin stays as the advanced surface.
+
+### Employee training portal (`/portal/`)
+Employees are not Django users. They request a sign-in link by email (a signed, expiring token — the plan's magic-link fallback where there's no IdP), then see **only their own** assignments, take the training, answer the quiz (scored by the same `score_quiz()` the rest of the system uses), and get a printable certificate on passing. There's a "Report an email" form, and `/portal/learn/` is a public teachable-moment page for simulation landing pages to redirect to after a click.
+
+### API (`/api/v1/`)
+A read-and-draft JSON API authenticated with **API keys** (`Authorization: Api-Key sk_sim_…`). Create keys in **Manage → API keys**; the raw key is shown once. A key acts as its owner and is limited to explicit scopes, and it can never exceed the owner's own permissions (scope ∩ owner-permissions). Endpoints let a client **draft** content — training modules and quizzes, email templates, landing pages, and **draft** campaigns — and read scoped analytics. There is deliberately **no launch, approve, send or delete endpoint**: an automated tool can prepare a whole campaign, but a person still approves and launches it in the UI. `capture_passwords` is never accepted and always forced off (invariant #4).
+
+```bash
+# create a draft campaign (a person still has to approve + launch it)
+curl -X POST https://<host>/api/v1/campaigns \
+  -H "Authorization: Api-Key sk_sim_xxx" -H "Content-Type: application/json" \
+  -d '{"name":"Q4 invoice test","template_name":"Invoice","landing_page_name":"Invoice page","landing_page_url":"https://<phish-host>/x","target_department":"Finance"}'
+# → 201 {"id":…, "status":"draft", "note":"Created as a draft. A person must submit, approve and launch it in the dashboard."}
+
+curl https://<host>/api/v1/analytics/summary -H "Authorization: Api-Key sk_sim_xxx"
+```
+
+### New scheduled tasks (Celery Beat)
+Mandatory-training enrolment, overdue-training manager escalation, scheduled-report emails, and PII anonymization of long-deactivated employees — all daily and idempotent. See `CELERY_BEAT_SCHEDULE` and the new settings in `.env.example` (portal, coaching, SIEM webhook, cohort/retention).
+
+### Phase 7
+Production hardening and operability (admin MFA/SSO, throttling, backups, monitoring, real SMTP relay, data-governance) is written up in `phishing-training-platform-plan.md` → "Phase 7", and open operational items are tracked in `REQUIRES_ATTENTION.md`.

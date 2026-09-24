@@ -167,7 +167,9 @@ Move off single-server only when one of these occurs:
 7. **Phase 5 — Reporting** *(built)*: CSV/PDF export; compliance evidence packages; historical report generation. Delivered as an immutable, hashed, audit-logged report archive; "as of" reports recomputed from the event log so any past date is reproducible; a ZIP evidence package with a SHA-256 manifest; a monthly executive summary generated automatically; aggregate reports for report roles, individual-level reports Security-Admin-only, Department Managers scoped to their departments.
 8. **Phase 6 — Adoption and program maturity** *(planned; see below)*.
 
-### Phase 6 — Adoption and program maturity
+### Phase 6 — Adoption and program maturity *(built)*
+
+All sub-phases below are implemented and tested (see CLAUDE.md for the per-area detail and test counts). Original scope, kept for reference:
 
 Inputs: two items carried over from earlier phases, plus the gaps found in the competitive comparison below. Sub-phases are ordered by value; each ends with a review pass like Phases 0-5.
 
@@ -189,6 +191,36 @@ Inputs: two items carried over from earlier phases, plus the gaps found in the c
 - QR-code, attachment and reply-to (BEC) simulations; smishing/vishing (would reverse a current Non-Goal, so decide deliberately); privacy controls (retention policy, anonymization, minimum cohort size before a department is reported); deliverability pre-flight checks (SPF/DKIM/DMARC verification and a seed-inbox test).
 
 **Before real use (not a feature phase, but blocks production):** the Phase 0 domain/SPF/DKIM/DMARC and mail-gateway validation; a decision on admin MFA/SSO (currently dropped, see CLAUDE.md invariant #7); HSTS and proxy-SSL settings for the production settings module; the upstream-versus-fork decision for Gophish; VPN/tunnel access to the internal network.
+
+**What shipped in Phase 6.** 6.1: the employee training portal (magic-link sign-in — the plan's IdP-less fallback — take/quiz/complete/certificate, own-data-only) and the dashboard campaign builder with an approval queue, both on the one `launch_campaign()` path. 6.2: employee CSV import with deactivate-not-delete offboarding; a report-a-phish intake (portal form + mail-integration API) with a triage queue and a teachable-moment page; a tagged template catalog and smart (dynamic) audiences; mandatory-training policies with manager escalation; emailed scheduled reports and a read-only reporting API. 6.3/6.4: coaching email at the moment of failure, recognition points that reward reporting, SIEM/chat webhook export, an ROI (baseline-vs-current) line, privacy controls (minimum-cohort suppression and PII anonymization that preserves the event log), and an SPF/DMARC/DKIM deliverability pre-flight. Also added: a **read-and-draft API with scoped, hashed API keys** — an automated client can prepare a whole campaign (email template, landing page, draft) but there is deliberately no launch/approve/send endpoint, so a person still approves and launches every campaign in the UI.
+
+Deliberately not built (unchanged from the original scope): IdP/HRIS directory *sync* (CSV import only); adaptive per-person difficulty; QR/attachment/BEC and smishing/vishing channels (they reverse a Non-Goal); a bundled commercial content library; full localization / right-to-left PDF shaping (CSV exports are already lossless).
+
+### Phase 7 — Production hardening and operability *(planned)*
+
+Phase 6 closed the feature gaps; Phase 7 is what a real deployment still needs before and after go-live. None of it is large, and most is operational rather than product work.
+
+**7.1 Security and auth (blocks production)**
+- **Admin MFA / SSO decision** (invariant #7 is still "dropped"): turn it back on before real campaigns — TOTP at least for admins, OIDC/SSO for staff, via an established library (`django-allauth` / `mozilla-django-oidc`), never hand-rolled.
+- **Throttling and anti-abuse**: rate-limit the portal magic-link request and the webhook/API endpoints; lock out repeated failed admin logins.
+- **API maturity**: per-key rate limits, cursor pagination on list endpoints, and published OpenAPI docs.
+- **Dependency and secret scanning in CI** (pip-audit, ruff, secret scan) so regressions like the earlier Django/requests CVEs are caught automatically.
+
+**7.2 Operability**
+- **Backups and a tested restore runbook** for Postgres and Gophish's MySQL; scheduled dumps off the single host.
+- **Monitoring and alerting**: Gophish process health (it can panic on a bad sending profile), Celery queue depth and failed tasks, error tracking (e.g. Sentry), and an uptime check on `/healthz`.
+- **Real SMTP relay on the internal network** so reminders, coaching, escalations and scheduled reports can actually send (see REQUIRES_ATTENTION.md).
+- **Log retention and shipping** to the SIEM the 6.3 webhook already feeds.
+
+**7.3 Data governance**
+- **Single-employee data export / DSAR** to complement the existing anonymization.
+- **Configurable event-log retention** at the aggregate level (the log stays immutable; define how long identifiable metadata is kept).
+- **A documented data-flow / privacy record** for the DPO, building on the evidence package.
+
+**7.4 Deliverability and content**
+- Complete the Phase 0 real-domain SPF/DKIM/DMARC + mail-gateway validation on the actual host (the pre-flight in 6.4 checks DNS; a seed-inbox test still needs real infra).
+- A content-freshness process (the catalog tracks usage; add a "stale template" report) to counter fingerprinting.
+- The upstream-vs-fork decision for Gophish, given the unpatched CVE.
 
 ## Competitive Gap Analysis (input to Phase 6)
 

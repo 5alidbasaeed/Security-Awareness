@@ -1,6 +1,8 @@
 from django.contrib import admin
 
-from .models import GeneratedReport
+from apps.core.admin_mixins import AuditedAdminMixin
+
+from .models import GeneratedReport, ReportSchedule
 
 
 @admin.register(GeneratedReport)
@@ -29,3 +31,10 @@ class GeneratedReportAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+@admin.register(ReportSchedule)
+class ReportScheduleAdmin(AuditedAdminMixin, admin.ModelAdmin):
+    audit_object_name = "report_schedule"
+    list_display = ("name", "kind", "frequency", "is_active", "last_period_end", "created_by")
+    list_filter = ("frequency", "is_active", "kind")
