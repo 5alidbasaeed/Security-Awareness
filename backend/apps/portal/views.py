@@ -21,6 +21,7 @@ from apps.training.models import QuizAttempt
 from apps.training.scoring import score_quiz
 
 from .access import portal_login, portal_logout, portal_required
+from .throttle import link_request_allowed
 from .tokens import employee_from_token, sign_employee
 
 logger = logging.getLogger(__name__)
@@ -54,7 +55,11 @@ def send_link(employee):
 def login(request):
     if request.method == "POST":
         email = (request.POST.get("email") or "").strip()
-        employee = Employee.objects.filter(email__iexact=email, is_active=True).first() if email else None
+        allowed = link_request_allowed(request, email)
+        if not allowed:
+            # Count only; never log the address. The caller sees the same page either way.
+            logger.warning("portal: sign-in link request throttled")
+        employee = Employee.objects.filter(email__iexact=email, is_active=True).first() if email and allowed else None
         if employee is not None:
             try:
                 send_link(employee)

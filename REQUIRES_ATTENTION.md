@@ -75,3 +75,24 @@ This sandbox's egress proxy blocks Debian's `apt` mirror (HTTP 403), so neither 
 | A shaded last table row covered the card's rounded corners and bottom border | Cards clip their contents |
 | Dark mode: shaded rows were darker than the card and looked like holes | Separate `--row-alt` token, lighter than the card in dark mode |
 | "What drives this score" rows were double-indented | List moved out of the padded card body |
+
+---
+
+## Review of the Phase 6 branch on a Windows checkout (2026-09-24)
+
+Checked out `claude/optimistic-bardeen-v7ee7l`, rebuilt, migrated, ran `setup_groups`, and re-verified network isolation on the **production** compose file (nginx is refused on Gophish's admin port 3333; Django reaches it; nothing but nginx:80 is published). 307 tests passed as delivered; `pip-audit` clean; ruff clean; no migration drift.
+
+**Fixed**
+
+| Finding | Fix |
+|---|---|
+| **`POST /portal/sign-in/` was unthrottled** — a public form that emails whoever it is asked about, so anyone could flood employees' inboxes or tie up web workers | Two limits in the shared Redis cache: per address (default 3/hour) and per client (default 20/hour). Every attempt counts, including unknown addresses. Over the limit the response is identical and nothing is sent, so there is still no "does this address exist?" oracle. Only a hash of the address is stored. Settings: `PORTAL_LINK_EMAIL_LIMIT`, `PORTAL_LINK_IP_LIMIT`, `PORTAL_LINK_WINDOW_SECONDS`. Verified live: 7 requests, 7 identical answers, 3 emails sent |
+| `EMAIL_TIMEOUT` was unset, so a slow or black-holed SMTP relay blocked a gunicorn worker until the OS gave up | `EMAIL_TIMEOUT` defaults to 10 seconds |
+| The deliverability checker's POST (arbitrary outbound DNS lookups from the internal network) was open to any view-only role | Now needs `campaigns.change_campaign` |
+| **Windows checkouts crash-loop Gophish**: Git's CRLF conversion turned `gophish/entrypoint.sh` into `#!/bin/sh`, so the container failed with "no such file or directory" | `.gitattributes` forces LF for scripts, Dockerfiles, YAML and config |
+| `backend/dump.rdb` and `backend/celerybeat-schedule.db` (runtime artifacts; the Redis dump held Celery task metadata) were committed | Untracked and git-ignored |
+
+**Upgrading an existing running stack — do this once.** The `internal` network now has a fixed subnet, so Compose recreates it and can reattach your existing postgres/redis/mysql containers *without their DNS names*; Django and Celery then fail with `No address associated with hostname`. Run `docker compose down` (no `-v`, data volumes are kept) and then `docker compose up -d --build`.
+
+**Still open (new, low):** the sign-in email is sent inside the web request, so response time differs slightly between a known and an unknown address. Moving the send into a Celery task would make it uniform and non-blocking.
+

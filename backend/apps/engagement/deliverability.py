@@ -10,7 +10,7 @@ def _default_resolver(name: str, rdtype: str) -> list[str]:
     try:
         import dns.resolver  # type: ignore
     except ImportError:
-        raise RuntimeError("DNS lookups need the dnspython package.")
+        raise RuntimeError("DNS lookups need the dnspython package.") from None
     return [b"".join(r.strings).decode() if hasattr(r, "strings") else str(r)
             for r in dns.resolver.resolve(name, rdtype)]
 

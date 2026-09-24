@@ -165,11 +165,28 @@ CELERY_BEAT_SCHEDULE = {
 # Launched campaigns are reconciled against Gophish for this many days after launch, then left alone.
 RECONCILE_WINDOW_DAYS = env.int("RECONCILE_WINDOW_DAYS", default=30)
 
+# --- Cache (shared throttle counters) ---
+# Redis, so every gunicorn worker sees the same counters. A separate database number keeps these
+# keys out of Celery's broker/result keyspace.
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": env("REDIS_CACHE_URL", default=env("REDIS_URL").rsplit("/", 1)[0] + "/1"),
+    }
+}
+
+# --- Portal sign-in link throttling (public endpoint; see apps/portal/throttle.py) ---
+PORTAL_LINK_EMAIL_LIMIT = env.int("PORTAL_LINK_EMAIL_LIMIT", default=3)  # links per address per window
+PORTAL_LINK_IP_LIMIT = env.int("PORTAL_LINK_IP_LIMIT", default=20)  # requests per client per window
+PORTAL_LINK_WINDOW_SECONDS = env.int("PORTAL_LINK_WINDOW_SECONDS", default=3600)
+
 # --- Email (training reminders) ---
 # Console backend by default — real SMTP via env override on a real
 # deployment, same pattern as DJANGO_SETTINGS_MODULE per-environment.
 EMAIL_BACKEND = env("DJANGO_EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
 DEFAULT_FROM_EMAIL = env("DJANGO_DEFAULT_FROM_EMAIL", default="noreply@example.com")
+# Without a timeout a slow or black-holed SMTP relay blocks a web worker until the OS gives up.
+EMAIL_TIMEOUT = env.int("EMAIL_TIMEOUT", default=10)
 
 # --- Training ---
 TRAINING_DUE_DAYS = env.int("TRAINING_DUE_DAYS", default=14)

@@ -592,7 +592,7 @@ def _apply_field_classes(form):
 # --- deliverability preflight -----------------------------------------------------------
 
 
-@manage_access("campaigns.view_campaign", methods=("GET", "POST"))
+@manage_access("campaigns.change_campaign", methods=("GET", "POST"))
 def deliverability(request):
     from apps.engagement.deliverability import check_domain
 

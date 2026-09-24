@@ -85,3 +85,11 @@ If every box above is empty, defer to the general `code-review` skill for correc
 - [ ] Does a role that is supposed to be row-scoped (Department Manager) hold `change_`/`add_` on a model that controls the scoping itself (Department)? Do its FK dropdowns offer only in-scope rows?
 - [ ] Does any view return Gophish-hosted/author-controlled HTML from Django's origin without `Content-Security-Policy: sandbox`?
 - [ ] Is a check-then-act (status check then external send) done under `select_for_update` in one transaction? Is an audit entry written before raising inside that same `atomic()` block (it would roll back)?
+
+## Public endpoints and outbound mail (Phase 6 review)
+- [ ] Does any endpoint reachable without authentication send email, call an external service, or trigger a lookup on request? It needs a per-target AND per-client throttle in the shared cache, a uniform response, and must never log or store the raw address (hash it).
+- [ ] Do all email sends and outbound HTTP calls have a timeout, so one slow dependency can't pin a web worker?
+- [ ] Does a POST-capable diagnostics view (DNS/HTTP checks) require a write-level permission rather than a view permission?
+- [ ] After checking a branch out on Windows: do container scripts keep LF endings (`.gitattributes`), and did `docker compose down && up` run after any change to a network's subnet (stale DNS aliases)?
+- [ ] Are runtime artifacts (`*.rdb`, beat schedules, sqlite files) ignored and untracked?
+

@@ -1,0 +1,9 @@
+# Container scripts must keep LF endings on every platform: a CRLF shebang
+# ("#!/bin/sh\r") makes Linux report "no such file or directory" and the
+# container crash-loops. (Found when the Phase 6 branch was checked out on Windows.)
+* text=auto
+*.sh text eol=lf
+Dockerfile text eol=lf
+*.yml text eol=lf
+*.conf text eol=lf
+*.json text eol=lf
