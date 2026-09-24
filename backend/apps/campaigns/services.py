@@ -46,7 +46,6 @@ def launch_campaign(campaign: Campaign, *, actor, client) -> Campaign:
     scheduler can hold copies of the same campaign, and without this both
     would see "approved" and both would send it.
     """
-    rate_limited = False
     with transaction.atomic():
         Campaign.objects.select_for_update().get(pk=campaign.pk)
         campaign.refresh_from_db()
@@ -60,9 +59,7 @@ def launch_campaign(campaign: Campaign, *, actor, client) -> Campaign:
         if not campaign.target_department:
             raise CampaignLaunchError(f"{campaign} has no target department.")
 
-        if _rate_limited():
-            rate_limited = True
-        else:
+        if not _rate_limited():
             # Exemption enforcement lives here, not in Gophish — is_exempt=False is
             # the only filter standing between "in this department" and "gets
             # targeted." See CLAUDE.md Phase 3 notes on why this didn't exist before.
@@ -99,7 +96,8 @@ def launch_campaign(campaign: Campaign, *, actor, client) -> Campaign:
             )
             return campaign
 
-    # Logged outside the atomic block: raising inside it would roll the entry back.
+    # Only reached when rate limited (the launch path returns above). Logged outside the atomic
+    # block: raising inside it would roll the audit entry back.
     log_action(actor=actor, action="campaign_launch_rate_limited", target_description=str(campaign))
     raise CampaignLaunchError(
         f"Campaign launch rate limit reached ({settings.CAMPAIGN_LAUNCH_RATE_LIMIT}/24h) — try again later."

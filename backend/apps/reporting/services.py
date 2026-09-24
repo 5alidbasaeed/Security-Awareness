@@ -84,7 +84,7 @@ def allowed_kinds(user) -> list[KindSpec]:
 
 def visible_reports(user):
     """Archived reports this user may list and download."""
-    reports = GeneratedReport.objects.without_content()
+    reports = GeneratedReport.objects.without_content().select_related("generated_by")
     if managed_departments(user) is not None:  # row-scoped users only ever see their own
         return reports.filter(generated_by=user)
     # Org-wide roles may see scoped reports too (they're subsets of what these roles can already see),

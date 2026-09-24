@@ -8,7 +8,6 @@ from unittest.mock import patch
 import pytest
 from django.contrib import admin
 from django.core import mail
-from django.test import RequestFactory
 from django.urls import reverse
 from django.utils import timezone
 

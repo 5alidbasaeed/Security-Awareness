@@ -48,6 +48,11 @@ Run this checklist on top of (not instead of) general code quality review. Each 
 - [ ] Is a derived fact (`passed`) also a hand-editable field that can contradict its source (`score_percent`)?
 - [ ] Is the web server timeout longer than the sum of the external calls a request chains?
 
+## Dependencies and migrations (full-review findings)
+- [ ] Ran `pip-audit -r backend/requirements/base.txt` (in a throwaway container) and resolved or consciously accepted every finding? A pin that was current months ago can carry dozens of CVEs.
+- [ ] Does `manage.py makemigrations --check --dry-run` report "No changes"? Editing a field's `help_text`/`choices` after generating its migration leaves drift.
+- [ ] Does `ruff check --select F,E9,B` come back clean on non-test code (dead variables, unused imports)?
+
 ## Reporting (Phase 5)
 - [ ] Does a report read snapshots or current state instead of recomputing "as of" the report date from the event log? Historical reports must be reproducible.
 - [ ] Does a new report name individuals without `employee_level=True` (and so the `export_employee_level` permission)? Can a Department Manager's report include another department?

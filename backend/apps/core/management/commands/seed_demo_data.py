@@ -51,6 +51,7 @@ class Command(BaseCommand):
     # -- removal -------------------------------------------------------------
 
     def _reset(self):
+        # Only module constants are interpolated below (never user input), hence the noqa markers.
         emp = f"(SELECT id FROM employees_employee WHERE email LIKE '%@{DOMAIN}')"
         camp = "(SELECT id FROM campaigns_campaign WHERE gophish_campaign_id LIKE 'demo-%')"
         statements = [
@@ -61,7 +62,7 @@ class Command(BaseCommand):
         ]
         with connection.cursor() as cursor:
             for statement in statements:
-                cursor.execute(statement)
+                cursor.execute(statement)  # noqa: S608 — statements built from constants above
         Campaign.objects.filter(gophish_campaign_id__startswith="demo-").delete()
         Employee.objects.filter(email__endswith=f"@{DOMAIN}").delete()
         Department.objects.filter(name__in=DEPARTMENTS, employees__isnull=True).delete()
@@ -145,7 +146,7 @@ class Command(BaseCommand):
 
         # Training for everyone who failed, some already finished.
         failed = {(e.employee_id, e.campaign_id): e for e in events if e.event_type in (Event.EventType.LINK_CLICKED, Event.EventType.CREDENTIAL_ATTEMPT)}
-        for (employee_id, campaign_id), event in failed.items():
+        for (employee_id, _campaign_id), event in failed.items():
             assigned = event.occurred_at + timedelta(minutes=1)
             done = rng.random() < 0.55
             assignment = TrainingAssignment.objects.create(employee_id=employee_id, module=module, due_at=assigned + timedelta(days=14))

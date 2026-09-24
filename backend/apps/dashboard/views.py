@@ -14,7 +14,6 @@ from apps.campaigns.models import Campaign
 from apps.events.models import Event
 from apps.risk_scoring import analytics
 from apps.risk_scoring.models import RiskScoreSnapshot
-from apps.risk_scoring.services import latest_snapshots
 
 from .access import dashboard_access
 from .scope import visible_assignments, visible_campaigns, visible_departments, visible_employees

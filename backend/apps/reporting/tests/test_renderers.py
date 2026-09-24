@@ -9,7 +9,7 @@ import pytest
 
 from apps.campaigns.tests.factories import CampaignFactory
 from apps.core.audit import log_action
-from apps.employees.tests.factories import DepartmentFactory, EmployeeFactory
+from apps.employees.tests.factories import DepartmentFactory
 from apps.events.models import Event
 from apps.events.tests.factories import EventFactory
 from apps.reporting import evidence, exports, pdf
