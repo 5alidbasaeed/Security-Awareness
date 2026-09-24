@@ -7,4 +7,5 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("healthz", healthz, name="healthz"),
     path("webhooks/", include("apps.events.urls")),
+    path("analytics/", include("apps.risk_scoring.urls")),
 ]

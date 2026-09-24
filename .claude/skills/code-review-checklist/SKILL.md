@@ -36,6 +36,11 @@ Run this checklist on top of (not instead of) general code quality review. Each 
 - [ ] Is every new model added to `apps/core/management/commands/setup_groups.py`'s `MANAGED_MODELS`? A model missing from that list gets **zero** permissions for every group — even Security Admin can't touch it without superuser. This was missed for all six Phase 2 training models on first landing; there's no system check that catches it, so it has to be checked by hand every time.
 - [ ] Does every new `ModelAdmin` that supports create/update/delete use `AuditedAdminMixin` for consistency with the rest of the codebase? If a custom admin action does a bulk `.update()`/`.delete()` (bypasses `save_model`/`delete_model`), does it log explicitly (see `CampaignAdmin.launch_campaign`, `TrainingAssignmentAdmin.mark_started` for the pattern)?
 
+## Risk scoring changes (Phase 4)
+- [ ] Was v1's behavior edited in place instead of adding a new `ALGORITHM_VERSION`? Old snapshots must stay reproducible.
+- [ ] Does a new score input use `email_opened` or fold in training/quiz completion? Both are excluded by design.
+- [ ] Does a new analytics endpoint scope by `managed_departments(user)`, and require `view_riskscoresnapshot`?
+
 ## Network / secrets
 - [ ] Does a Docker Compose or Nginx change publish a port for Postgres, Redis, MySQL, or Gophish's admin/API outside the `internal` network?
 - [ ] Is any new dev-convenience Compose file named `docker-compose.override.yml`? That exact filename is auto-loaded by plain `docker compose up` with no flag — a real deployment running the standard command on a fresh clone would silently inherit whatever it publishes. Dev-only network/port overrides must use a different filename (`docker-compose.dev.yml` is the existing convention) and be loaded explicitly via `-f`. Found and fixed once already — see git history.

@@ -25,7 +25,6 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     # Project apps — see the backend-conventions skill for what each owns.
-    # apps.training and apps.risk_scoring are still empty skeletons (Phase 2/4).
     "apps.core",
     "apps.employees",
     "apps.campaigns",
@@ -114,6 +113,12 @@ CELERY_BEAT_SCHEDULE = {
     "send-training-reminders": {
         "task": "apps.training.tasks.send_training_reminders",
         "schedule": 3600.0,  # hourly — the task itself enforces the 24h-per-assignment cooldown
+    },
+    # Scores decay with time, so they move even with no new events — recompute daily.
+    # Event-triggered recomputes (risk_scoring.signals) cover the immediate updates.
+    "recompute-risk-scores": {
+        "task": "apps.risk_scoring.tasks.recompute_all_scores",
+        "schedule": 86400.0,
     },
     "launch-scheduled-campaigns": {
         "task": "apps.campaigns.tasks.launch_scheduled_campaigns",

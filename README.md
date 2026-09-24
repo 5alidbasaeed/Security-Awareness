@@ -88,7 +88,7 @@ All five checks above were run and passed against this exact scaffold. Tear down
 - **Custom HTMX dashboard templates, risk scoring (Phase 4), reporting (Phase 5)** — deliberately deferred; Django admin is the interim UI.
 - **MFA on admin login** — explicitly out of scope for now by user decision (see CLAUDE.md invariant #7), not a deferral. Admin login is plain Django session auth. Revisit before this handles anything beyond local dev/testing.
 - **Employee self-service training/quiz UI, real SMTP for reminders, training content authoring** — Phase 2 scope, deliberately deferred (see CLAUDE.md).
-- `apps/risk_scoring` — still an empty app skeleton, Phase 4.
+- Custom dashboard UI (Phase 4.1) — the analytics JSON endpoints exist; the pages/charts do not.
 
 ## Open decisions carried from the plan doc
 
@@ -100,6 +100,10 @@ See `CLAUDE.md` → "Open decisions". Two are partially addressed by this scaffo
 ## Subagents & skills
 
 `.claude/agents/` and `.claude/skills/` have project-scoped subagents and reference material for backend, frontend, database, architecture review, security review, debugging, and testing. See `CLAUDE.md` for the index.
+
+## Risk scoring & analytics (Phase 4)
+
+Every scoring-relevant event (click, data submission, report) queues `risk_scoring.tasks.recompute_score`, which inserts a new `RiskScoreSnapshot` (never updates one); a daily task re-scores everyone because scores decay over time. Scores run 0-100, higher = riskier; algorithm `v1` is documented at the top of `apps/risk_scoring/scoring.py`. `email_opened` never counts, and training completion is reported separately as a compliance metric, not blended into the score. Snapshots are browsable (read-only) in `/admin/risk_scoring/riskscoresnapshot/`. JSON endpoints for the coming dashboard (staff with view permission; Department Managers see only their departments): `/analytics/departments/`, `/analytics/departments/<id>/trend/?weeks=12`, `/analytics/campaigns/<id>/`, `/analytics/employees/<id>/history/`. After changing the algorithm, run `python manage.py shell -c "from apps.risk_scoring.tasks import recompute_all_scores; recompute_all_scores.delay('<version>')"`.
 
 ## Campaign workflow & roles (Phase 3)
 

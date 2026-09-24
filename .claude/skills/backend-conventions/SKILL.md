@@ -78,3 +78,9 @@ Views, models, and Celery tasks depend on this interface via dependency injectio
 - **Row-level scoping is admin code, not Django permissions.** Django's permission framework is model-level only. Department Manager scoping is `DepartmentScopedAdminMixin.get_queryset()`; any new admin view/URL you add (e.g. the landing-page preview) must fetch objects via `self.get_queryset(request)`, never `Model.objects`, or it silently bypasses scoping — a real bug found in review.
 - Custom permissions (`campaigns.approve_campaign`) are how "who may approve" differs from "who may edit"; gate actions with `require_permission()`.
 - Add every new task to `CELERY_BEAT_SCHEDULE` (already burned us once).
+
+## Risk scoring (Phase 4)
+
+- The algorithm is a pure function (`risk_scoring/scoring.py`, no DB) — change scoring by adding a new `ALGORITHM_VERSION` there, never by editing v1 in place, then recompute. Snapshots are inserted, never updated.
+- Recompute is triggered from `risk_scoring/signals.py` via `transaction.on_commit` (the worker must not run before the event row is visible); the daily `recompute_all_scores` covers time decay.
+- Row scoping for anything new that lists people/campaigns: use `core.scoping.managed_departments(user)` (shared by the admin mixin and the `/analytics/` views) so admin and API can't disagree.

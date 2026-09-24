@@ -2,6 +2,8 @@ from django.contrib import messages
 
 from apps.employees.models import Department
 
+from .scoping import managed_departments
+
 from .audit import log_action
 
 
@@ -70,9 +72,7 @@ class DepartmentScopedAdminMixin:
 
     def _managed_departments(self, request):
         """None if the user isn't row-scoped; otherwise the departments they manage."""
-        if request.user.is_superuser or not request.user.groups.filter(name="Department Manager").exists():
-            return None
-        return Department.objects.filter(managers=request.user)
+        return managed_departments(request.user)
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)

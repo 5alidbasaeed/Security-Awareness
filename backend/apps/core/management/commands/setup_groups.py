@@ -36,7 +36,8 @@ TRAINING_MODELS = [
     ("training", "trainingassignment"),
     ("training", "quizattempt"),
 ]
-MANAGED_MODELS = EMPLOYEE_MODELS + CAMPAIGN_MODELS + EVENT_MODELS + CORE_MODELS + TRAINING_MODELS
+RISK_MODELS = [("risk_scoring", "riskscoresnapshot")]  # computed, read-only in the admin
+MANAGED_MODELS = EMPLOYEE_MODELS + CAMPAIGN_MODELS + EVENT_MODELS + CORE_MODELS + TRAINING_MODELS + RISK_MODELS
 
 
 def _perms_for(models, codename_prefixes=("add_", "change_", "delete_", "view_")):
@@ -70,7 +71,7 @@ class Command(BaseCommand):
 
         # Campaign Manager: manage campaigns (not delete, not approve), view targets/results.
         campaign_manager_perms = list(_perms_for(CAMPAIGN_MODELS, ("add_", "change_", "view_"))) + list(
-            _perms_for(EMPLOYEE_MODELS + EVENT_MODELS, ("view_",))
+            _perms_for(EMPLOYEE_MODELS + EVENT_MODELS + RISK_MODELS, ("view_",))
         )
         campaign_manager.permissions.set(campaign_manager_perms)
 
@@ -86,7 +87,7 @@ class Command(BaseCommand):
         # themselves to any department's managers and escape their own scope.
         department_manager_perms = list(
             _perms_for([("employees", "employee")] + CAMPAIGN_MODELS, ("change_", "view_"))
-        ) + list(_perms_for([("employees", "department")], ("view_",)))
+        ) + list(_perms_for([("employees", "department")] + RISK_MODELS, ("view_",)))
         department_manager.permissions.set(department_manager_perms)
 
         self.stdout.write(
