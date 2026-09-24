@@ -1,0 +1,43 @@
+{% extends "manage/base.html" %}
+{% block title %}Mail settings · Manage{% endblock %}
+{% block content %}
+<header class="page-header"><div><h1>Mail settings</h1>
+<p class="page-header__sub">The SMTP relay the simulation emails are sent through. Saving sends nothing.</p></div></header>
+{% if engine_error %}<p class="flash flash--error" role="alert">Can't reach the phishing engine: {{ engine_error }}</p>{% endif %}
+<div class="card"><div class="card__body">
+  <form class="form-stack" method="post" novalidate>
+    {% csrf_token %}
+    <input type="hidden" name="action" value="save">
+    {% for field in form %}
+    <div class="form-row">
+      <label class="label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="req" aria-hidden="true">*</span>{% endif %}</label>
+      {% if field.name == "password" %}
+        {{ field }}
+        <p class="cell-meta">{% if current.password_set %}A password is set. Leave this blank to keep it.{% else %}No password is set.{% endif %}</p>
+      {% else %}
+        {{ field }}
+        {% if field.help_text %}<p class="cell-meta">{{ field.help_text }}</p>{% endif %}
+      {% endif %}
+      {% for error in field.errors %}<p class="form-error" role="alert">{{ error }}</p>{% endfor %}
+    </div>
+    {% endfor %}
+    <p class="cell-meta">Encryption is negotiated automatically: the connection is upgraded to TLS when the relay offers it, and port 465 uses TLS from the start. The profile is named <strong>{{ profile_name }}</strong> in the phishing engine, which is what every campaign sends through.</p>
+    <div class="form-actions"><button class="button" type="submit">Save</button></div>
+  </form>
+</div></div>
+
+<section class="card questions-card">
+  <div class="card__header"><h2>Test</h2><span class="card__note">Sends one real message</span></div>
+  <div class="card__body">
+    <form class="form-stack" method="post" novalidate>
+      {% csrf_token %}
+      <input type="hidden" name="action" value="test">
+      <div class="form-row"><label class="label" for="{{ test_form.to.id_for_label }}">{{ test_form.to.label }}</label>{{ test_form.to }}
+        {% for error in test_form.to.errors %}<p class="form-error" role="alert">{{ error }}</p>{% endfor %}
+        <p class="cell-meta">Save first. This sends a single plain message, not a simulation, using the settings above.</p></div>
+      <div class="form-actions"><button class="button button--quiet" type="submit"{% if not current %} disabled{% endif %}>Send test message</button></div>
+    </form>
+  </div>
+</section>
+<p class="footnote">These settings cover the simulation emails. Sign-in links and reminders sent by the platform itself use the server's own mail configuration.</p>
+{% endblock %}

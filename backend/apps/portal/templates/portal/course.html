@@ -1,0 +1,8 @@
+{% extends "portal/base.html" %}
+{% load static %}
+{% block title %}{{ item.module.title }}{% endblock %}
+{% block content %}
+<p class="breadcrumb"><a href="{% url 'portal:assignment' item.pk %}">{{ item.module.title }}</a></p>
+<div class="slide-wrap">{% include "portal/_slide.html" %}</div>
+<script src="{% static 'dashboard/course.js' %}" defer></script>
+{% endblock %}

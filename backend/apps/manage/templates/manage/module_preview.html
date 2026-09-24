@@ -1,0 +1,9 @@
+{% extends "manage/base.html" %}
+{% load static %}
+{% block title %}Preview · {{ module.title }}{% endblock %}
+{% block content %}
+{% include "manage/_subnav.html" with manage_section="training" %}
+<p class="flash flash--info" role="status">Preview of “{{ module.title }}”. This is exactly what an employee sees; nothing is recorded.</p>
+<div class="slide-wrap">{% include "portal/_slide.html" %}</div>
+<script src="{% static 'dashboard/course.js' %}" defer></script>
+{% endblock %}

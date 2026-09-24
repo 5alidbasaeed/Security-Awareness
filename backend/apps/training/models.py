@@ -7,19 +7,41 @@ from django.utils import timezone
 
 class TrainingModule(models.Model):
     """
-    A single piece of assignable security-awareness training. Content lives
-    off-platform for now (e.g. an external LMS/video link) — this isn't a
-    content authoring tool, see CLAUDE.md for what's deferred.
+    A single piece of assignable security-awareness training. The course itself is a deck of
+    TrainingSlides shown in the portal, followed directly by the quiz. `content_url` is
+    optional and only for modules whose content still lives elsewhere (an external LMS/video).
     """
 
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
-    content_url = models.URLField(help_text="Where the employee actually takes the training (external for now).")
+    content_url = models.URLField(
+        blank=True, help_text="Optional. Only for training hosted elsewhere; leave blank when the module has slides."
+    )
     duration_minutes = models.PositiveIntegerField(default=10)
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
         return self.title
+
+
+class TrainingSlide(models.Model):
+    """
+    One slide of a module's course. Plain text only (no HTML): the body is paragraphs
+    separated by blank lines, and lines starting with "- " become bullets. `callout` is an
+    optional highlighted takeaway shown under the body.
+    """
+
+    module = models.ForeignKey(TrainingModule, on_delete=models.CASCADE, related_name="slides")
+    order = models.PositiveIntegerField(default=0)
+    title = models.CharField(max_length=200)
+    body = models.TextField(blank=True, help_text='Blank line = new paragraph. Start a line with "- " for a bullet.')
+    callout = models.CharField(max_length=300, blank=True, help_text="Optional highlighted takeaway.")
+
+    class Meta:
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return f"{self.module}: {self.title}"
 
 
 class Quiz(models.Model):

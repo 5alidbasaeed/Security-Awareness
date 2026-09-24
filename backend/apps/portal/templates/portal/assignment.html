@@ -6,24 +6,30 @@
 <p class="page-header__sub">About {{ item.module.duration_minutes }} minutes{% if item.due_at %} · due {{ item.due_at|date:"M j, Y" }}{% endif %}</p></div></header>
 
 <div class="stack">
-  <section class="card"><div class="card__header"><h2>1. Take the training</h2></div><div class="card__body">
+  <section class="card"><div class="card__header"><h2>1. Take the course</h2>{% if slide_count %}<span class="card__note">{{ slide_count }} slides</span>{% endif %}</div><div class="card__body">
     {% if item.module.description %}<p>{{ item.module.description }}</p>{% endif %}
+    {% if slide_count %}
+    <a class="button" href="{% url 'portal:course' item.pk %}">{% if item.started_at %}Review the course{% else %}Start the course{% endif %}</a>
+    {% elif item.module.content_url %}
     <form class="inline-form" method="post">{% csrf_token %}<input type="hidden" name="action" value="start">
       <a class="button" href="{{ item.module.content_url }}" target="_blank" rel="noopener noreferrer">Open training</a>
       {% if not item.started_at %}<button class="button button--quiet" type="submit">Mark as started</button>{% endif %}
     </form>
+    {% else %}<p class="cell-meta">This module has no content yet.</p>{% endif %}
   </div></section>
 
   {% if item.completed_at %}
   <section class="card"><div class="card__body"><strong>Completed {{ item.completed_at|date:"M j, Y" }}.</strong> <a href="{% url 'portal:certificate' item.pk %}">View certificate</a></div></section>
+  {% elif quiz and slide_count %}
+  <section class="card"><div class="card__header"><h2>2. Quiz</h2><span class="card__note">Pass mark {{ quiz.passing_score_percent }}%</span></div><div class="card__body">
+    <p>The quiz comes straight after the course.</p>
+    <a class="button{% if not item.started_at %} button--quiet{% endif %}" href="{% url 'portal:submit-quiz' item.pk %}">Take the quiz</a>
+    {% if attempts %}<p class="footnote">Previous attempts: {% for a in attempts %}{{ a.score_percent }}%{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+  </div></section>
   {% elif quiz %}
   <section class="card"><div class="card__header"><h2>2. Quiz</h2><span class="card__note">Pass mark {{ quiz.passing_score_percent }}%</span></div><div class="card__body">
     <form method="post" action="{% url 'portal:submit-quiz' item.pk %}">{% csrf_token %}
-      {% for q in questions %}
-      <fieldset class="fieldset quiz-question"><legend>{{ forloop.counter }}. {{ q.text }}</legend>
-        {% for c in q.choices.all %}<label class="checkbox-row"><input type="radio" name="q{{ q.pk }}" value="{{ c.pk }}" required> {{ c.text }}</label>{% endfor %}
-      </fieldset>
-      {% endfor %}
+      {% include "portal/_quiz_form.html" %}
       <div class="form-actions"><button class="button" type="submit">Submit answers</button></div>
     </form>
     {% if attempts %}<p class="footnote">Previous attempts: {% for a in attempts %}{{ a.score_percent }}%{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}

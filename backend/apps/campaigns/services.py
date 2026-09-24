@@ -59,6 +59,23 @@ def _contact_from_employee(employee: Employee) -> TargetContact:
     return TargetContact(email=employee.email, first_name=first_name, last_name=last_name)
 
 
+def _copy_contacts(campaign: Campaign, already: set[str]) -> list[TargetContact]:
+    """
+    The campaign's "also send a copy to" addresses, as extra targets: Gophish sends every target their
+    own message, so this is how a copy (CC/BCC-style) reaches someone. Only addresses that are NOT
+    employees qualify. An employee is either already in the audience or deliberately not, and exempt
+    people must never be emailed; a non-employee's events map to no one, so results stay clean.
+    """
+    contacts = []
+    for address in campaign.copy_addresses():
+        key = address.lower()
+        if key in already or Employee.objects.filter(email__iexact=address).exists():
+            continue
+        already.add(key)
+        contacts.append(TargetContact(email=address, first_name=address.split("@")[0], last_name="(copy)"))
+    return contacts
+
+
 def engine_campaign_name(campaign: Campaign) -> str:
     """Unique per Django campaign, so a launch can recognise one it already sent (see find_campaign)."""
     return f"{campaign.name} [#{campaign.pk}]"
@@ -116,7 +133,9 @@ def launch_campaign(campaign: Campaign, *, actor, client) -> Campaign:
             # targeted." See CLAUDE.md Phase 3 notes on why this didn't exist before.
             employees, group_name = campaign_audience(campaign)
             contacts = [_contact_from_employee(e) for e in employees]
-            if not contacts:
+            recipients = len(contacts)
+            contacts += _copy_contacts(campaign, {c.email.lower() for c in contacts})
+            if not recipients:
                 raise CampaignLaunchError(
                     f"{campaign} has no eligible recipients "
                     "(everyone is exempt/inactive, or the audience is empty)."

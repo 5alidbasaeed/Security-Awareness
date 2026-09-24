@@ -31,7 +31,9 @@ def _hit(key: str, window: int) -> int:
 
 def link_request_allowed(request, email: str) -> bool:
     window = settings.PORTAL_LINK_WINDOW_SECONDS
-    client = request.META.get("REMOTE_ADDR", "unknown")  # never X-Forwarded-For: a client can forge it
+    # REMOTE_ADDR by default: a client can forge X-Forwarded-For. Behind a proxy every request would share the
+    # proxy's address (one bucket for everyone), so a deployment can name the ONE header its proxy overwrites.
+    client = request.META.get(settings.PORTAL_CLIENT_IP_HEADER or "REMOTE_ADDR") or request.META.get("REMOTE_ADDR", "unknown")
     client_ok = _hit(f"portal:link:client:{client}", window) <= settings.PORTAL_LINK_IP_LIMIT
     if not email:
         return client_ok

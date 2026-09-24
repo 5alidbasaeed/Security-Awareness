@@ -160,3 +160,17 @@ Production hardening and operability (admin MFA/SSO, throttling, backups, monito
 docker compose -f docker-compose.yml -f docker-compose.dev.yml run --rm -T -v "$PWD/backend:/app" django python -m e2e.run_e2e
 ```
 
+
+## Sample content and slide courses
+
+Training courses are decks of slides shown in the employee portal; the quiz follows the last slide. Authors build them in **Manage → Training** (add, edit, reorder slides; plain text, `- ` for bullets) and can preview the course and try the quiz without recording anything.
+
+To load a sample library (four courses with quizzes, five simulated phishing emails, two landing pages, catalog entries and draft campaigns; nothing is sent or launched):
+
+```bash
+docker compose exec django python manage.py seed_sample_content
+```
+
+It is safe to re-run and never overwrites your edits. With DEBUG on it also creates a sample employee and prints their portal sign-in link. Email templates have a **Preview** link under **Manage → Content**.
+
+**Builders and images.** Manage → Content has an email builder and a landing-page builder (layouts, logo, banner image, tracked button) with a side-by-side preview, and an image library. Uploaded images live in the `email-images` volume and nginx serves them read-only at `/i/`; set `EMAIL_IMAGE_BASE_URL` to your public sending domain (for example `https://send.example.com/i/`) so recipients' mail clients can load them.

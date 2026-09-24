@@ -4,7 +4,7 @@ import pytest
 from django.contrib.auth.models import Group
 from django.urls import reverse
 
-from apps.campaigns.models import Campaign
+from apps.campaigns.models import Campaign, EmailDraft, LandingDraft
 from apps.campaigns.tests.factories import CampaignFactory
 from apps.core.management.commands.setup_groups import Command as SetupGroupsCommand
 from apps.employees.tests.factories import DepartmentFactory, EmployeeFactory
@@ -54,9 +54,10 @@ def test_create_draft_then_submit_approve_launch(client, django_user_model, monk
     EmployeeFactory(department=department)
     admin = login(client, django_user_model)
 
+    EmailDraft.objects.create(name="T", subject="S", body_html="<p>x</p>")
+    LandingDraft.objects.create(name="P")
     client.post(reverse("manage:campaign-new"), {
-        "name": "Test run", "template_name": "T", "landing_page_name": "P",
-        "landing_page_url": "https://phish.example", "target_department": department.pk,
+        "name": "Test run", "email": "T", "landing_page": "P", "audience": f"dept:{department.pk}",
     })
     campaign = Campaign.objects.get()
     assert campaign.status == Campaign.Status.DRAFT and campaign.created_by == admin

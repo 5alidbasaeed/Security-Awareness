@@ -331,3 +331,72 @@ progress.progress--low::-moz-progress-bar { background: var(--risk-low); }
 .triage-form .field { min-width: 10rem; }
 /* Long unbroken strings (URLs in error messages, hashes, email addresses) must wrap, never widen the page. */
 .flash, .cell-meta, .hash, .footnote, .form-error { overflow-wrap: anywhere; }
+
+/* ---- Course slides ----------------------------------------------------- */
+.slide-wrap { max-width: 46rem; margin: 0 auto; }
+.slide { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--s6) var(--s6) var(--s5); min-height: 27rem; }
+.slide__count { font-size: var(--text-sm); color: var(--text-secondary); margin: 0 0 var(--s3); }
+.slide__title { font-size: 1.875rem; line-height: 1.25; margin: 0 0 var(--s4); }
+.slide__body { font-size: 1.125rem; line-height: 1.6; }
+.slide__body p { margin: 0 0 var(--s3); }
+.slide__body ul { margin: 0 0 var(--s3); padding-left: var(--s5); }
+.slide__body li + li { margin-top: var(--s2); }
+.slide__callout { margin: var(--s5) 0 0; padding: var(--s3) var(--s4); border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); border-radius: var(--radius-sm); }
+.slide__callout strong { display: block; font-size: var(--text-sm); text-transform: uppercase; letter-spacing: 0.04em; color: var(--accent); margin-bottom: var(--s1); }
+.slide__progress { margin: var(--s4) 0; }
+.slide__nav { display: flex; justify-content: space-between; gap: var(--s3); }
+@media (max-width: 40rem) { .slide { padding: var(--s5) var(--s4); min-height: 0; } }
+
+/* ---- Email builder ------------------------------------------------------ */
+.builder { display: grid; grid-template-columns: minmax(0, 26rem) minmax(0, 1fr); gap: var(--s5); align-items: start; }
+.builder__preview { position: sticky; top: var(--s4); }
+.preview-frame { width: 100%; height: 40rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: #fff; }
+@media (max-width: 75rem) { .builder { grid-template-columns: 1fr; } .builder__preview { position: static; } }
+.image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); gap: var(--s4); margin-top: var(--s5); }
+.image-tile { margin: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+.image-tile img { display: block; width: 100%; height: 8rem; object-fit: contain; background: var(--surface-muted); }
+.image-tile figcaption { padding: var(--s3); font-size: var(--text-sm); overflow-wrap: anywhere; }
+.image-tile .cell-meta { display: block; margin: var(--s1) 0 var(--s2); }
+
+/* ---- Admin console: a separate-feeling area from the dashboard ---------- */
+.admin-console { background: var(--surface-muted); }
+.admin-bar { background: #0f172a; color: #e2e8f0; border-bottom: 3px solid var(--accent); }
+.admin-bar__inner { display: flex; align-items: center; justify-content: space-between; gap: var(--s4); flex-wrap: wrap; padding: var(--s3) var(--s5); }
+.admin-bar__brand { font-weight: 600; color: #fff; }
+.admin-bar__brand:hover { text-decoration: none; }
+.admin-bar__tag { margin-left: var(--s2); padding: 0.125rem var(--s2); border-radius: 62.5rem; background: var(--accent); color: var(--accent-contrast); font-size: var(--text-xs, 0.75rem); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; }
+.admin-bar__user { display: flex; align-items: center; gap: var(--s4); font-size: var(--text-sm); }
+.admin-bar__user a { color: #cbd5e1; }
+.admin-bar__user a:hover { color: #fff; }
+.admin-bar__signout { background: transparent; color: #cbd5e1; border: 1px solid #334155; border-radius: var(--radius-sm); padding: var(--s1) var(--s3); cursor: pointer; font: inherit; }
+.admin-bar__signout:hover { color: #fff; border-color: #64748b; }
+.admin-shell { display: grid; grid-template-columns: 14rem minmax(0, 1fr); gap: var(--s6); max-width: 82rem; margin: 0 auto; padding: var(--s5); align-items: start; }
+.admin-side { position: sticky; top: var(--s4); display: flex; flex-direction: column; gap: var(--s1); padding: var(--s3); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
+.admin-side a { padding: var(--s2) var(--s3); border-radius: var(--radius-sm); color: var(--text-secondary); font-size: var(--text-sm); }
+.admin-side a:hover { color: var(--text-primary); background: var(--surface-muted); text-decoration: none; }
+.admin-side a[aria-current="page"] { background: var(--accent); color: var(--accent-contrast); font-weight: 600; }
+.admin-main { min-width: 0; }
+@media (max-width: 60rem) {
+  .admin-shell { grid-template-columns: 1fr; gap: var(--s4); padding: var(--s4); }
+  .admin-side { position: static; flex-direction: row; overflow-x: auto; }
+  .admin-side a { white-space: nowrap; }
+  .admin-bar__inner { padding: var(--s3) var(--s4); }
+}
+
+/* ---- Email composer (Outlook-style) -------------------------------------- */
+.compose { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.compose__bar { display: flex; align-items: center; gap: var(--s3); padding: var(--s3) var(--s4); background: var(--surface-muted); border-bottom: 1px solid var(--border); }
+.compose__row { display: flex; align-items: center; gap: var(--s3); padding: var(--s1) var(--s4); border-bottom: 1px solid var(--border); }
+.compose__row > label { width: 5.5rem; flex: none; font-size: var(--text-sm); color: var(--text-secondary); }
+.compose__row input, .compose__row select { flex: 1; border: 0; background: transparent; padding: var(--s2) 0; font: inherit; color: var(--text-primary); min-width: 0; }
+.compose__row input:focus, .compose__row select:focus { outline: none; }
+.compose__toolbar { display: flex; flex-wrap: wrap; gap: var(--s1); align-items: center; padding: var(--s2) var(--s3); border-bottom: 1px solid var(--border); background: var(--surface-muted); }
+.compose__toolbar button, .compose__toolbar select { font: inherit; font-size: var(--text-sm); padding: var(--s1) var(--s3); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text-primary); cursor: pointer; }
+.compose__toolbar button:hover, .compose__toolbar select:hover { background: var(--border); }
+.compose__editor { min-height: 20rem; padding: var(--s4); font-size: 0.9375rem; line-height: 1.5; outline: none; overflow-wrap: anywhere; }
+.compose__editor img { max-width: 100%; height: auto; }
+.compose__editor a { color: var(--accent); text-decoration: underline; }
+.compose__editor a[data-button] { display: inline-block; padding: 0.6rem 1.4rem; background: var(--accent); color: var(--accent-contrast); border-radius: var(--radius-sm); text-decoration: none; font-weight: 600; }
+.compose__editor p, .compose__editor ul { margin: 0 0 0.75rem; }
+.compose-source { display: none; }
+.compose .form-error { padding: 0 var(--s4); }

@@ -16,11 +16,11 @@ from django.utils import timezone
 from django.views.decorators.http import require_http_methods, require_POST
 
 from apps.core.audit import log_action
-from apps.employees.models import Employee
 from apps.training.models import QuizAttempt
 from apps.training.scoring import score_quiz
 
 from .access import portal_login, portal_logout, portal_required
+from .tasks import send_portal_link
 from .throttle import link_request_allowed
 from .tokens import employee_from_token, sign_employee
 
@@ -59,12 +59,11 @@ def login(request):
         if not allowed:
             # Count only; never log the address. The caller sees the same page either way.
             logger.warning("portal: sign-in link request throttled")
-        employee = Employee.objects.filter(email__iexact=email, is_active=True).first() if email and allowed else None
-        if employee is not None:
+        if email and allowed:
             try:
-                send_link(employee)
-            except Exception:  # noqa: BLE001 — never reveal delivery failures (or whether the address exists)
-                logger.exception("portal: could not email sign-in link")
+                send_portal_link.delay(email)
+            except Exception:  # noqa: BLE001 — broker down: same page either way, never reveal anything
+                logger.exception("portal: could not queue sign-in link")
         # Same answer whether or not the address exists, so the form can't be used to list employees.
         return render(request, "portal/link_sent.html")
     return render(request, "portal/login.html")
@@ -115,17 +114,54 @@ def assignment(request, pk):
     return render(request, "portal/assignment.html", {
         "item": item, "quiz": quiz,
         "questions": quiz.questions.prefetch_related("choices") if quiz else [],
+        "slide_count": item.module.slides.count(),
         "attempts": item.quiz_attempts.order_by("-completed_at"),
     })
 
 
+def _slide_number(request, total):
+    raw = request.GET.get("s", "1")
+    return min(max(int(raw) if raw.isdigit() else 1, 1), total)
+
+
 @portal_required
-@require_POST
+def course(request, pk):
+    """The module's slides, one per page (server-rendered; the position lives in ?s=). The
+    last slide leads straight into the quiz. Opening the course marks the assignment started."""
+    item = _own_assignment(request, pk)
+    slides = list(item.module.slides.all())
+    if not slides:
+        return redirect("portal:assignment", pk=item.pk)
+    if item.started_at is None:
+        item.started_at = timezone.now()
+        item.save(update_fields=["started_at"])
+    number = _slide_number(request, len(slides))
+    return render(request, "portal/course.html", {
+        "item": item, "slide": slides[number - 1], "number": number, "total": len(slides),
+        "prev": number - 1 if number > 1 else None, "next": number + 1 if number < len(slides) else None,
+        "has_quiz": _quiz(item.module) is not None, "percent": round(number / len(slides) * 100),
+        "back_url": reverse("portal:assignment", args=[item.pk]),
+        "quiz_url": reverse("portal:submit-quiz", args=[item.pk]),
+        "course_url": reverse("portal:course", args=[item.pk]),
+        "finish_url": reverse("portal:assignment", args=[item.pk]),
+    })
+
+
+@portal_required
+@require_http_methods(["GET", "POST"])
 def submit_quiz(request, pk):
+    """GET shows the quiz (straight after the course); POST scores it."""
     item = _own_assignment(request, pk)
     quiz = _quiz(item.module)
     if quiz is None or item.completed_at is not None:
         return redirect("portal:assignment", pk=item.pk)
+    if request.method == "GET":
+        if item.module.slides.exists() and item.started_at is None:
+            return redirect("portal:course", pk=item.pk)  # take the course first
+        return render(request, "portal/quiz.html", {
+            "item": item, "quiz": quiz, "questions": quiz.questions.prefetch_related("choices"),
+            "attempts": item.quiz_attempts.order_by("-completed_at"),
+        })
 
     answers = {}
     for question in quiz.questions.all():
@@ -140,7 +176,7 @@ def submit_quiz(request, pk):
         _complete(request, item, score=score)
         return redirect("portal:certificate", pk=item.pk)
     messages.error(request, f"You scored {score}%. You need {quiz.passing_score_percent}% to pass — have another go.")
-    return redirect("portal:assignment", pk=item.pk)
+    return redirect("portal:submit-quiz", pk=item.pk)
 
 
 def _complete(request, item, *, score):

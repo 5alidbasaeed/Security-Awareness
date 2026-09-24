@@ -25,6 +25,7 @@ networks:
 volumes:
   postgres-data:
   mysql-data:
+  email-images:  # builder uploads: django writes, nginx serves read-only
 
 services:
   postgres:
@@ -121,6 +122,8 @@ services:
       redis:
         condition: service_healthy
     env_file: .env
+    volumes:
+      - email-images:/srv/email-images
     # No `ports:` entry: Docker Desktop doesn't forward host-published ports
     # onto a network marked `internal: true` anyway (verified empirically —
     # the binding shows in HostConfig but never actually listens), so the
@@ -170,3 +173,4 @@ services:
       - "80:80"
     volumes:
       - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - email-images:/srv/email-images:ro

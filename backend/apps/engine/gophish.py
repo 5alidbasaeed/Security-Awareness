@@ -155,6 +155,58 @@ class GophishClient(PhishingEngineClient):
         response.raise_for_status()
         return ExternalPageRef(external_id=str(response.json()["id"]))
 
+    def get_sending_profile(self, name: str) -> dict | None:
+        profile = self._find_by_name("/api/smtp/", name)
+        if profile is None:
+            return None
+        host, _, port = (profile.get("host") or "").rpartition(":")
+        return {
+            "name": profile.get("name"), "host": host or profile.get("host", ""), "port": int(port) if port.isdigit() else 25,
+            "username": profile.get("username", ""), "from_address": profile.get("from_address", ""),
+            "ignore_cert_errors": bool(profile.get("ignore_cert_errors")), "password_set": bool(profile.get("password")),
+        }
+
+    def upsert_sending_profile(self, *, name, host, port, username, password, from_address, ignore_cert_errors):
+        existing = self._find_by_name("/api/smtp/", name)
+        body = {
+            "name": name, "interface_type": "SMTP", "host": f"{host}:{port}", "username": username,
+            # Blank = keep what is stored; the API doesn't reliably do that for us on update.
+            "password": password or (existing or {}).get("password", ""),
+            "from_address": from_address, "ignore_cert_errors": bool(ignore_cert_errors), "headers": (existing or {}).get("headers", []),
+        }
+        if existing is None:
+            response = requests.post(f"{self._base_url}/api/smtp/", json=body, headers=self._headers(), timeout=self._timeout)
+        else:
+            body["id"] = existing["id"]
+            response = requests.put(
+                f"{self._base_url}/api/smtp/{existing['id']}", json=body, headers=self._headers(), timeout=self._timeout,
+            )
+        response.raise_for_status()
+
+    def send_test_email(self, *, profile_name, to_email):
+        profile = self._find_by_name("/api/smtp/", profile_name)
+        if profile is None:
+            raise ValueError(f"No sending profile named {profile_name!r}. Save the settings first.")
+        body = {
+            "template": {
+                "name": "SMTP test", "subject": "Test message from Security Awareness",
+                "text": "This is a test message. Your SMTP settings work.",
+                "html": "<p>This is a test message. Your SMTP settings work.</p>",
+            },
+            "first_name": "Test", "last_name": "", "email": to_email, "position": "", "url": "",
+            "smtp": profile,
+        }
+        # A test send waits on the relay, so allow longer than an ordinary API call.
+        response = requests.post(
+            f"{self._base_url}/api/util/send_test_email", json=body, headers=self._headers(), timeout=max(self._timeout, 30),
+        )
+        try:
+            result = response.json()
+        except ValueError:
+            result = {}
+        if not response.ok or result.get("success") is False:
+            raise RuntimeError(result.get("message") or f"the engine answered {response.status_code}")
+
     def list_landing_pages(self) -> list[dict]:
         response = requests.get(f"{self._base_url}/api/pages/", headers=self._headers(), timeout=self._timeout)
         response.raise_for_status()

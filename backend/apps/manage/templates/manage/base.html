@@ -1,0 +1,38 @@
+{% extends "dashboard/base.html" %}
+{% load manage_extras %}
+{% block body_class %}admin-console{% endblock %}
+{% block nav %}
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="admin-bar">
+  <div class="admin-bar__inner">
+    <a class="admin-bar__brand" href="{% url 'manage:index' %}">Security Awareness <span class="admin-bar__tag">Admin console</span></a>
+    <div class="admin-bar__user">
+      <a href="{% url 'dashboard:overview' %}">&larr; Back to dashboard</a>
+      {% if user.is_superuser %}<a href="/admin/">Django admin</a>{% endif %}
+      <span>{{ request.user.get_username }}</span>
+      <form class="inline-form" method="post" action="{% url 'dashboard:logout' %}">{% csrf_token %}<button class="admin-bar__signout" type="submit">Sign out</button></form>
+    </div>
+  </div>
+</header>
+{% endblock %}
+{% block main %}
+{% manage_section as section %}
+<div class="admin-shell">
+  <aside class="admin-side" aria-label="Admin sections">
+    <a href="{% url 'manage:index' %}"{% if section == "home" %} aria-current="page"{% endif %}>Overview</a>
+    {% if perms.campaigns.view_campaign %}<a href="{% url 'manage:campaigns' %}"{% if section == "campaigns" %} aria-current="page"{% endif %}>Campaigns</a>{% endif %}
+    {% if perms.campaigns.change_campaign %}<a href="{% url 'manage:content' %}"{% if section == "content" %} aria-current="page"{% endif %}>Emails &amp; pages</a>{% endif %}
+    {% if perms.training.view_trainingmodule %}<a href="{% url 'manage:training' %}"{% if section == "training" %} aria-current="page"{% endif %}>Training</a>{% endif %}
+    {% if perms.employees.view_employee %}<a href="{% url 'manage:employees' %}"{% if section == "employees" %} aria-current="page"{% endif %}>Employees</a>{% endif %}
+    {% if perms.employees.view_department %}<a href="{% url 'manage:departments' %}"{% if section == "departments" %} aria-current="page"{% endif %}>Departments</a>{% endif %}
+    {% if perms.intake.view_reportedemail %}<a href="{% url 'manage:reported' %}"{% if section == "reported" %} aria-current="page"{% endif %}>Reported emails</a>{% endif %}
+    {% if perms.reporting.view_reportschedule %}<a href="{% url 'manage:schedules' %}"{% if section == "schedules" %} aria-current="page"{% endif %}>Scheduled reports</a>{% endif %}
+    {% if perms.campaigns.approve_campaign %}<a href="{% url 'manage:mail-settings' %}"{% if section == "mail" %} aria-current="page"{% endif %}>Mail settings</a>{% endif %}
+    <a href="{% url 'manage:api-keys' %}"{% if section == "api-keys" %} aria-current="page"{% endif %}>API keys</a>
+  </aside>
+  <main id="main" class="admin-main">
+    {% if messages %}{% for message in messages %}<p class="flash flash--{{ message.level_tag }}" role="status">{{ message }}</p>{% endfor %}{% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</div>
+{% endblock %}

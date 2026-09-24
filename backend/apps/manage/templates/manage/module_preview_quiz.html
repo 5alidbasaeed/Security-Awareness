@@ -1,0 +1,23 @@
+{% extends "manage/base.html" %}
+{% block title %}Quiz preview · {{ module.title }}{% endblock %}
+{% block content %}
+{% include "manage/_subnav.html" with manage_section="training" %}
+<header class="page-header"><div><h1>Quiz: {{ module.title }}</h1>
+<p class="page-header__sub">{{ questions|length }} question{{ questions|length|pluralize }} · pass mark {{ quiz.passing_score_percent }}% · preview only, nothing is saved</p></div></header>
+{% if result %}
+<section class="card"><div class="card__header"><h2>{{ result.score }}%: {% if result.passed %}passed{% else %}not passed{% endif %}</h2></div>
+  <ol class="list question-list">
+    {% for r in result.review %}<li class="list__item"><span>{{ r.text }}<span class="cell-meta">{% if r.correct %}✓ Correct{% else %}✗ Right answer: {{ r.right_answer }}{% endif %}</span></span></li>{% endfor %}
+  </ol>
+  <div class="card__body"><a class="button" href="{% url 'manage:module-preview-quiz' module.pk %}">Try again</a></div>
+</section>
+{% else %}
+<div class="card"><div class="card__body">
+  <form method="post">{% csrf_token %}
+    {% include "portal/_quiz_form.html" %}
+    <div class="form-actions"><button class="button" type="submit">Submit answers</button>
+      {% if has_slides %}<a class="button button--quiet" href="{% url 'manage:module-preview' module.pk %}">Back to the course</a>{% endif %}</div>
+  </form>
+</div></div>
+{% endif %}
+{% endblock %}

@@ -23,6 +23,8 @@ class FakePhishingEngineClient(PhishingEngineClient):
         self.email_templates: dict[str, dict] = {}  # name -> {subject, html, text}
         self.pages: dict[str, dict] = {}  # name -> {html, capture_credentials, redirect_url}
         self.sending_profiles: dict[str, str] = {"default": "1"}  # name -> id
+        self.profile_settings: dict[str, dict] = {}
+        self.test_emails: list[tuple] = []
         self._next_campaign_id = 1
         self._next_group_id = 1
         self._next_content_id = 1
@@ -94,6 +96,25 @@ class FakePhishingEngineClient(PhishingEngineClient):
 
     def list_landing_pages(self):
         return [{"name": n, "external_id": "p"} for n in sorted(self.pages)]
+
+    def get_sending_profile(self, name):
+        profile = self.profile_settings.get(name)
+        return None if profile is None else {k: v for k, v in profile.items() if k != "password"} | {"name": name, "password_set": bool(profile.get("password"))}
+
+    def upsert_sending_profile(self, *, name, host, port, username, password, from_address, ignore_cert_errors):
+        old = self.profile_settings.get(name, {})
+        self.profile_settings[name] = {
+            "host": host, "port": port, "username": username, "password": password or old.get("password", ""),
+            "from_address": from_address, "ignore_cert_errors": ignore_cert_errors,
+        }
+        self.sending_profiles.setdefault(name, self._content_id())
+
+    def send_test_email(self, *, profile_name, to_email):
+        if profile_name not in self.profile_settings:
+            raise ValueError(f"No sending profile named {profile_name!r}.")
+        if getattr(self, "test_email_error", None):
+            raise RuntimeError(self.test_email_error)
+        self.test_emails.append((profile_name, to_email))
 
     def list_sending_profiles(self):
         return [{"name": n, "external_id": i} for n, i in sorted(self.sending_profiles.items())]

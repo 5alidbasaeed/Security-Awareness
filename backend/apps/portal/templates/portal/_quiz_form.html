@@ -1,0 +1,5 @@
+{% for q in questions %}
+<fieldset class="fieldset quiz-question"><legend>{{ forloop.counter }}. {{ q.text }}</legend>
+  {% for c in q.choices.all %}<label class="checkbox-row"><input type="radio" name="q{{ q.pk }}" value="{{ c.pk }}" required> {{ c.text }}</label>{% endfor %}
+</fieldset>
+{% endfor %}

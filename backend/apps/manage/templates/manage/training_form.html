@@ -1,25 +1,5 @@
-{% extends "dashboard/base.html" %}
-{% block title %}{{ title }} · Manage{% if module %}
-<section class="card questions-card" aria-labelledby="questions-heading">
-  <div class="card__header"><h2 id="questions-heading">Quiz questions</h2><span class="card__note">{{ questions|length }} question{{ questions|length|pluralize }}</span></div>
-  <ol class="list question-list">
-    {% for q in questions %}
-    <li class="list__item"><span>{{ q.text }}<span class="cell-meta">{% for c in q.choices.all %}{% if c.is_correct %}✓ {% endif %}{{ c.text }}{% if not forloop.last %} · {% endif %}{% endfor %}</span></span>
-      <form class="inline-form" method="post" action="{% url 'manage:question-delete' module.pk q.pk %}">{% csrf_token %}<button class="button button--quiet" type="submit">Remove</button></form></li>
-    {% empty %}<li class="list__item"><span class="cell-meta">No questions yet.</span></li>{% endfor %}
-  </ol>
-  <div class="card__body">
-    <form class="form-stack" method="post" action="{% url 'manage:question-add' module.pk %}">{% csrf_token %}
-      <div class="form-row"><label class="label" for="q-text">New question</label><textarea class="field" id="q-text" name="text" rows="2" required></textarea></div>
-      <div class="form-row"><span class="label">Answers — tick the correct one</span>
-        {% for i in "1234" %}<label class="answer-row"><input type="radio" name="correct" value="{{ i }}"{% if i == "1" %} checked{% endif %} aria-label="Answer {{ i }} is correct"><input class="field" name="choice{{ i }}" placeholder="Answer {{ i }}{% if i == "1" or i == "2" %} (required){% endif %}"></label>{% endfor %}
-      </div>
-      <div class="form-actions"><button class="button" type="submit">Add question</button></div>
-    </form>
-  </div>
-</section>
-{% endif %}
-{% endblock %}
+{% extends "manage/base.html" %}
+{% block title %}{{ title }} · Manage{% endblock %}
 {% block content %}
 {% include "manage/_subnav.html" with manage_section="training" %}
 <header class="page-header"><div><h1>{{ title }}</h1></div></header>
@@ -42,6 +22,23 @@
     </div>
   </form>
 </div></div>
+{% if module %}
+<section class="card questions-card" aria-labelledby="slides-heading">
+  <div class="card__header"><h2 id="slides-heading">Course slides</h2><span class="card__note">{{ slides|length }} slide{{ slides|length|pluralize }}{% if slides %} · <a href="{% url 'manage:module-preview' module.pk %}">Preview the course</a>{% endif %}</span></div>
+  <ol class="list question-list">
+    {% for sl in slides %}
+    <li class="list__item"><span>{{ sl.title }}<span class="cell-meta">{{ sl.body|truncatechars:110 }}</span></span>
+      <span class="actions">
+        {% if not forloop.first %}<form method="post" action="{% url 'manage:slide-move' module.pk sl.pk 'up' %}">{% csrf_token %}<button class="button button--quiet" type="submit" aria-label="Move up">↑</button></form>{% endif %}
+        {% if not forloop.last %}<form method="post" action="{% url 'manage:slide-move' module.pk sl.pk 'down' %}">{% csrf_token %}<button class="button button--quiet" type="submit" aria-label="Move down">↓</button></form>{% endif %}
+        <a href="{% url 'manage:slide-edit' module.pk sl.pk %}">Edit</a>
+        <form method="post" action="{% url 'manage:slide-delete' module.pk sl.pk %}">{% csrf_token %}<button class="button button--quiet" type="submit">Remove</button></form>
+      </span></li>
+    {% empty %}<li class="list__item"><span class="cell-meta">No slides yet. Employees will see the external link instead, if there is one.</span></li>{% endfor %}
+  </ol>
+  <div class="card__body"><a class="button" href="{% url 'manage:slide-new' module.pk %}">Add a slide</a></div>
+</section>
+{% endif %}
 {% if module %}
 <section class="card questions-card" aria-labelledby="questions-heading">
   <div class="card__header"><h2 id="questions-heading">Quiz questions</h2><span class="card__note">{{ questions|length }} question{{ questions|length|pluralize }}</span></div>

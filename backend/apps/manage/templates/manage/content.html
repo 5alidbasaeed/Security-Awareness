@@ -1,25 +1,30 @@
-{% extends "dashboard/base.html" %}
+{% extends "manage/base.html" %}
 {% block title %}Content · Manage{% endblock %}
 {% block content %}
 {% include "manage/_subnav.html" with manage_section="content" %}
 <header class="page-header"><div><h1>Content library</h1>
 <p class="page-header__sub">Email templates and landing pages held in the phishing engine.</p></div>
 {% if perms.campaigns.view_campaigntemplate %}<a class="button button--quiet" href="{% url 'manage:catalog' %}">Catalog &amp; audiences</a>{% endif %}
+<a class="button button--quiet" href="{% url 'manage:images' %}">Image library ({{ image_count }})</a>
 <a class="button button--quiet" href="{% url 'manage:deliverability' %}">Deliverability check</a></header>
 {% if engine_error %}<p class="flash flash--error" role="alert">Can't reach the phishing engine: {{ engine_error }}</p>{% endif %}
 <div class="grid-2">
   <section class="card">
     <div class="card__header"><h2>Email templates</h2>{% if perms.campaigns.change_campaign %}<a href="{% url 'manage:template-new' %}">New</a>{% endif %}</div>
     <ul class="list">
-      {% for t in templates %}<li class="list__item"><span>{{ t.name }}</span></li>
+      {% for d in drafts %}<li class="list__item"><span>{{ d.name }}<span class="cell-meta">{{ d.subject }} · {{ d.get_layout_display }}</span></span>
+        <span class="actions"><a href="{% url 'manage:email-preview' d.name %}" target="_blank" rel="noopener">Preview</a>{% if perms.campaigns.change_campaign %}<a href="{% url 'manage:template-edit' d.pk %}">Edit</a>{% endif %}</span></li>
       {% empty %}<li class="list__item"><span class="cell-meta">None yet.</span></li>{% endfor %}
+      {% for t in engine_only %}<li class="list__item"><span>{{ t.name }}<span class="cell-meta">In the engine only (not built here)</span></span><a href="{% url 'manage:email-preview' t.name %}" target="_blank" rel="noopener">Preview</a></li>{% endfor %}
     </ul>
   </section>
   <section class="card">
-    <div class="card__header"><h2>Landing pages</h2>{% if perms.campaigns.change_campaign %}<a href="{% url 'manage:page-new' %}">New</a>{% endif %}</div>
+    <div class="card__header"><h2>Landing pages</h2><span class="actions">{% if perms.campaigns.change_campaign %}<a href="{% url 'manage:page-new' %}">Paste HTML</a><a href="{% url 'manage:landing-new' %}">New</a>{% endif %}</span></div>
     <ul class="list">
-      {% for p in pages %}<li class="list__item"><span>{{ p.name }}</span><a href="{% url 'manage:page-preview' p.name %}" target="_blank" rel="noopener">Preview</a></li>
+      {% for d in landing_drafts %}<li class="list__item"><span>{{ d.name }}<span class="cell-meta">{{ d.get_layout_display }}</span></span>
+        <span class="actions"><a href="{% url 'manage:page-preview' d.name %}" target="_blank" rel="noopener">Preview</a>{% if perms.campaigns.change_campaign %}<a href="{% url 'manage:landing-edit' d.pk %}">Edit</a>{% endif %}</span></li>
       {% empty %}<li class="list__item"><span class="cell-meta">None yet.</span></li>{% endfor %}
+      {% for p in pages_engine_only %}<li class="list__item"><span>{{ p.name }}<span class="cell-meta">In the engine only (not built here)</span></span><a href="{% url 'manage:page-preview' p.name %}" target="_blank" rel="noopener">Preview</a></li>{% endfor %}
     </ul>
   </section>
 </div>

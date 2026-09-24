@@ -127,3 +127,24 @@ class PhishingEngineClient(ABC):
     def list_sending_profiles(self) -> list[dict]:
         """[{"name": ..., "external_id": ...}] for every sending (SMTP) profile the engine holds."""
         ...
+
+    @abstractmethod
+    def get_sending_profile(self, name: str) -> dict | None:
+        """
+        {"name", "host", "port", "username", "from_address", "ignore_cert_errors", "password_set"}, or None.
+        The password is NEVER returned, only whether one is set.
+        """
+        ...
+
+    @abstractmethod
+    def upsert_sending_profile(
+        self, *, name: str, host: str, port: int, username: str, password: str, from_address: str,
+        ignore_cert_errors: bool,
+    ) -> None:
+        """Creates/updates the SMTP relay the engine sends through. A blank password keeps the stored one."""
+        ...
+
+    @abstractmethod
+    def send_test_email(self, *, profile_name: str, to_email: str) -> None:
+        """Sends ONE plain test message through the profile. Raises with the relay's message on failure."""
+        ...

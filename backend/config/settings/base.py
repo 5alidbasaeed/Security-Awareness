@@ -165,6 +165,12 @@ CELERY_BEAT_SCHEDULE = {
 # Launched campaigns are reconciled against Gophish for this many days after launch, then left alone.
 RECONCILE_WINDOW_DAYS = env.int("RECONCILE_WINDOW_DAYS", default=30)
 
+# --- Uploaded images for the email / landing-page builders ---
+# Written here, served to recipients by nginx from a read-only mount of the same volume.
+EMAIL_IMAGE_ROOT = env("EMAIL_IMAGE_ROOT", default="/srv/email-images")
+# The PUBLIC address recipients' mail clients fetch images from (nginx's /i/ path on the sending domain).
+EMAIL_IMAGE_BASE_URL = env("EMAIL_IMAGE_BASE_URL", default="http://localhost/i/")
+
 # --- Cache (shared throttle counters) ---
 # Redis, so every gunicorn worker sees the same counters. A separate database number keeps these
 # keys out of Celery's broker/result keyspace.
@@ -179,6 +185,8 @@ CACHES = {
 PORTAL_LINK_EMAIL_LIMIT = env.int("PORTAL_LINK_EMAIL_LIMIT", default=3)  # links per address per window
 PORTAL_LINK_IP_LIMIT = env.int("PORTAL_LINK_IP_LIMIT", default=20)  # requests per client per window
 PORTAL_LINK_WINDOW_SECONDS = env.int("PORTAL_LINK_WINDOW_SECONDS", default=3600)
+# Only set when a proxy in front overwrites this header (e.g. HTTP_X_REAL_IP). Empty = use the socket address.
+PORTAL_CLIENT_IP_HEADER = env("PORTAL_CLIENT_IP_HEADER", default="")
 
 # --- Email (training reminders) ---
 # Console backend by default — real SMTP via env override on a real
@@ -222,3 +230,5 @@ GOPHISH_API_URL = env("GOPHISH_API_URL", default="")
 GOPHISH_API_KEY = env("GOPHISH_API_KEY", default="")
 GOPHISH_WEBHOOK_SECRET = env("GOPHISH_WEBHOOK_SECRET", default="")
 GOPHISH_DEFAULT_SEND_PROFILE = env("GOPHISH_DEFAULT_SEND_PROFILE", default="default")
+# Public address of the phishing listener; what a campaign's landing links are built on.
+PHISH_SERVER_URL = env("PHISH_SERVER_URL", default="http://localhost:8080")

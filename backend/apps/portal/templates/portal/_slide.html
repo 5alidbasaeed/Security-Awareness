@@ -1,0 +1,14 @@
+{% load course_extras %}
+<article class="slide" aria-labelledby="slide-title">
+  <p class="slide__count">Slide {{ number }} of {{ total }}</p>
+  <h2 id="slide-title" class="slide__title">{{ slide.title }}</h2>
+  <div class="slide__body">{{ slide.body|slide_body }}</div>
+  {% if slide.callout %}<p class="slide__callout"><strong>Remember</strong> {{ slide.callout }}</p>{% endif %}
+</article>
+<progress class="slide__progress" max="{{ total }}" value="{{ number }}" aria-label="Course progress">{{ percent }}%</progress>
+<nav class="slide__nav" aria-label="Course navigation">
+  {% if prev %}<a class="button button--quiet" id="slide-prev" href="{{ course_url }}?s={{ prev }}" rel="prev">Back</a>{% else %}<a class="button button--quiet" href="{{ back_url }}">Exit</a>{% endif %}
+  {% if next %}<a class="button" id="slide-next" href="{{ course_url }}?s={{ next }}" rel="next">Next</a>
+  {% elif has_quiz %}<a class="button" href="{{ quiz_url }}">Continue to the quiz</a>
+  {% else %}<a class="button" href="{{ finish_url }}">Finish</a>{% endif %}
+</nav>

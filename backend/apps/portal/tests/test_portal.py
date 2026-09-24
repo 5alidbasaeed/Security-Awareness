@@ -168,3 +168,50 @@ def test_a_quiz_with_no_questions_does_not_lock_the_employee_out(client):
 
     item.refresh_from_db()
     assert item.completed_at is not None
+
+
+# --- review fixes -------------------------------------------------------------------------
+
+
+def test_sign_in_link_is_queued_for_every_address_so_the_page_answers_the_same(client, monkeypatch):
+    queued = []
+    monkeypatch.setattr("apps.portal.views.send_portal_link.delay", lambda email: queued.append(email))
+    EmployeeFactory(email="real@corp.example")
+
+    known = client.post(reverse("portal:login"), {"email": "real@corp.example"})
+    unknown = client.post(reverse("portal:login"), {"email": "ghost@corp.example"})
+
+    assert queued == ["real@corp.example", "ghost@corp.example"] and known.content == unknown.content
+
+
+def test_a_broker_outage_does_not_change_the_answer_or_leak_anything(client, monkeypatch):
+    def boom(email):
+        raise ConnectionError("redis down")
+
+    monkeypatch.setattr("apps.portal.views.send_portal_link.delay", boom)
+
+    response = client.post(reverse("portal:login"), {"email": "real@corp.example"})
+
+    assert response.status_code == 200 and b"Check your email" in response.content
+
+
+def test_inactive_employees_get_no_link(client):
+    from django.core import mail
+
+    EmployeeFactory(email="gone@corp.example", is_active=False)
+
+    client.post(reverse("portal:login"), {"email": "gone@corp.example"})
+
+    assert mail.outbox == []
+
+
+def test_a_named_proxy_header_is_used_for_throttling_only_when_configured(client, settings):
+    settings.PORTAL_LINK_IP_LIMIT = 1
+    settings.PORTAL_CLIENT_IP_HEADER = "HTTP_X_REAL_IP"
+    from django.core import mail
+
+    EmployeeFactory(email="a@corp.example"), EmployeeFactory(email="b@corp.example")
+    client.post(reverse("portal:login"), {"email": "a@corp.example"}, REMOTE_ADDR="10.0.0.1", HTTP_X_REAL_IP="203.0.113.1")
+    client.post(reverse("portal:login"), {"email": "b@corp.example"}, REMOTE_ADDR="10.0.0.1", HTTP_X_REAL_IP="203.0.113.2")
+
+    assert len(mail.outbox) == 2  # same proxy address, different real clients: not one shared bucket
