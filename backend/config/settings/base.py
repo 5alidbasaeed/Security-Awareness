@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "apps.manage",
     "apps.portal",
     "apps.intake",
+    "apps.engagement",
 ]
 
 MIDDLEWARE = [
@@ -151,6 +152,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.reporting.tasks.send_scheduled_reports",
         "schedule": 86400.0,
     },
+    "anonymise-stale-employees": {
+        "task": "apps.engagement.retention.anonymize_stale_employees",
+        "schedule": 86400.0,
+    },
     "launch-scheduled-campaigns": {
         "task": "apps.campaigns.tasks.launch_scheduled_campaigns",
         "schedule": 300.0,  # every 5 minutes
@@ -173,6 +178,17 @@ TRAINING_DUE_DAYS = env.int("TRAINING_DUE_DAYS", default=14)
 # Absolute base URL employees reach the portal on (used in emailed sign-in links).
 PORTAL_BASE_URL = env("PORTAL_BASE_URL", default="http://localhost:8000")
 PORTAL_LINK_MAX_AGE_SECONDS = env.int("PORTAL_LINK_MAX_AGE_SECONDS", default=72 * 3600)
+
+# --- Engagement & integrations (Phase 6.3) ---
+# Coaching emails employees the moment they fail a simulation (defaults off — turn on once real SMTP works).
+COACHING_ENABLED = env.bool("COACHING_ENABLED", default=False)
+# Forward every event to a SIEM or a Slack/Teams incoming webhook. Blank = off.
+SIEM_WEBHOOK_URL = env("SIEM_WEBHOOK_URL", default="")
+SIEM_WEBHOOK_TIMEOUT = env.int("SIEM_WEBHOOK_TIMEOUT", default=5)
+# Smallest department size that may be shown in aggregate analytics/reports (privacy — Phase 6.4).
+MIN_REPORTING_COHORT = env.int("MIN_REPORTING_COHORT", default=1)
+# Anonymise a deactivated employee's PII after this many days (event log stays; invariant #3). 0 = never.
+PII_RETENTION_DAYS = env.int("PII_RETENTION_DAYS", default=0)
 
 # Anonymous hits on staff-only pages (the dashboard, the /analytics/ API) go to the dashboard login.
 LOGIN_URL = "dashboard:login"

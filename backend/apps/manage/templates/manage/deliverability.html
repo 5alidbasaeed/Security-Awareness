@@ -1,0 +1,23 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Deliverability · Manage{% endblock %}
+{% block content %}
+{% include "manage/_subnav.html" with manage_section="content" %}
+<header class="page-header"><div><h1>Deliverability pre-flight</h1>
+<p class="page-header__sub">Before a real campaign, confirm the sending domain publishes SPF and DMARC (and optionally a DKIM selector). Without them, simulated mail is likely blocked or junked.</p></div></header>
+<div class="card"><div class="card__body">
+  <form class="form-stack" method="post">{% csrf_token %}
+    <div class="form-row"><label class="label" for="domain">Sending domain</label><input class="field" id="domain" name="domain" placeholder="mail.example.com" required></div>
+    <div class="form-row"><label class="label" for="dkim_selector">DKIM selector (optional)</label><input class="field" id="dkim_selector" name="dkim_selector" placeholder="e.g. default, s1, google"></div>
+    <div class="form-actions"><button class="button" type="submit">Check</button></div>
+  </form>
+  {% if result %}
+  <ul class="list result-summary">
+    {% for name, c in result.checks.items %}{% if name != "ready" %}
+    <li class="list__item"><span><strong>{{ name|upper }}</strong>{% if c.record %}<span class="cell-meta hash">{{ c.record|truncatechars:120 }}</span>{% elif c.error %}<span class="cell-meta">{{ c.error }}</span>{% endif %}</span>
+      <span class="badge {% if c.ok %}badge--low{% else %}badge--high{% endif %}">{% if c.ok %}Found{% else %}Missing{% endif %}</span></li>
+    {% endif %}{% endfor %}
+  </ul>
+  <p class="footnote">{% if result.checks.ready %}SPF and DMARC are present. Still send a seed test before a real campaign.{% else %}Not ready: publish the missing records first.{% endif %}</p>
+  {% endif %}
+</div></div>
+{% endblock %}

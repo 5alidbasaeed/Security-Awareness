@@ -82,6 +82,9 @@ def overview(request):
     departments = [analytics.department_summary(d) for d in visible_departments(user).order_by("name")]
     departments.sort(key=lambda d: (d["average_score"] is None, -(d["average_score"] or 0)))
     highest_risk = _with_scores(employees).filter(current_score__isnull=False).order_by("-current_score", "full_name")[:5]
+    from apps.engagement.points import leaderboard
+    top_reporters = leaderboard(employees, limit=5)
+    improvement = analytics.program_improvement(RiskScoreSnapshot.objects.filter(employee__in=employees))
     recent = visible_campaigns(user).filter(gophish_campaign_id__isnull=False).order_by("-launched_at", "-id")[:5]
 
     return render(
@@ -95,6 +98,8 @@ def overview(request):
             "chart": _trend_chart(series, "Average risk score"),
             "departments": departments,
             "highest_risk": highest_risk,
+            "top_reporters": top_reporters,
+            "improvement": improvement,
             "recent_campaigns": [_campaign_row(c) for c in recent],
         },
     )

@@ -89,8 +89,20 @@ def training_compliance(assignments) -> dict:
     }
 
 
+def meets_min_cohort(count: int) -> bool:
+    from django.conf import settings
+
+    return count == 0 or count >= getattr(settings, "MIN_REPORTING_COHORT", 1)
+
+
 def scope_summary(employees) -> dict:
     """Summary for any set of employees: a department, or everyone a user may see."""
+    total = employees.count()
+    if not meets_min_cohort(total):
+        # Too few people to report without identifying them — suppress the numbers (Phase 6.4 privacy).
+        return {"employees": total, "employees_scored": 0, "average_score": None, "high_risk_employees": 0,
+                "high_risk_threshold": HIGH_RISK_THRESHOLD, "suppressed": True,
+                "training": {"assigned": 0, "completed": 0, "overdue": 0, "outstanding": 0, "completion_rate_percent": None}}
     scores = latest_snapshots().filter(employee__in=employees)
     stats = scores.aggregate(
         average=Avg("score"), scored=Count("id"), high=Count("id", filter=Q(score__gte=HIGH_RISK_THRESHOLD))
@@ -177,3 +189,20 @@ def series_delta(series: list[dict]):
     if len(points) < 2:
         return None
     return round(points[-1] - points[-2], 1)
+
+
+def program_improvement(snapshots, now=None):
+    """
+    Baseline-versus-current improvement (ROI): average score ~180 days ago versus now,
+    across `snapshots` (any RiskScoreSnapshot queryset). Lower is better, so a drop is
+    an improvement. None when there isn't enough history.
+    """
+    now = now or timezone.now()
+    series = trend_series(snapshots, weeks=27, now=now)  # ~180 days
+    points = [p for p in series if p["average_score"] is not None]
+    if len(points) < 2:
+        return {"baseline": None, "current": None, "delta": None, "improved": None}
+    baseline, current = points[0]["average_score"], points[-1]["average_score"]
+    delta = round(current - baseline, 2)
+    return {"baseline": baseline, "current": current, "delta": delta,
+            "improved_percent": round(-delta / baseline * 100, 1) if baseline else None}

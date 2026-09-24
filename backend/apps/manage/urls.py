@@ -16,6 +16,7 @@ urlpatterns = [
     path("campaigns/<int:pk>/launch/", views.campaign_launch, name="campaign-launch"),
 
     path("content/", views.content, name="content"),
+    path("deliverability/", views.deliverability, name="deliverability"),
     path("content/catalog/", views.catalog, name="catalog"),
     path("content/catalog/templates/new/", views.catalog_template_edit, name="catalog-template-new"),
     path("content/catalog/templates/<int:pk>/edit/", views.catalog_template_edit, name="catalog-template-edit"),

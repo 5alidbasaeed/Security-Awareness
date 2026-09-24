@@ -587,3 +587,22 @@ def _apply_field_classes(form):
     for field in form.fields.values():
         widget = field.widget
         widget.attrs.setdefault("class", "select" if isinstance(widget, djf.Select) else "field")
+
+
+# --- deliverability preflight -----------------------------------------------------------
+
+
+@manage_access("campaigns.view_campaign", methods=("GET", "POST"))
+def deliverability(request):
+    from apps.engagement.deliverability import check_domain
+
+    result = None
+    if request.method == "POST":
+        domain = (request.POST.get("domain") or "").strip()
+        selector = (request.POST.get("dkim_selector") or "").strip() or None
+        if domain:
+            try:
+                result = check_domain(domain, dkim_selector=selector)
+            except Exception as exc:  # noqa: BLE001
+                messages.error(request, f"Could not check that domain: {exc}")
+    return render(request, "manage/deliverability.html", {"active": "manage", "result": result})

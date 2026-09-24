@@ -48,7 +48,8 @@
     </div>
   </section>
 
-  <div class="grid-2">
+  {% if improvement.delta is not None %}<p class="flash" role="status">Programme trend: average risk has moved {{ improvement.delta }} over ~6 months{% if improvement.improved_percent %} ({{ improvement.improved_percent }}% {% if improvement.delta <= 0 %}better{% else %}worse{% endif %}){% endif %}. Lower is better.</p>{% endif %}
+<div class="grid-2">
     <section class="card" aria-labelledby="dept-heading">
       <div class="card__header"><h2 id="dept-heading">Departments</h2><a href="{% url 'dashboard:departments' %}">View all</a></div>
       <div class="card__body card--flush">
@@ -87,6 +88,24 @@
         </ul>
         {% else %}
         <div class="empty"><strong>Nobody is scored yet</strong>Scores appear after the first campaign results arrive.</div>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="reporters-heading">
+      <div class="card__header"><h2 id="reporters-heading">Top reporters</h2><span class="card__note">Reporting earns recognition</span></div>
+      <div class="card__body card--flush">
+        {% if top_reporters %}
+        <ul class="list">
+          {% for r in top_reporters %}
+          <li class="list__item">
+            <span><a href="{% url 'dashboard:employee-detail' r.employee.pk %}">{{ r.employee.full_name }}</a><span class="cell-meta">{{ r.reports }} reported · {{ r.training_completed }} trained</span></span>
+            <span class="badge badge--low">{{ r.points }} pts</span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="empty"><strong>No points yet</strong>Points come from reporting suspicious emails and completing training.</div>
         {% endif %}
       </div>
     </section>
