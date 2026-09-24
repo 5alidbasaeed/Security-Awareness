@@ -23,6 +23,28 @@ class CampaignLaunchError(Exception):
     """Raised for any reason a launch can't proceed — caller decides how to surface it."""
 
 
+def create_draft_campaign(*, actor, name, template_name, landing_page_name, landing_page_url,
+                          target_department=None, training_module=None, scheduled_at=None) -> Campaign:
+    """
+    Creates a campaign in Draft — the only state anything programmatic (the API, the dashboard
+    builder) may create. It is inert: no Gophish call, no send. It reaches a real send only after
+    a human submits it, a Security Admin approves it, and a human launches it (launch_campaign).
+    """
+    campaign = Campaign.objects.create(
+        name=name,
+        template_name=template_name,
+        landing_page_name=landing_page_name,
+        landing_page_url=landing_page_url,
+        target_department=target_department,
+        training_module=training_module,
+        scheduled_at=scheduled_at,
+        status=Campaign.Status.DRAFT,
+        created_by=actor,
+    )
+    log_action(actor=actor, action="campaign_created", target_description=str(campaign))
+    return campaign
+
+
 def _rate_limited() -> bool:
     window_start = timezone.now() - timedelta(hours=24)
     recent_launches = AuditLogEntry.objects.filter(action="campaign_launched", occurred_at__gte=window_start).count()

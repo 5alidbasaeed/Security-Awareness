@@ -7,7 +7,15 @@ from datetime import datetime, timezone
 
 import requests
 
-from .base import EngineEvent, ExternalCampaignRef, ExternalGroupRef, PhishingEngineClient, TargetContact
+from .base import (
+    EngineEvent,
+    ExternalCampaignRef,
+    ExternalGroupRef,
+    ExternalPageRef,
+    ExternalTemplateRef,
+    PhishingEngineClient,
+    TargetContact,
+)
 
 # Gophish's `timeline` entries (and its webhook payloads — same vocabulary)
 # use free-text `message` values, not a stable event-type enum. This mapping
@@ -87,6 +95,75 @@ class GophishClient(PhishingEngineClient):
         if page is None:
             raise ValueError(f"No Gophish landing page named {page_name!r}")
         return page.get("html", "")
+
+    # --- Content authoring ---------------------------------------------------------------
+
+    def upsert_email_template(self, *, name: str, subject: str, html: str, text: str = "") -> ExternalTemplateRef:
+        body = {"name": name, "subject": subject, "html": html, "text": text}
+        existing = self._find_by_name("/api/templates/", name)
+        if existing is None:
+            response = requests.post(
+                f"{self._base_url}/api/templates/", json=body, headers=self._headers(), timeout=self._timeout
+            )
+        else:
+            body["id"] = existing["id"]
+            response = requests.put(
+                f"{self._base_url}/api/templates/{existing['id']}", json=body, headers=self._headers(),
+                timeout=self._timeout,
+            )
+        response.raise_for_status()
+        return ExternalTemplateRef(external_id=str(response.json()["id"]))
+
+    def list_email_templates(self) -> list[dict]:
+        response = requests.get(f"{self._base_url}/api/templates/", headers=self._headers(), timeout=self._timeout)
+        response.raise_for_status()
+        return [{"name": t.get("name"), "external_id": str(t.get("id"))} for t in response.json()]
+
+    def get_email_template(self, name: str) -> dict | None:
+        template = self._find_by_name("/api/templates/", name)
+        if template is None:
+            return None
+        return {
+            "name": template.get("name"),
+            "subject": template.get("subject", ""),
+            "html": template.get("html", ""),
+            "text": template.get("text", ""),
+        }
+
+    def upsert_landing_page(
+        self, *, name: str, html: str, capture_credentials: bool = True, redirect_url: str = ""
+    ) -> ExternalPageRef:
+        # capture_passwords is hard-forced off, never taken from the caller — CLAUDE.md invariant #4.
+        body = {
+            "name": name,
+            "html": html,
+            "capture_credentials": bool(capture_credentials),
+            "capture_passwords": False,
+            "redirect_url": redirect_url,
+        }
+        existing = self._find_by_name("/api/pages/", name)
+        if existing is None:
+            response = requests.post(
+                f"{self._base_url}/api/pages/", json=body, headers=self._headers(), timeout=self._timeout
+            )
+        else:
+            body["id"] = existing["id"]
+            response = requests.put(
+                f"{self._base_url}/api/pages/{existing['id']}", json=body, headers=self._headers(),
+                timeout=self._timeout,
+            )
+        response.raise_for_status()
+        return ExternalPageRef(external_id=str(response.json()["id"]))
+
+    def list_landing_pages(self) -> list[dict]:
+        response = requests.get(f"{self._base_url}/api/pages/", headers=self._headers(), timeout=self._timeout)
+        response.raise_for_status()
+        return [{"name": p.get("name"), "external_id": str(p.get("id"))} for p in response.json()]
+
+    def list_sending_profiles(self) -> list[dict]:
+        response = requests.get(f"{self._base_url}/api/smtp/", headers=self._headers(), timeout=self._timeout)
+        response.raise_for_status()
+        return [{"name": s.get("name"), "external_id": str(s.get("id"))} for s in response.json()]
 
     def create_campaign(
         self,

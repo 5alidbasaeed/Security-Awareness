@@ -33,6 +33,16 @@ class TargetContact:
 
 
 @dataclass(frozen=True)
+class ExternalTemplateRef:
+    external_id: str
+
+
+@dataclass(frozen=True)
+class ExternalPageRef:
+    external_id: str
+
+
+@dataclass(frozen=True)
 class EngineEvent:
     external_id: str
     event_type: str
@@ -74,4 +84,46 @@ class PhishingEngineClient(ABC):
     @abstractmethod
     def get_landing_page_html(self, page_name: str) -> str:
         """Fetches a landing page's raw HTML by name, for the dry-run/preview feature."""
+        ...
+
+    # --- Content authoring (Phase 6: dashboard builder + API draft content) ---------------
+    # These let staff (or an API client) create the email templates and landing pages a
+    # campaign references, without hand-editing them in Gophish. Creating content sends
+    # nothing: an email/page is inert until a human approves and launches a campaign that
+    # uses it (see campaigns.services.launch_campaign — the only path that sends).
+
+    @abstractmethod
+    def upsert_email_template(self, *, name: str, subject: str, html: str, text: str = "") -> ExternalTemplateRef:
+        """Creates the email template, or replaces it if one with this name already exists."""
+        ...
+
+    @abstractmethod
+    def list_email_templates(self) -> list[dict]:
+        """[{"name": ..., "external_id": ...}] for every email template the engine holds."""
+        ...
+
+    @abstractmethod
+    def get_email_template(self, name: str) -> dict | None:
+        """{"name", "subject", "html", "text"} for one template, or None."""
+        ...
+
+    @abstractmethod
+    def upsert_landing_page(
+        self, *, name: str, html: str, capture_credentials: bool = True, redirect_url: str = ""
+    ) -> ExternalPageRef:
+        """
+        Creates/replaces a landing page. `capture_passwords` is never accepted as a parameter and is
+        always forced off — the platform must never capture real passwords (CLAUDE.md invariant #4),
+        so no caller (dashboard or API) can turn it on.
+        """
+        ...
+
+    @abstractmethod
+    def list_landing_pages(self) -> list[dict]:
+        """[{"name": ..., "external_id": ...}] for every landing page the engine holds."""
+        ...
+
+    @abstractmethod
+    def list_sending_profiles(self) -> list[dict]:
+        """[{"name": ..., "external_id": ...}] for every sending (SMTP) profile the engine holds."""
         ...

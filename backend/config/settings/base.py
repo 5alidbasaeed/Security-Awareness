@@ -34,6 +34,7 @@ INSTALLED_APPS = [
     "apps.engine",
     "apps.dashboard",
     "apps.reporting",
+    "apps.api",
 ]
 
 MIDDLEWARE = [
