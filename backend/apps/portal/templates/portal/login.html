@@ -1,0 +1,12 @@
+{% extends "portal/base.html" %}
+{% block title %}Sign in{% endblock %}
+{% block content %}
+<div class="auth"><div class="card auth__card">
+  <h1 class="auth__title">Your security training</h1>
+  <p class="auth__sub">Enter your work email and we'll send you a sign-in link. No password needed.</p>
+  <form method="post">{% csrf_token %}
+    <div class="form-row"><label class="label" for="email">Work email</label><input class="field" id="email" name="email" type="email" autocomplete="email" required></div>
+    <div class="form-row"><button class="button button--block" type="submit">Email me a link</button></div>
+  </form>
+</div></div>
+{% endblock %}

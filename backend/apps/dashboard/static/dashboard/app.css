@@ -309,3 +309,13 @@ progress.progress--low::-moz-progress-bar { background: var(--risk-low); }
 .key-reveal { border-color: var(--accent); }
 .key-value { font-size: var(--text-sm); color: var(--text-primary); word-break: break-all; margin-top: var(--s2); user-select: all; }
 .result-summary { margin-top: var(--s5); border-top: 1px solid var(--border); }
+
+/* ---- Employee portal --------------------------------------------------- */
+.portal { padding-top: var(--s6); padding-bottom: var(--s7); }
+.quiz-question + .quiz-question { margin-top: var(--s4); }
+.certificate { max-width: 40rem; margin: 0 auto; text-align: center; padding: var(--s6) var(--s5); }
+.certificate h1 { margin: var(--s3) 0 var(--s4); }
+@media print { .nav, .footnote { display: none; } .certificate { border: 2px solid var(--text-primary); box-shadow: none; } }
+.questions-card { margin-top: var(--s5); }
+.answer-row { display: flex; align-items: center; gap: var(--s3); margin-top: var(--s2); }
+.answer-row .field { flex: 1; }

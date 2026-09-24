@@ -1,0 +1,37 @@
+{% extends "portal/base.html" %}
+{% block title %}{{ item.module.title }}{% endblock %}
+{% block content %}
+<p class="breadcrumb"><a href="{% url 'portal:home' %}">My training</a></p>
+<header class="page-header"><div><h1>{{ item.module.title }}</h1>
+<p class="page-header__sub">About {{ item.module.duration_minutes }} minutes{% if item.due_at %} · due {{ item.due_at|date:"M j, Y" }}{% endif %}</p></div></header>
+
+<div class="stack">
+  <section class="card"><div class="card__header"><h2>1. Take the training</h2></div><div class="card__body">
+    {% if item.module.description %}<p>{{ item.module.description }}</p>{% endif %}
+    <form class="inline-form" method="post">{% csrf_token %}<input type="hidden" name="action" value="start">
+      <a class="button" href="{{ item.module.content_url }}" target="_blank" rel="noopener noreferrer">Open training</a>
+      {% if not item.started_at %}<button class="button button--quiet" type="submit">Mark as started</button>{% endif %}
+    </form>
+  </div></section>
+
+  {% if item.completed_at %}
+  <section class="card"><div class="card__body"><strong>Completed {{ item.completed_at|date:"M j, Y" }}.</strong> <a href="{% url 'portal:certificate' item.pk %}">View certificate</a></div></section>
+  {% elif quiz %}
+  <section class="card"><div class="card__header"><h2>2. Quiz</h2><span class="card__note">Pass mark {{ quiz.passing_score_percent }}%</span></div><div class="card__body">
+    <form method="post" action="{% url 'portal:submit-quiz' item.pk %}">{% csrf_token %}
+      {% for q in questions %}
+      <fieldset class="fieldset quiz-question"><legend>{{ forloop.counter }}. {{ q.text }}</legend>
+        {% for c in q.choices.all %}<label class="checkbox-row"><input type="radio" name="q{{ q.pk }}" value="{{ c.pk }}" required> {{ c.text }}</label>{% endfor %}
+      </fieldset>
+      {% endfor %}
+      <div class="form-actions"><button class="button" type="submit">Submit answers</button></div>
+    </form>
+    {% if attempts %}<p class="footnote">Previous attempts: {% for a in attempts %}{{ a.score_percent }}%{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+  </div></section>
+  {% else %}
+  <section class="card"><div class="card__header"><h2>2. Finish</h2></div><div class="card__body">
+    <form method="post">{% csrf_token %}<input type="hidden" name="action" value="complete"><button class="button" type="submit">I've completed this training</button></form>
+  </div></section>
+  {% endif %}
+</div>
+{% endblock %}

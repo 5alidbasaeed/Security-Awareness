@@ -123,3 +123,22 @@ def test_department_manager_key_scopes_are_limited_to_their_permissions(client, 
     # A Department Manager can't create campaigns, so that scope must not be offered.
     assert "campaigns:write" not in body
     assert "content:write" in body  # they hold change_campaign
+
+
+def test_quiz_questions_are_added_and_removed_in_the_ui(client, django_user_model):
+    from apps.training.models import QuizQuestion, TrainingModule
+
+    login(client, django_user_model)
+    module = TrainingModule.objects.create(title="M", content_url="https://t.example")
+
+    client.post(reverse("manage:question-add", args=[module.pk]),
+                {"text": "Check the sender?", "choice1": "Yes", "choice2": "No", "correct": "1"})
+    question = QuizQuestion.objects.get()
+    assert question.quiz.module == module
+    assert list(question.choices.values_list("text", "is_correct")) == [("Yes", True), ("No", False)]
+
+    client.post(reverse("manage:question-add", args=[module.pk]), {"text": "Only one answer", "choice1": "A", "correct": "1"})
+    assert QuizQuestion.objects.count() == 1  # rejected: needs two answers
+
+    client.post(reverse("manage:question-delete", args=[module.pk, question.pk]))
+    assert not QuizQuestion.objects.exists()

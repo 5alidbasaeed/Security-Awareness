@@ -23,6 +23,8 @@ urlpatterns = [
     path("training/", views.training, name="training"),
     path("training/new/", views.module_edit, name="module-new"),
     path("training/<int:pk>/edit/", views.module_edit, name="module-edit"),
+    path("training/<int:pk>/questions/add/", views.question_add, name="question-add"),
+    path("training/<int:pk>/questions/<int:question_pk>/delete/", views.question_delete, name="question-delete"),
 
     path("employees/", views.employees, name="employees"),
     path("employees/new/", views.employee_edit, name="employee-new"),

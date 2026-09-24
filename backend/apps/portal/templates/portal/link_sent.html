@@ -1,0 +1,9 @@
+{% extends "portal/base.html" %}
+{% block title %}Check your email{% endblock %}
+{% block content %}
+<div class="auth"><div class="card auth__card">
+  <h1 class="auth__title">Check your email</h1>
+  <p class="auth__sub">If that address belongs to an employee, a sign-in link is on its way. It expires after a few days.</p>
+  <a href="{% url 'portal:login' %}">Use a different email</a>
+</div></div>
+{% endblock %}

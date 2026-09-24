@@ -1,0 +1,18 @@
+{% extends "portal/base.html" %}
+{% block title %}My training{% endblock %}
+{% block content %}
+<header class="page-header"><div><h1>Hi {{ employee.full_name }}</h1>
+<p class="page-header__sub">Your assigned security awareness training.</p></div></header>
+<div class="card"><ul class="list">
+  {% for a in assignments %}
+  <li class="list__item">
+    <span><a href="{% url 'portal:assignment' a.pk %}">{{ a.module.title }}</a>
+      <span class="cell-meta">{% if a.completed_at %}Completed {{ a.completed_at|date:"M j, Y" }}{% elif a.due_at %}Due {{ a.due_at|date:"M j, Y" }}{% endif %}</span></span>
+    {% if a.completed_at %}<span class="badge badge--low">Completed</span>
+    {% elif a.due_at and a.due_at < now %}<span class="badge badge--high">Overdue</span>
+    {% elif a.started_at %}<span class="badge badge--accent">In progress</span>
+    {% else %}<span class="badge">To do</span>{% endif %}
+  </li>
+  {% empty %}<li class="list__item"><span class="cell-meta">Nothing assigned right now. Nice work.</span></li>{% endfor %}
+</ul></div>
+{% endblock %}

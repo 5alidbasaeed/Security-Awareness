@@ -36,6 +36,7 @@ INSTALLED_APPS = [
     "apps.reporting",
     "apps.api",
     "apps.manage",
+    "apps.portal",
 ]
 
 MIDDLEWARE = [
@@ -154,6 +155,11 @@ DEFAULT_FROM_EMAIL = env("DJANGO_DEFAULT_FROM_EMAIL", default="noreply@example.c
 
 # --- Training ---
 TRAINING_DUE_DAYS = env.int("TRAINING_DUE_DAYS", default=14)
+
+# --- Employee training portal (Phase 6.1) ---
+# Absolute base URL employees reach the portal on (used in emailed sign-in links).
+PORTAL_BASE_URL = env("PORTAL_BASE_URL", default="http://localhost:8000")
+PORTAL_LINK_MAX_AGE_SECONDS = env.int("PORTAL_LINK_MAX_AGE_SECONDS", default=72 * 3600)
 
 # Anonymous hits on staff-only pages (the dashboard, the /analytics/ API) go to the dashboard login.
 LOGIN_URL = "dashboard:login"

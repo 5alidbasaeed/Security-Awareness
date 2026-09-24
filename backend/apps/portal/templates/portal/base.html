@@ -1,0 +1,27 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="robots" content="noindex, nofollow">
+  <title>{% block title %}Training{% endblock %} · Security Awareness</title>
+  <link rel="icon" href="{% static 'dashboard/favicon.svg' %}" type="image/svg+xml">
+  <link rel="stylesheet" href="{% static 'dashboard/app.css' %}">
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  <header class="nav"><div class="container nav__inner">
+    <span class="nav__brand">Security Awareness Training</span>
+    {% if request.session.portal_employee_id %}
+    <div class="nav__user">
+      <a href="{% url 'portal:home' %}">My training</a>
+      <form class="inline-form" method="post" action="{% url 'portal:logout' %}">{% csrf_token %}<button class="button button--quiet" type="submit">Sign out</button></form>
+    </div>
+    {% endif %}
+  </div></header>
+  <main id="main" class="container portal">
+    {% if messages %}{% for message in messages %}<p class="flash flash--{{ message.level_tag }}" role="status">{{ message }}</p>{% endfor %}{% endif %}
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

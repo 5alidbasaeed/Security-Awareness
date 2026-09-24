@@ -1,7 +1,7 @@
 from .access import CONTENT_SECURITY_POLICY
 
 # URL namespaces rendered with the dashboard chrome (and so held to its strict CSP).
-DASHBOARD_APPS = {"dashboard", "reporting", "manage"}
+DASHBOARD_APPS = {"dashboard", "reporting", "manage", "portal"}
 
 
 class DashboardSecurityHeadersMiddleware:

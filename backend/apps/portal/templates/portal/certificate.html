@@ -1,0 +1,11 @@
+{% extends "portal/base.html" %}
+{% block title %}Certificate{% endblock %}
+{% block content %}
+<article class="card certificate"><div class="card__body">
+  <p class="cell-meta">Certificate of completion</p>
+  <h1>{{ item.module.title }}</h1>
+  <p>This certifies that <strong>{{ employee.full_name }}</strong> completed this security awareness training on <strong>{{ item.completed_at|date:"F j, Y" }}</strong>{% if attempt %} with a quiz score of <strong>{{ attempt.score_percent }}%</strong>{% endif %}.</p>
+  <p class="hash">Reference: {{ item.pk }}-{{ item.completed_at|date:"U" }}</p>
+</div></article>
+<p class="footnote"><a href="{% url 'portal:home' %}">Back to my training</a> · Use your browser's print to save as PDF.</p>
+{% endblock %}

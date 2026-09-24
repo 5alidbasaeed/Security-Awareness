@@ -1,0 +1,9 @@
+{% extends "portal/base.html" %}
+{% block title %}Link expired{% endblock %}
+{% block content %}
+<div class="auth"><div class="card auth__card">
+  <h1 class="auth__title">This link has expired</h1>
+  <p class="auth__sub">Sign-in links only work for a limited time. Request a new one.</p>
+  <a class="button" href="{% url 'portal:login' %}">Get a new link</a>
+</div></div>
+{% endblock %}

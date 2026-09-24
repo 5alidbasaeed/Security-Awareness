@@ -373,3 +373,40 @@ def employee_import(request):
             else:
                 messages.warning(request, f"Imported with {len(result.errors)} row error(s) — see below.")
     return render(request, "manage/employee_import.html", {"active": "manage", "result": result})
+
+
+# --- quiz questions ---------------------------------------------------------------------
+
+
+@manage_access("training.change_trainingmodule", methods=("POST",))
+def question_add(request, pk):
+    from apps.training.models import Quiz, QuizChoice, QuizQuestion
+
+    module = get_object_or_404(TrainingModule, pk=pk)
+    text = (request.POST.get("text") or "").strip()
+    choices = [(request.POST.get(f"choice{i}") or "").strip() for i in range(1, 5)]
+    correct = request.POST.get("correct")
+    filled = [(i, c) for i, c in enumerate(choices, start=1) if c]
+    if not text or len(filled) < 2:
+        messages.error(request, "A question needs text and at least two answers.")
+    elif not correct or not choices[int(correct) - 1]:
+        messages.error(request, "Mark which answer is correct.")
+    else:
+        quiz, _ = Quiz.objects.get_or_create(module=module)
+        question = QuizQuestion.objects.create(quiz=quiz, text=text, order=quiz.questions.count())
+        for i, choice in filled:
+            QuizChoice.objects.create(question=question, text=choice[:300], is_correct=(str(i) == correct))
+        log_action(actor=request.user, action="quiz_question_added", target_description=f"{module}: {text[:80]}")
+        messages.success(request, "Question added.")
+    return redirect("manage:module-edit", pk=module.pk)
+
+
+@manage_access("training.change_trainingmodule", methods=("POST",))
+def question_delete(request, pk, question_pk):
+    from apps.training.models import QuizQuestion
+
+    question = get_object_or_404(QuizQuestion, pk=question_pk, quiz__module_id=pk)
+    log_action(actor=request.user, action="quiz_question_deleted", target_description=question.text[:80])
+    question.delete()
+    messages.success(request, "Question removed.")
+    return redirect("manage:module-edit", pk=pk)

@@ -15,6 +15,13 @@ from django.utils import timezone
 
 from .models import TrainingAssignment
 
+
+def magic_link(employee):
+    # Imported lazily: the portal app depends on training, not the other way round.
+    from apps.portal.views import magic_link as portal_link
+
+    return portal_link(employee)
+
 logger = logging.getLogger(__name__)
 
 REMINDER_AFTER = timedelta(days=2)  # remind once an assignment has been outstanding this long
@@ -26,7 +33,8 @@ def send_training_reminders():
     now = timezone.now()
     due_for_reminder = (
         TrainingAssignment.objects.filter(
-            completed_at__isnull=True, module__is_active=True, assigned_at__lte=now - REMINDER_AFTER
+            completed_at__isnull=True, module__is_active=True, employee__is_active=True,
+            assigned_at__lte=now - REMINDER_AFTER
         )
         .exclude(last_reminded_at__gte=now - REMINDER_COOLDOWN)
         .select_related("employee", "module")
@@ -41,7 +49,7 @@ def send_training_reminders():
                     f"Hi {assignment.employee.full_name},\n\n"
                     f'You have an outstanding security awareness training assignment: "{assignment.module.title}". '
                     "Please complete it at your earliest convenience.\n\n"
-                    f"{assignment.module.content_url}"
+                    f"Open your training (no password needed): {magic_link(assignment.employee)}"
                 ),
                 from_email=settings.DEFAULT_FROM_EMAIL,
                 recipient_list=[assignment.employee.email],

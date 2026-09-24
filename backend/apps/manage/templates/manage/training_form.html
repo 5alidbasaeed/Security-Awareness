@@ -1,5 +1,25 @@
 {% extends "dashboard/base.html" %}
-{% block title %}{{ title }} · Manage{% endblock %}
+{% block title %}{{ title }} · Manage{% if module %}
+<section class="card questions-card" aria-labelledby="questions-heading">
+  <div class="card__header"><h2 id="questions-heading">Quiz questions</h2><span class="card__note">{{ questions|length }} question{{ questions|length|pluralize }}</span></div>
+  <ol class="list question-list">
+    {% for q in questions %}
+    <li class="list__item"><span>{{ q.text }}<span class="cell-meta">{% for c in q.choices.all %}{% if c.is_correct %}✓ {% endif %}{{ c.text }}{% if not forloop.last %} · {% endif %}{% endfor %}</span></span>
+      <form class="inline-form" method="post" action="{% url 'manage:question-delete' module.pk q.pk %}">{% csrf_token %}<button class="button button--quiet" type="submit">Remove</button></form></li>
+    {% empty %}<li class="list__item"><span class="cell-meta">No questions yet.</span></li>{% endfor %}
+  </ol>
+  <div class="card__body">
+    <form class="form-stack" method="post" action="{% url 'manage:question-add' module.pk %}">{% csrf_token %}
+      <div class="form-row"><label class="label" for="q-text">New question</label><textarea class="field" id="q-text" name="text" rows="2" required></textarea></div>
+      <div class="form-row"><span class="label">Answers — tick the correct one</span>
+        {% for i in "1234" %}<label class="answer-row"><input type="radio" name="correct" value="{{ i }}"{% if i == "1" %} checked{% endif %} aria-label="Answer {{ i }} is correct"><input class="field" name="choice{{ i }}" placeholder="Answer {{ i }}{% if i == "1" or i == "2" %} (required){% endif %}"></label>{% endfor %}
+      </div>
+      <div class="form-actions"><button class="button" type="submit">Add question</button></div>
+    </form>
+  </div>
+</section>
+{% endif %}
+{% endblock %}
 {% block content %}
 {% include "manage/_subnav.html" with manage_section="training" %}
 <header class="page-header"><div><h1>{{ title }}</h1></div></header>
@@ -14,7 +34,7 @@
         <label class="label" for="{{ quiz_form.passing_score_percent.id_for_label }}">Passing score %</label>
         {{ quiz_form.passing_score_percent }}
       </div>
-      {% if questions %}<p class="cell-meta">Questions ({{ questions|length }}) are edited in Advanced (Django admin) for now — this form saves the module and quiz threshold.</p>{% endif %}
+      <p class="cell-meta">Add questions below after saving. A quiz with no questions is skipped — employees just confirm completion.</p>
     </fieldset>
     <div class="form-actions">
       <button class="button" type="submit">Save</button>
@@ -22,4 +42,24 @@
     </div>
   </form>
 </div></div>
+{% if module %}
+<section class="card questions-card" aria-labelledby="questions-heading">
+  <div class="card__header"><h2 id="questions-heading">Quiz questions</h2><span class="card__note">{{ questions|length }} question{{ questions|length|pluralize }}</span></div>
+  <ol class="list question-list">
+    {% for q in questions %}
+    <li class="list__item"><span>{{ q.text }}<span class="cell-meta">{% for c in q.choices.all %}{% if c.is_correct %}✓ {% endif %}{{ c.text }}{% if not forloop.last %} · {% endif %}{% endfor %}</span></span>
+      <form class="inline-form" method="post" action="{% url 'manage:question-delete' module.pk q.pk %}">{% csrf_token %}<button class="button button--quiet" type="submit">Remove</button></form></li>
+    {% empty %}<li class="list__item"><span class="cell-meta">No questions yet.</span></li>{% endfor %}
+  </ol>
+  <div class="card__body">
+    <form class="form-stack" method="post" action="{% url 'manage:question-add' module.pk %}">{% csrf_token %}
+      <div class="form-row"><label class="label" for="q-text">New question</label><textarea class="field" id="q-text" name="text" rows="2" required></textarea></div>
+      <div class="form-row"><span class="label">Answers — tick the correct one</span>
+        {% for i in "1234" %}<label class="answer-row"><input type="radio" name="correct" value="{{ i }}"{% if i == "1" %} checked{% endif %} aria-label="Answer {{ i }} is correct"><input class="field" name="choice{{ i }}" placeholder="Answer {{ i }}{% if i == "1" or i == "2" %} (required){% endif %}"></label>{% endfor %}
+      </div>
+      <div class="form-actions"><button class="button" type="submit">Add question</button></div>
+    </form>
+  </div>
+</section>
+{% endif %}
 {% endblock %}
