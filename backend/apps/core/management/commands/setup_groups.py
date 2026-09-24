@@ -82,7 +82,11 @@ class Command(BaseCommand):
         report_viewer.permissions.set(_perms_for(MANAGED_MODELS, ("view_",)))
 
         # Department Manager: change employees/campaigns (row-scoping is admin-code, see module docstring).
-        department_manager_perms = list(_perms_for(EMPLOYEE_MODELS + CAMPAIGN_MODELS, ("change_", "view_")))
+        # Department itself is view-only: change_department would let them add
+        # themselves to any department's managers and escape their own scope.
+        department_manager_perms = list(
+            _perms_for([("employees", "employee")] + CAMPAIGN_MODELS, ("change_", "view_"))
+        ) + list(_perms_for([("employees", "department")], ("view_",)))
         department_manager.permissions.set(department_manager_perms)
 
         self.stdout.write(

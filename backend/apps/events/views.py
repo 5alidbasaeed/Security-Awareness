@@ -49,6 +49,8 @@ def gophish_webhook(request):
         payload = json.loads(request.body)
     except (json.JSONDecodeError, ValueError):
         return HttpResponseBadRequest("invalid JSON")
+    if not isinstance(payload, dict):
+        return HttpResponseBadRequest("expected a JSON object")
 
     message = payload.get("message")
     event_type = GOPHISH_MESSAGE_TO_EVENT_TYPE.get(message)

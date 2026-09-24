@@ -49,3 +49,8 @@ If every box above is empty, defer to the general `code-review` skill for correc
 
 - [ ] Does any new admin view/URL fetch objects via `Model.objects` instead of `self.get_queryset(request)`? That bypasses Department Manager row-scoping (found in Phase 3 review on the landing-page preview).
 - [ ] Does anything launch a campaign other than `campaigns/services.py::launch_campaign()`? It owns approval, rate limit, and exemption filtering — a second path skips all three.
+- [ ] Can a workflow/state field (`status`, `approved_by`, ...) be edited through the plain admin form? It must be `readonly_fields` and change only via a permission-checked, audited action. Does every custom admin action call `require_permission()` (visibility of an action is not authorization)?
+- [ ] After approval, can what was approved (template, landing page, target) change without dropping the campaign back to Draft?
+- [ ] Does a role that is supposed to be row-scoped (Department Manager) hold `change_`/`add_` on a model that controls the scoping itself (Department)? Do its FK dropdowns offer only in-scope rows?
+- [ ] Does any view return Gophish-hosted/author-controlled HTML from Django's origin without `Content-Security-Policy: sandbox`?
+- [ ] Is a check-then-act (status check then external send) done under `select_for_update` in one transaction? Is an audit entry written before raising inside that same `atomic()` block (it would roll back)?

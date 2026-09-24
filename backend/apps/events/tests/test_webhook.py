@@ -78,3 +78,10 @@ def test_password_like_field_stripped_before_storage(client):
     assert "hunter2" not in json.dumps(event.metadata)
     assert "password" not in event.metadata["payload"]
     assert event.metadata["payload"]["username"] == ["bob"]
+
+
+@pytest.mark.parametrize("payload", [[1, 2, 3], "a string", 42, None])
+def test_non_object_json_body_is_a_400_not_a_500(client, payload):
+    response = _post(client, payload)
+
+    assert response.status_code == 400

@@ -32,6 +32,44 @@ class CampaignAdmin(DepartmentScopedAdminMixin, AuditedAdminMixin, admin.ModelAd
     search_fields = ("name",)
     actions = ["submit_for_approval", "approve_campaign", "launch_campaign_action"]
 
+    # Workflow state is only ever changed by the actions below (which check
+    # permissions and write audit entries) — never by hand in the edit form,
+    # or a Campaign Manager could simply set Status to "approved".
+    WORKFLOW_FIELDS = (
+        "status",
+        "gophish_campaign_id",
+        "launched_at",
+        "created_by",
+        "submitted_by",
+        "submitted_at",
+        "approved_by",
+        "approved_at",
+    )
+    # What the approver actually approved. Changing any of these after
+    # submission sends the campaign back to Draft for re-approval.
+    APPROVED_CONTENT_FIELDS = {"template_name", "landing_page_name", "landing_page_url", "target_department", "name"}
+    readonly_fields = WORKFLOW_FIELDS
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj is not None and obj.status == Campaign.Status.LAUNCHED:
+            return self.WORKFLOW_FIELDS + tuple(sorted(self.APPROVED_CONTENT_FIELDS)) + ("training_module", "scheduled_at")
+        return self.WORKFLOW_FIELDS
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.created_by = request.user
+        elif obj.status in (Campaign.Status.PENDING_APPROVAL, Campaign.Status.APPROVED) and (
+            self.APPROVED_CONTENT_FIELDS & set(form.changed_data)
+        ):
+            obj.status = Campaign.Status.DRAFT
+            obj.submitted_by = obj.submitted_at = obj.approved_by = obj.approved_at = None
+            self.message_user(
+                request,
+                f"{obj} was edited after submission — it is back in Draft and needs approval again.",
+                level=messages.WARNING,
+            )
+        super().save_model(request, obj, form, change)
+
     @admin.display(description="Landing page")
     def preview_link(self, campaign):
         url = reverse("admin:campaigns_campaign_preview_landing_page", args=[campaign.pk])
@@ -58,10 +96,19 @@ class CampaignAdmin(DepartmentScopedAdminMixin, AuditedAdminMixin, admin.ModelAd
             html = get_client().get_landing_page_html(campaign.landing_page_name)
         except ValueError as exc:
             raise Http404(str(exc)) from exc
-        return HttpResponse(html)
+        response = HttpResponse(html)
+        # The page is Gophish-hosted, author-controlled HTML/JS served from the
+        # admin's own origin. Sandbox it (no scripts, no forms, opaque origin)
+        # so a hostile landing page can't act as whoever previews it.
+        response["Content-Security-Policy"] = "sandbox"
+        return response
 
     @admin.action(description="Submit selected draft campaign(s) for approval")
     def submit_for_approval(self, request, queryset):
+        if not self.require_permission(
+            request, "campaigns.change_campaign", "You don't have permission to submit campaigns."
+        ):
+            return
         for campaign in queryset:
             if campaign.status != Campaign.Status.DRAFT:
                 self.message_user(request, f"{campaign} is not a draft — skipped.", level=messages.WARNING)
@@ -111,4 +158,5 @@ class CampaignAdmin(DepartmentScopedAdminMixin, AuditedAdminMixin, admin.ModelAd
             except Exception as exc:  # noqa: BLE001 — surface any adapter failure to the admin, don't swallow it
                 self.message_user(request, f"Failed to launch {campaign}: {exc}", level=messages.ERROR)
                 continue
+            campaign.refresh_from_db()
             self.message_user(request, f"Launched {campaign} (Gophish campaign {campaign.gophish_campaign_id}).")

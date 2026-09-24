@@ -68,11 +68,23 @@ class DepartmentScopedAdminMixin:
 
     department_lookup = "department"
 
+    def _managed_departments(self, request):
+        """None if the user isn't row-scoped; otherwise the departments they manage."""
+        if request.user.is_superuser or not request.user.groups.filter(name="Department Manager").exists():
+            return None
+        return Department.objects.filter(managers=request.user)
+
     def get_queryset(self, request):
         qs = super().get_queryset(request)
-        if request.user.is_superuser:
+        managed = self._managed_departments(request)
+        if managed is None:
             return qs
-        if request.user.groups.filter(name="Department Manager").exists():
-            managed_departments = Department.objects.filter(managers=request.user)
-            return qs.filter(**{f"{self.department_lookup}__in": managed_departments})
-        return qs
+        return qs.filter(**{f"{self.department_lookup}__in": managed})
+
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+        # Scoping the list isn't enough: without this a manager could move a
+        # record into (or create one for) a department they don't manage.
+        managed = self._managed_departments(request)
+        if managed is not None and db_field.related_model is Department:
+            kwargs["queryset"] = managed
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
