@@ -208,3 +208,18 @@ def test_read_scope_returns_scoped_analytics(client, django_user_model):
     assert summary["employees"] == 1
     assert [d["name"] for d in departments] == ["Mine"]
     assert hidden.status_code == 404
+
+
+def test_api_writes_do_not_require_a_csrf_token(django_user_model):
+    # API-key clients have no session cookie; a CSRF check would 403 every POST (found in the
+    # native deploy test, which — unlike the default test client — enforces CSRF).
+    from django.test import Client
+
+    _, raw = make_key(django_user_model, scopes=[Scope.TRAINING_WRITE])
+    csrf_client = Client(enforce_csrf_checks=True)
+
+    response = csrf_client.post(reverse("api:training-modules"), data=json.dumps(
+        {"title": "T", "content_url": "https://t.example"}), content_type="application/json",
+        HTTP_AUTHORIZATION=f"Api-Key {raw}")
+
+    assert response.status_code == 201

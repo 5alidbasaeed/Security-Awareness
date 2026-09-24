@@ -15,6 +15,7 @@ import functools
 import json
 
 from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
 
 from .models import SCOPE_REQUIRED_PERMISSION, ApiKey, hash_key
 
@@ -47,6 +48,7 @@ def api_endpoint(*, scope: str | None = None, methods=("GET",)):
     """
 
     def decorator(view):
+        @csrf_exempt  # authenticated by API key, not a session cookie — CSRF doesn't apply and would block clients
         @functools.wraps(view)
         def wrapper(request, *args, **kwargs):
             key = authenticate(request)
