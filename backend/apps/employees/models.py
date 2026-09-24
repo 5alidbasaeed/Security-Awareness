@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 
@@ -9,6 +10,17 @@ class Department(models.Model):
         null=True,
         blank=True,
         related_name="managed_departments",
+        help_text="The employee who manages this department (org-chart fact, not a login).",
+    )
+    managers = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        related_name="managed_departments_as_user",
+        help_text=(
+            "Django users in the Department Manager group whose admin access is scoped to this "
+            "department. Distinct from `manager` above — that's an Employee (org-chart fact), "
+            "this is a User (login/permission fact)."
+        ),
     )
 
     def __str__(self):

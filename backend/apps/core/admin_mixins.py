@@ -1,5 +1,7 @@
 from django.contrib import messages
 
+from apps.employees.models import Department
+
 from .audit import log_action
 
 
@@ -47,3 +49,30 @@ class AuditedAdminMixin:
         super().delete_queryset(request, queryset)
         for description in descriptions:
             log_action(actor=request.user, action=f"{self.audit_object_name}_deleted", target_description=description)
+
+
+class DepartmentScopedAdminMixin:
+    """
+    Restricts the admin's queryset to the departments a Department Manager
+    manages (via Department.managers). Django's built-in permission
+    framework is model-level only ("can change Employee at all"), not
+    row-level ("which ones") — this mixin is the row-level half. Users NOT
+    in the Department Manager group (Security Admin, Report Viewer, etc.)
+    are unaffected; this only ever narrows access, never widens it beyond a
+    user's existing model-level permissions.
+
+    Set `department_lookup` on the subclass to the field path from this
+    model to Department (e.g. "department" on Employee, "target_department"
+    on Campaign).
+    """
+
+    department_lookup = "department"
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        if request.user.is_superuser:
+            return qs
+        if request.user.groups.filter(name="Department Manager").exists():
+            managed_departments = Department.objects.filter(managers=request.user)
+            return qs.filter(**{f"{self.department_lookup}__in": managed_departments})
+        return qs

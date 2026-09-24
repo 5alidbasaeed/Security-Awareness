@@ -1,6 +1,6 @@
 # Internal Phishing Simulation & Security Awareness Training Platform
 
-Phase 0 (infra proof) + Phase 1 (core simulation loop backbone) + Phase 2 (training loop). See [phishing-training-platform-plan.md](phishing-training-platform-plan.md) for the full architecture and [CLAUDE.md](CLAUDE.md) for the non-negotiable invariants this implements.
+Phase 0 (infra proof) + Phase 1 (core simulation loop backbone) + Phase 2 (training loop) + Phase 3 (RBAC, approval workflow, scheduling). See [phishing-training-platform-plan.md](phishing-training-platform-plan.md) for the full architecture and [CLAUDE.md](CLAUDE.md) for the non-negotiable invariants this implements.
 
 ## Running the stack locally
 
@@ -11,7 +11,7 @@ cp .env.example .env
 
 docker compose up -d --build
 docker compose run --rm django python manage.py migrate
-docker compose run --rm django python manage.py setup_groups     # creates Admin/Viewer groups
+docker compose run --rm django python manage.py setup_groups     # creates the 5 RBAC groups
 docker compose run --rm django python manage.py createsuperuser  # for /admin/
 ```
 
@@ -85,7 +85,7 @@ All five checks above were run and passed against this exact scaffold. Tear down
 - **Sending-domain SPF/DKIM/DMARC + a real mail-security-gateway test.** Needs a real domain and real infra this repo can't provide — do this against the actual deployment host before Phase 0 is considered complete for real use.
 - **VPN/SSH-tunnel access to the Django dashboard on a real host.** Also host infrastructure, not something Docker Compose alone can set up.
 - **Gophish's actual admin setup**: on first boot Gophish generates an admin password (check its logs: `docker compose logs gophish`) and an API key. Copy the API key into `.env` (`GOPHISH_API_KEY`) once you have it — the `GophishClient` adapter needs it to actually launch campaigns.
-- **Custom HTMX dashboard templates, granular RBAC beyond Admin/Viewer, risk scoring** — deliberately deferred; Django admin is the interim UI.
+- **Custom HTMX dashboard templates, risk scoring (Phase 4), reporting (Phase 5)** — deliberately deferred; Django admin is the interim UI.
 - **MFA on admin login** — explicitly out of scope for now by user decision (see CLAUDE.md invariant #7), not a deferral. Admin login is plain Django session auth. Revisit before this handles anything beyond local dev/testing.
 - **Employee self-service training/quiz UI, real SMTP for reminders, training content authoring** — Phase 2 scope, deliberately deferred (see CLAUDE.md).
 - `apps/risk_scoring` — still an empty app skeleton, Phase 4.
@@ -100,3 +100,7 @@ See `CLAUDE.md` → "Open decisions". Two are partially addressed by this scaffo
 ## Subagents & skills
 
 `.claude/agents/` and `.claude/skills/` have project-scoped subagents and reference material for backend, frontend, database, architecture review, security review, debugging, and testing. See `CLAUDE.md` for the index.
+
+## Campaign workflow & roles (Phase 3)
+
+`setup_groups` creates five groups: **Security Admin** (everything, incl. approving campaigns), **Campaign Manager** (create/edit/submit campaigns, cannot approve), **Training Manager** (training models), **Report Viewer** (view-only), **Department Manager** (change access scoped to departments listed in `Department.managers`; assign a user there *and* to the group). Campaign lifecycle: `Draft → Submit for approval → Approve (Security Admin only) → Launch` (manually, or automatically at `scheduled_at` via Celery Beat every 5 min). Launch syncs the target department's non-exempt employees into a Gophish group first, and is capped by `CAMPAIGN_LAUNCH_RATE_LIMIT` per 24h. Each campaign row has a **Preview** link that renders the landing page HTML fetched from Gophish.

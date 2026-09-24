@@ -33,7 +33,7 @@ Run this checklist on top of (not instead of) general code quality review. Each 
 - [ ] MFA is explicitly out of scope for now (CLAUDE.md invariant #7, dropped by user decision) — don't flag its absence as a finding; do flag any hand-rolled auth logic that bypasses Django's own session auth.
 
 ## New model / new app (added after Phase 2 review found this gap twice-removed)
-- [ ] Is every new model added to `apps/core/management/commands/setup_groups.py`'s `MANAGED_MODELS`? A model missing from that list gets **zero** Admin/Viewer permissions — even the "Admin" group can't touch it without superuser. This was missed for all six Phase 2 training models on first landing; there's no system check that catches it, so it has to be checked by hand every time.
+- [ ] Is every new model added to `apps/core/management/commands/setup_groups.py`'s `MANAGED_MODELS`? A model missing from that list gets **zero** permissions for every group — even Security Admin can't touch it without superuser. This was missed for all six Phase 2 training models on first landing; there's no system check that catches it, so it has to be checked by hand every time.
 - [ ] Does every new `ModelAdmin` that supports create/update/delete use `AuditedAdminMixin` for consistency with the rest of the codebase? If a custom admin action does a bulk `.update()`/`.delete()` (bypasses `save_model`/`delete_model`), does it log explicitly (see `CampaignAdmin.launch_campaign`, `TrainingAssignmentAdmin.mark_started` for the pattern)?
 
 ## Network / secrets
@@ -46,3 +46,6 @@ Run this checklist on top of (not instead of) general code quality review. Each 
 - [ ] Does the change assume RBAC/roles beyond what's been built yet, or skip audit logging for a sensitive action (campaign launch, target-list change, data export) that should be logged per Phase 1 scope?
 
 If every box above is empty, defer to the general `code-review` skill for correctness/simplification/efficiency review of the diff itself.
+
+- [ ] Does any new admin view/URL fetch objects via `Model.objects` instead of `self.get_queryset(request)`? That bypasses Department Manager row-scoping (found in Phase 3 review on the landing-page preview).
+- [ ] Does anything launch a campaign other than `campaigns/services.py::launch_campaign()`? It owns approval, rate limit, and exemption filtering — a second path skips all three.

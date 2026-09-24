@@ -75,3 +75,9 @@ No unique constraint on `employee_id` — multiple rows per employee over time a
 - Any migration that drops a column, drops a table, or narrows a type is treated as a destructive operation — confirm with the user before writing/running it, per the project's general safety rules around irreversible actions. Prefer additive migrations (add nullable column, backfill, then constrain) over one-shot destructive changes.
 - Never write a migration that adds a column resembling `password`/`credential`/`secret` to any table — if a task seems to need this, stop and flag it; it violates a hard project invariant.
 - Index new foreign keys and any column used in a `WHERE`/`ORDER BY` on the dashboard's hot paths (`events_event.occurred_at`, `riskscoresnapshot.computed_at`) at the time you add the column, not as an afterthought.
+
+## Phase 3 additions
+
+- `campaigns_campaign.status` values: `draft`, `pending_approval`, `approved`, `launched`. New nullable FKs to auth user: `submitted_by`/`approved_by` (+ `submitted_at`/`approved_at`). `scheduled_at` (Phase 1 column) is now acted on: an `approved` campaign with `scheduled_at <= now` is launched by the scheduler. Meta permission `approve_campaign`.
+- `employees_department.managers` — M2M to auth user (login/permission fact: who may manage this department in the admin). Distinct from the existing `manager` FK to Employee (org-chart fact). Don't conflate them.
+- The launch rate limit is computed from `core_auditlogentry` rows with `action="campaign_launched"` in the trailing 24h — no separate counter table.

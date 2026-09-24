@@ -115,6 +115,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.training.tasks.send_training_reminders",
         "schedule": 3600.0,  # hourly — the task itself enforces the 24h-per-assignment cooldown
     },
+    "launch-scheduled-campaigns": {
+        "task": "apps.campaigns.tasks.launch_scheduled_campaigns",
+        "schedule": 300.0,  # every 5 minutes
+    },
 }
 
 # --- Email (training reminders) ---
@@ -122,6 +126,11 @@ CELERY_BEAT_SCHEDULE = {
 # deployment, same pattern as DJANGO_SETTINGS_MODULE per-environment.
 EMAIL_BACKEND = env("DJANGO_EMAIL_BACKEND", default="django.core.mail.backends.console.EmailBackend")
 DEFAULT_FROM_EMAIL = env("DJANGO_DEFAULT_FROM_EMAIL", default="noreply@example.com")
+
+# --- Campaign launch rate limiting (Phase 3) ---
+# Applies to both the admin "Launch" action and the scheduler — see
+# apps/campaigns/services.py::launch_campaign(), the one shared launch path.
+CAMPAIGN_LAUNCH_RATE_LIMIT = env.int("CAMPAIGN_LAUNCH_RATE_LIMIT", default=5)
 
 # --- Gophish adapter config (consumed by apps.engine.GophishClient, Phase 1) ---
 GOPHISH_API_URL = env("GOPHISH_API_URL", default="")

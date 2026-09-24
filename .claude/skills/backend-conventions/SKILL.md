@@ -70,3 +70,11 @@ Views, models, and Celery tasks depend on this interface via dependency injectio
 
 - Webhook signature failures, adapter call failures, and reconciliation mismatches log at `WARNING`+ with enough context (campaign id, external_id) to debug without needing to reproduce — these are the failure modes the `debugger` project skill/agent will look for first.
 - Don't swallow exceptions from `PhishingEngineClient` calls silently — either handle a specific, expected failure mode or let it propagate/alert.
+
+## Shared launch path & RBAC (Phase 3)
+
+- **Never launch a campaign anywhere except `campaigns/services.py::launch_campaign(campaign, actor, client)`.** The admin action and the `launch_scheduled_campaigns` Celery task both call it; it owns the approval-state check, rate limit, exemption-filtered group sync, the Gophish call, and the audit entry. It raises `CampaignLaunchError` (never returns a bool) so callers can't ignore a failure. `actor=None` is valid (scheduler).
+- **Exemptions are enforced only by the `is_exempt=False` filter inside that service** — Gophish knows nothing about them. `PhishingEngineClient.sync_target_group()` makes the Gophish group exactly match the contacts passed in.
+- **Row-level scoping is admin code, not Django permissions.** Django's permission framework is model-level only. Department Manager scoping is `DepartmentScopedAdminMixin.get_queryset()`; any new admin view/URL you add (e.g. the landing-page preview) must fetch objects via `self.get_queryset(request)`, never `Model.objects`, or it silently bypasses scoping — a real bug found in review.
+- Custom permissions (`campaigns.approve_campaign`) are how "who may approve" differs from "who may edit"; gate actions with `require_permission()`.
+- Add every new task to `CELERY_BEAT_SCHEDULE` (already burned us once).

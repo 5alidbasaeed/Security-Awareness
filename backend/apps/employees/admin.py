@@ -3,15 +3,16 @@ import csv
 from django.contrib import admin
 from django.http import HttpResponse
 
-from apps.core.admin_mixins import AuditedAdminMixin
+from apps.core.admin_mixins import AuditedAdminMixin, DepartmentScopedAdminMixin
 from apps.core.audit import log_action
 
 from .models import Department, Employee
 
 
 @admin.register(Employee)
-class EmployeeAdmin(AuditedAdminMixin, admin.ModelAdmin):
+class EmployeeAdmin(DepartmentScopedAdminMixin, AuditedAdminMixin, admin.ModelAdmin):
     audit_object_name = "employee"
+    department_lookup = "department"
     list_display = ("full_name", "email", "department", "is_exempt", "created_at")
     list_filter = ("department", "is_exempt")
     search_fields = ("full_name", "email")
@@ -49,3 +50,4 @@ class DepartmentAdmin(AuditedAdminMixin, admin.ModelAdmin):
     audit_object_name = "department"
     list_display = ("name", "manager")
     search_fields = ("name",)
+    filter_horizontal = ("managers",)

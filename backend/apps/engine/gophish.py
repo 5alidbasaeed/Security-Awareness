@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 
 import requests
 
-from .base import EngineEvent, ExternalCampaignRef, PhishingEngineClient
+from .base import EngineEvent, ExternalCampaignRef, ExternalGroupRef, PhishingEngineClient, TargetContact
 
 # Gophish's `timeline` entries (and its webhook payloads — same vocabulary)
 # use free-text `message` values, not a stable event-type enum. This mapping
@@ -47,6 +47,46 @@ class GophishClient(PhishingEngineClient):
 
     def _headers(self) -> dict:
         return {"Authorization": f"Bearer {self._api_key}", "Content-Type": "application/json"}
+
+    def _find_by_name(self, list_endpoint: str, name: str) -> dict | None:
+        """Gophish's REST API has no get-by-name endpoint for groups/pages — list and filter
+        client-side. Fine at this project's scale (hundreds to a few thousand employees, not
+        thousands of groups/pages)."""
+        response = requests.get(f"{self._base_url}{list_endpoint}", headers=self._headers(), timeout=self._timeout)
+        response.raise_for_status()
+        for item in response.json():
+            if item.get("name") == name:
+                return item
+        return None
+
+    def sync_target_group(self, *, name: str, contacts: list[TargetContact]) -> ExternalGroupRef:
+        targets = [
+            {"email": c.email, "first_name": c.first_name, "last_name": c.last_name, "position": ""}
+            for c in contacts
+        ]
+        existing = self._find_by_name("/api/groups/", name)
+        if existing is None:
+            response = requests.post(
+                f"{self._base_url}/api/groups/",
+                json={"name": name, "targets": targets},
+                headers=self._headers(),
+                timeout=self._timeout,
+            )
+        else:
+            response = requests.put(
+                f"{self._base_url}/api/groups/{existing['id']}",
+                json={"id": existing["id"], "name": name, "targets": targets},
+                headers=self._headers(),
+                timeout=self._timeout,
+            )
+        response.raise_for_status()
+        return ExternalGroupRef(external_id=str(response.json()["id"]))
+
+    def get_landing_page_html(self, page_name: str) -> str:
+        page = self._find_by_name("/api/pages/", page_name)
+        if page is None:
+            raise ValueError(f"No Gophish landing page named {page_name!r}")
+        return page.get("html", "")
 
     def create_campaign(
         self,

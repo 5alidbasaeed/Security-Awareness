@@ -11,6 +11,8 @@ class Campaign(models.Model):
 
     class Status(models.TextChoices):
         DRAFT = "draft"
+        PENDING_APPROVAL = "pending_approval"
+        APPROVED = "approved"
         LAUNCHED = "launched"
 
     name = models.CharField(max_length=200)
@@ -31,12 +33,33 @@ class Campaign(models.Model):
         related_name="campaigns",
         help_text="Auto-assigned to an employee who fails this campaign's simulation (clicks or submits data).",
     )
-    status = models.CharField(max_length=16, choices=Status.choices, default=Status.DRAFT)
-    scheduled_at = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT)
+    scheduled_at = models.DateTimeField(
+        null=True, blank=True, help_text="If set and the campaign is Approved, launches automatically at this time."
+    )
     launched_at = models.DateTimeField(null=True, blank=True)
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="campaigns"
     )
+    submitted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="submitted_campaigns",
+    )
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="approved_campaigns",
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        permissions = [("approve_campaign", "Can approve a campaign for launch")]
 
     def __str__(self):
         return self.name

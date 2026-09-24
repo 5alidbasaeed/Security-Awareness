@@ -16,9 +16,9 @@ class _DummyMessages:
         pass
 
 
-def test_viewer_cannot_export_employee_csv(rf: RequestFactory, django_user_model):
+def test_report_viewer_cannot_export_employee_csv(rf: RequestFactory, django_user_model):
     SetupGroupsCommand().handle()
-    viewer_group = Group.objects.get(name="Viewer")
+    viewer_group = Group.objects.get(name="Report Viewer")
     user = django_user_model.objects.create_user(username="viewer", password="x")
     user.groups.add(viewer_group)
     user = django_user_model.objects.get(pk=user.pk)  # fresh instance, no stale perm cache

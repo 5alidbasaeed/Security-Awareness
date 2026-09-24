@@ -18,6 +18,21 @@ class ExternalCampaignRef:
 
 
 @dataclass(frozen=True)
+class ExternalGroupRef:
+    external_id: str
+
+
+@dataclass(frozen=True)
+class TargetContact:
+    """One row of a target group — deliberately not an Employee: the adapter
+    boundary shouldn't know about Django models, see CLAUDE.md invariant #1."""
+
+    email: str
+    first_name: str = ""
+    last_name: str = ""
+
+
+@dataclass(frozen=True)
 class EngineEvent:
     external_id: str
     event_type: str
@@ -26,6 +41,12 @@ class EngineEvent:
 
 
 class PhishingEngineClient(ABC):
+    @abstractmethod
+    def sync_target_group(self, *, name: str, contacts: list[TargetContact]) -> ExternalGroupRef:
+        """Creates the group if it doesn't exist, or replaces its target list if it does —
+        always leaves the group's membership exactly matching `contacts`."""
+        ...
+
     @abstractmethod
     def create_campaign(
         self,
@@ -43,3 +64,8 @@ class PhishingEngineClient(ABC):
 
     @abstractmethod
     def get_campaign_results(self, external_campaign_id: str) -> list[EngineEvent]: ...
+
+    @abstractmethod
+    def get_landing_page_html(self, page_name: str) -> str:
+        """Fetches a landing page's raw HTML by name, for the dry-run/preview feature."""
+        ...
