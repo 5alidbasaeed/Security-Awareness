@@ -8,5 +8,6 @@ urlpatterns = [
     path("healthz", healthz, name="healthz"),
     path("webhooks/", include("apps.events.urls")),
     path("analytics/", include("apps.risk_scoring.urls")),
+    path("reports/", include("apps.reporting.urls")),
     path("", include("apps.dashboard.urls")),
 ]

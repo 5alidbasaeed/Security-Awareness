@@ -48,6 +48,13 @@ Run this checklist on top of (not instead of) general code quality review. Each 
 - [ ] Is a derived fact (`passed`) also a hand-editable field that can contradict its source (`score_percent`)?
 - [ ] Is the web server timeout longer than the sum of the external calls a request chains?
 
+## Reporting (Phase 5)
+- [ ] Does a report read snapshots or current state instead of recomputing "as of" the report date from the event log? Historical reports must be reproducible.
+- [ ] Does a new report name individuals without `employee_level=True` (and so the `export_employee_level` permission)? Can a Department Manager's report include another department?
+- [ ] Are generation and download both audit-logged, and is the archived file left immutable?
+- [ ] Are user-controlled strings escaped in the PDF (`xml.sax.saxutils.escape`) and passed through `csv_safe` in CSV?
+- [ ] Is a listing query pulling the `content` bytes instead of using `.without_content()`?
+
 ## Dashboard / frontend (Phase 4.1)
 - [ ] Does a new dashboard view start from `dashboard/scope.py` (never `Model.objects`) and use `@dashboard_access`?
 - [ ] Does a template add an inline `style=`/`<script>`/`onclick=`, or load anything from another origin? The dashboard CSP forbids it.

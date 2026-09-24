@@ -1,5 +1,8 @@
 from .access import CONTENT_SECURITY_POLICY
 
+# URL namespaces rendered with the dashboard chrome (and so held to its strict CSP).
+DASHBOARD_APPS = {"dashboard", "reporting"}
+
 
 class DashboardSecurityHeadersMiddleware:
     """
@@ -13,7 +16,7 @@ class DashboardSecurityHeadersMiddleware:
     def __call__(self, request):
         response = self.get_response(request)
         match = getattr(request, "resolver_match", None)
-        if match is not None and match.app_name == "dashboard":
+        if match is not None and match.app_name in DASHBOARD_APPS:
             response["Content-Security-Policy"] = CONTENT_SECURITY_POLICY
             response["Referrer-Policy"] = "same-origin"
             response["X-Content-Type-Options"] = "nosniff"

@@ -18,7 +18,7 @@ An internal, self-hosted platform (similar in concept to KnowBe4 / Proofpoint Se
 ## Non-Goals (for MVP)
 
 - Commercial multi-tenant SaaS
-- SMS/voice phishing (vishing/smishing) simulation
+- SMS/voice phishing (vishing/smishing) simulation (revisit as optional in Phase 6.4)
 - MFA/session-cookie capture (advanced red-team style attack simulation)
 - Multi-org/reseller support
 
@@ -162,8 +162,58 @@ Move off single-server only when one of these occurs:
 2. **Phase 1 — Core simulation loop**: Employee management; campaign management; Gophish API/webhook integration; event log implementation; campaign sending; tracking; basic dashboard. **Also includes, moved up from later phases**: basic role separation (admin vs. viewer, via Django's built-in permissions) and basic audit logging for campaign launch, target-list changes, and data export — these are cheap now and very costly to add retroactively once real campaigns have already run without an audit trail.
 3. **Phase 2 — Training loop**: Training modules; quizzes; automatic assignment after simulation failure; completion tracking; reminders via Celery Beat.
 4. **Phase 3 — Management/security hardening**: Granular RBAC (Security Admin, Campaign Manager, Training Manager, Report Viewer, Department Manager); departments; exemption lists; campaign approval workflow; scheduling; expanded audit log UI; send-rate limiting; landing-page dry-run/preview before launch.
-5. **Phase 4 — Analytics**: Full risk-scoring model (click rate, credential-attempt rate, report rate, training completion, repeat failures, weighted per the Risk Scoring section above); department and individual trend views.
-6. **Phase 5 — Reporting**: CSV/PDF export; compliance evidence packages; historical report generation.
+5. **Phase 4 — Analytics** *(built)*: Full risk-scoring model (click rate, credential-attempt rate, report rate, training completion, repeat failures, weighted per the Risk Scoring section above); department and individual trend views. Delivered as versioned, append-only score snapshots (algorithm `v1`), event-triggered plus daily recompute, and a department-scoped analytics API.
+6. **Phase 4.1 — Custom dashboard** *(built)*: read-only staff dashboard (Django templates + HTMX + Chart.js, self-hosted, strict CSP): overview, campaigns and funnel, employees, departments, training. Management stays in Django admin.
+7. **Phase 5 — Reporting** *(built)*: CSV/PDF export; compliance evidence packages; historical report generation. Delivered as an immutable, hashed, audit-logged report archive; "as of" reports recomputed from the event log so any past date is reproducible; a ZIP evidence package with a SHA-256 manifest; a monthly executive summary generated automatically; aggregate reports for report roles, individual-level reports Security-Admin-only, Department Managers scoped to their departments.
+8. **Phase 6 — Adoption and program maturity** *(planned; see below)*.
+
+### Phase 6 — Adoption and program maturity
+
+Inputs: two items carried over from earlier phases, plus the gaps found in the competitive comparison below. Sub-phases are ordered by value; each ends with a review pass like Phases 0-5.
+
+**6.1 Self-service (carried over)**
+- **Employee training portal.** Employees sign in (OIDC/SSO via the company IdP; a magic-link fallback if no IdP is available) and see only their own data: assigned training with due dates, a start/complete flow, and the quiz. Quiz scoring reuses the existing pure `score_quiz()` function; a passing attempt completes the assignment; a completion certificate is issued. Done when an employee can go from the reminder email to a completed, scored assignment without staff involvement, and cannot see anyone else's data.
+- **Campaign builder in the dashboard.** A guided create-campaign flow (template, landing page, audience, schedule, training module) that reads the available Gophish templates, pages and sending profiles through `PhishingEngineClient` (new list methods), previews the landing page, and submits for approval; plus an approval queue where a Security Admin approves or rejects with a reason. It must use the existing `launch_campaign()` path, permissions and audit log, never a second launch path. Done when a Campaign Manager can create, submit and schedule a campaign, and a Security Admin can approve it, without opening Django admin.
+
+**6.2 Close the biggest competitive gaps**
+- **Employee import and directory sync.** CSV import first, then IdP/HRIS sync (Entra ID / Google Workspace / Okta / LDAP) for joiners, movers and leavers, with offboarding that deactivates rather than deletes (event history is immutable). New hires optionally get a baseline campaign.
+- **Report button and teachable moment.** A phish-report button (Outlook/Gmail add-in or a forward-to mailbox) feeding `phishing_reported`, plus an immediate "this was a simulation, here is what to look for" page after a click. Real reported emails go to a simple triage queue. The report button is the strongest positive signal the scoring model already rewards but nothing can currently produce.
+- **Template library, recurring and adaptive campaigns.** Curated templates with category and difficulty tags and rotation (addresses the "content decay" risk), recurring/drip schedules with randomized send times, and smart groups (dynamic audiences such as repeat clickers, new hires, high-risk) with difficulty that adapts to each person.
+- **Policy-driven training and escalation.** Annual/mandatory awareness enrolment (not only failure-driven), configurable due dates, and manager escalation for overdue or repeat-failure employees.
+- **Scheduled reports and a read-only API.** Emailed monthly reports to named recipients, and a token-authenticated read-only reporting API for BI/SIEM use.
+
+**6.3 Engagement and integrations**
+- Real-time coaching messages (Slack/Teams/email) at the moment of failure; gamification (badges, streaks, team leaderboards, points for reporting) designed to reward reporting rather than shame failure; SIEM/webhook export; a baseline-versus-current improvement (ROI) report; localization including right-to-left languages.
+
+**6.4 Advanced and optional**
+- QR-code, attachment and reply-to (BEC) simulations; smishing/vishing (would reverse a current Non-Goal, so decide deliberately); privacy controls (retention policy, anonymization, minimum cohort size before a department is reported); deliverability pre-flight checks (SPF/DKIM/DMARC verification and a seed-inbox test).
+
+**Before real use (not a feature phase, but blocks production):** the Phase 0 domain/SPF/DKIM/DMARC and mail-gateway validation; a decision on admin MFA/SSO (currently dropped, see CLAUDE.md invariant #7); HSTS and proxy-SSL settings for the production settings module; the upstream-versus-fork decision for Gophish; VPN/tunnel access to the internal network.
+
+## Competitive Gap Analysis (input to Phase 6)
+
+Compared against KnowBe4, Hoxhunt, Proofpoint Security Awareness, Cofense and Sophos Phish Threat. Rows marked † are stated on the vendors' own documentation or comparison pages retrieved 2026-09-24 (links below); the others reflect general knowledge of the category and should be re-verified before committing scope.
+
+| Capability | What leading platforms do | This platform today | Planned |
+|---|---|---|---|
+| Report-a-phish button + triage | KnowBe4 Phish Alert Button with PhishER prioritization†; Cofense Reporter and Triage†; Hoxhunt rewards reporting of real threats† | `phishing_reported` event and scoring credit exist, but no button and no intake | 6.2 |
+| Just-in-time coaching | KnowBe4 Real-Time Coaching delivers a contextual tip in Teams, Slack, Google Chat or email at the moment of risky behavior† | Training assigned on failure, hourly email reminders | 6.2 (teachable-moment page), 6.3 (chat) |
+| Adaptive, personalized campaigns | Hoxhunt individual learning paths and difficulty that adapts to skill, role and location, roughly every 10 days†; KnowBe4 AI-recommended campaigns and Smart Groups† | Manual campaigns to one department | 6.2 |
+| Template library and realism | KnowBe4 large template library†; Proofpoint simulations based on live threat data† | Templates are hand-made in Gophish | 6.2 (library, rotation) |
+| Gamification | Hoxhunt badges, streaks, leaderboards† | None | 6.3 |
+| Training content | Large multi-language libraries (Cofense courses in 30+ languages†); SCORM/xAPI hosting | One external link per module, staff-recorded completion | 6.1 (portal), 6.2 (policy-driven), 6.3 (localization) |
+| Risk model | KnowBe4 SmartRisk score at user, group and organization level†; Proofpoint AI-driven user risk scoring† | Versioned simulation-only score with trends and drivers (comparable, and more auditable) | Done (Phase 4); external signals not planned |
+| Directory sync | AD/Entra/Okta/Google sync for joiners, movers and leavers | Manual entry in admin; no import at all | 6.2 |
+| Employee self-service | Employee portal with own progress and certificates | None (staff-recorded) | 6.1 |
+| Campaign creation UX | Wizard with template picker, audience and scheduling | Django admin plus a hand-made Gophish setup | 6.1 |
+| Reporting | Compliance dashboards†, scheduled reports, API | On-demand PDF/CSV, evidence package, monthly archive, as-of history | Done (Phase 5); scheduled email and API in 6.2 |
+| Integrations | SIEM, chat, ticketing; tight coupling to the vendor's email security (Proofpoint, Sophos Central)† | Signed webhooks in only | 6.3 |
+| Other channels | QR, attachments, reply-to, SMS, voice | Email links only | 6.4 (optional) |
+| Privacy and governance | Retention and anonymization options | Audit log, RBAC, no retention policy | 6.4 |
+
+Where this platform is already ahead: full ownership of data and the event log, immutable and reproducible "as of" history, a transparent versioned risk algorithm, no per-seat cost, and network isolation as a hard requirement. Deliberately not pursued: multi-tenancy/reseller support, a bundled commercial content library (license one instead), and AI-generated templates.
+
+Sources: [KnowBe4 Phish Alert Button manual](https://support.knowbe4.com/hc/en-us/articles/208969608-Phish-Alert-Button-PAB-Product-Manual), [PhishER manual](https://support.knowbe4.com/hc/en-us/articles/360010802673-PhishER-Product-Manual), [Real-Time Coaching](https://support.knowbe4.com/hc/en-us/articles/6654432814355-SecurityCoach-Product-Manual), [SmartRisk Engine FAQ](https://support.knowbe4.com/hc/en-us/articles/40003728753171-FAQ-SmartRisk-Engine-and-Risk-Score-Guide), [Hoxhunt phishing training](https://hoxhunt.com/product/phishing-training), [KnowBe4 vs Proofpoint (Hoxhunt)](https://hoxhunt.com/blog/knowbe4-vs-proofpoint), [Cofense and Sophos comparison (Guardey)](https://www.guardey.com/phishing-simulation-software/).
 
 ## Key Risks / Open Questions
 

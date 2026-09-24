@@ -101,6 +101,10 @@ See `CLAUDE.md` → "Open decisions". Two are partially addressed by this scaffo
 
 `.claude/agents/` and `.claude/skills/` have project-scoped subagents and reference material for backend, frontend, database, architecture review, security review, debugging, and testing. See `CLAUDE.md` for the index.
 
+## Reports (Phase 5)
+
+**Reports** in the dashboard nav (`/reports/`). Choose a report and a date range; figures are recomputed from the event log as of the end date, so any past period can be regenerated exactly (the same inputs give byte-identical PDF/ZIP files and the same SHA-256). Types: executive summary (PDF), campaign results, department summary, training compliance, employee risk scores (CSV), and a compliance evidence package (ZIP: summary PDF, results, training, audit log excerpt, methodology, `manifest.json` and `SHA256SUMS.txt`; verify with `sha256sum -c SHA256SUMS.txt`). Reports that name individuals (training compliance, risk scores, evidence package) are Security-Admin-only; Report Viewers, Campaign Managers and Department Managers get the aggregate ones, and Department Managers only for their own departments. Every generation and download is audit-logged, and generated files are immutable in the archive. A monthly org-wide executive summary is created automatically. PDF caveat: right-to-left scripts (Arabic, Hebrew) are not shaped in the PDF; the CSV exports keep all names intact.
+
 ## Dashboard (Phase 4.1)
 
 Open **http://localhost:8000/** (dev override, see above) and sign in with a staff account that can view risk data (Security Admin, Campaign Manager, Report Viewer, Department Manager — Department Managers see only their own departments). Pages: Overview, Campaigns (+ funnel per campaign), Employees (live search, sort, department filter; per-person score history and what drives the score), Departments, Training. It is read-only; create and edit things in **Manage** (`/admin/`). Charts and interactions are HTMX + Chart.js, self-hosted (no CDN), under a strict Content-Security-Policy.

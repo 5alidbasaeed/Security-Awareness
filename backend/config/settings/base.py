@@ -33,6 +33,7 @@ INSTALLED_APPS = [
     "apps.risk_scoring",
     "apps.engine",
     "apps.dashboard",
+    "apps.reporting",
 ]
 
 MIDDLEWARE = [
@@ -127,6 +128,11 @@ CELERY_BEAT_SCHEDULE = {
     # Event-triggered recomputes (risk_scoring.signals) cover the immediate updates.
     "recompute-risk-scores": {
         "task": "apps.risk_scoring.tasks.recompute_all_scores",
+        "schedule": 86400.0,
+    },
+    # Standing monthly archive: last month's org-wide executive summary (idempotent).
+    "monthly-executive-summary": {
+        "task": "apps.reporting.tasks.generate_monthly_executive_summary",
         "schedule": 86400.0,
     },
     "launch-scheduled-campaigns": {

@@ -80,6 +80,13 @@ Views, models, and Celery tasks depend on this interface via dependency injectio
 - Custom permissions (`campaigns.approve_campaign`) are how "who may approve" differs from "who may edit"; gate actions with `require_permission()`.
 - Add every new task to `CELERY_BEAT_SCHEDULE` (already burned us once).
 
+## Reporting (Phase 5)
+
+- One entry point: `reporting/services.py::generate_report(kind, user, period_start, period_end)`. It owns permission checks, scoping (`core.scoping.visible_*`), hashing, archiving and audit entries; `user=None` means the scheduler (aggregate reports only). Don't build files in views.
+- **Historical figures come from `ReportData` + `ScoreHistory` (event log as of the date), never from snapshots or "current" tables.** A report that reads today's state is wrong for any past date.
+- Renderers (`exports.py`, `pdf.py`, `evidence.py`) only format what `ReportData` returns. Every CSV cell goes through `csv_safe`; PDFs use `invariant=1` and ZIP entries a fixed timestamp so identical inputs give identical bytes.
+- New report kind = add a `KindSpec` in `services.py` (mark `employee_level=True` if it names people), a builder, and tests for the permission matrix and as-of behavior.
+
 ## Risk scoring (Phase 4)
 
 - The algorithm is a pure function (`risk_scoring/scoring.py`, no DB) — change scoring by adding a new `ALGORITHM_VERSION` there, never by editing v1 in place, then recompute. Snapshots are inserted, never updated.

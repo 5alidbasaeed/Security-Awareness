@@ -38,18 +38,19 @@ def rate(part: int, whole: int):
     return round(100 * part / whole, 1) if whole else None
 
 
-def campaign_summary(campaign) -> dict:
+def campaign_summary(campaign, until=None) -> dict:
     """
     Counts are distinct employees per event type. Rates use employees who were
     actually sent the email as the denominator. `opened` is a delivery
     diagnostic only — it never feeds a rate or a score (invariant #5).
     """
-    rows = Event.objects.filter(campaign=campaign).values("event_type").annotate(n=Count("employee", distinct=True))
+    events = Event.objects.filter(campaign=campaign)
+    if until is not None:
+        events = events.filter(occurred_at__lte=until)
+    rows = events.values("event_type").annotate(n=Count("employee", distinct=True))
     counts = {row["event_type"]: row["n"] for row in rows}
     failed = (
-        Event.objects.filter(
-            campaign=campaign, event_type__in=[Event.EventType.LINK_CLICKED, Event.EventType.CREDENTIAL_ATTEMPT]
-        )
+        events.filter(event_type__in=[Event.EventType.LINK_CLICKED, Event.EventType.CREDENTIAL_ATTEMPT])
         .values("employee")
         .distinct()
         .count()

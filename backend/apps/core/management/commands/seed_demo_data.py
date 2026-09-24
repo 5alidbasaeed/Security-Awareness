@@ -98,6 +98,9 @@ class Command(BaseCommand):
                 )
             people_by_department[department] = people
 
+        everyone_created = [p.pk for people in people_by_department.values() for p in people]
+        Employee.objects.filter(pk__in=everyone_created).update(created_at=now - timedelta(days=120))
+
         departments = list(people_by_department)
         events, launches = [], []
         for index, (name, days_ago) in enumerate(CAMPAIGNS):

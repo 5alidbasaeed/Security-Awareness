@@ -37,7 +37,8 @@ TRAINING_MODELS = [
     ("training", "quizattempt"),
 ]
 RISK_MODELS = [("risk_scoring", "riskscoresnapshot")]  # computed, read-only in the admin
-MANAGED_MODELS = EMPLOYEE_MODELS + CAMPAIGN_MODELS + EVENT_MODELS + CORE_MODELS + TRAINING_MODELS + RISK_MODELS
+REPORT_MODELS = [("reporting", "generatedreport")]  # immutable archive, read-only in the admin
+MANAGED_MODELS = EMPLOYEE_MODELS + CAMPAIGN_MODELS + EVENT_MODELS + CORE_MODELS + TRAINING_MODELS + RISK_MODELS + REPORT_MODELS
 
 
 def _perms_for(models, codename_prefixes=("add_", "change_", "delete_", "view_")):
@@ -65,7 +66,7 @@ class Command(BaseCommand):
 
         # Security Admin: everything, including the custom approve_campaign permission.
         security_admin_perms = list(_perms_for(MANAGED_MODELS)) + list(
-            Permission.objects.filter(codename="approve_campaign")
+            Permission.objects.filter(codename__in=["approve_campaign", "generate_report", "export_employee_level"])
         )
         security_admin.permissions.set(security_admin_perms)
 
@@ -73,14 +74,17 @@ class Command(BaseCommand):
         campaign_manager_perms = list(_perms_for(CAMPAIGN_MODELS, ("add_", "change_", "view_"))) + list(
             _perms_for(EMPLOYEE_MODELS + EVENT_MODELS + RISK_MODELS, ("view_",))
         )
-        campaign_manager.permissions.set(campaign_manager_perms)
+        campaign_manager.permissions.set(campaign_manager_perms + list(Permission.objects.filter(codename="generate_report")))
 
         # Training Manager: full control of training content/assignments, needs to see who employees are.
         training_manager_perms = list(_perms_for(TRAINING_MODELS)) + list(_perms_for(EMPLOYEE_MODELS, ("view_",)))
         training_manager.permissions.set(training_manager_perms)
 
         # Report Viewer: view-only, everywhere.
-        report_viewer.permissions.set(_perms_for(MANAGED_MODELS, ("view_",)))
+        # Report Viewer generates aggregate reports; naming individuals (export_employee_level) stays Security-Admin-only.
+        report_viewer.permissions.set(
+            list(_perms_for(MANAGED_MODELS, ("view_",))) + list(Permission.objects.filter(codename="generate_report"))
+        )
 
         # Department Manager: change employees/campaigns (row-scoping is admin-code, see module docstring).
         # Department itself is view-only: change_department would let them add
@@ -88,7 +92,10 @@ class Command(BaseCommand):
         department_manager_perms = list(
             _perms_for([("employees", "employee")] + CAMPAIGN_MODELS, ("change_", "view_"))
         ) + list(_perms_for([("employees", "department")] + RISK_MODELS, ("view_",)))
-        department_manager.permissions.set(department_manager_perms)
+        # Department Managers may generate aggregate reports, automatically limited to their own departments.
+        department_manager.permissions.set(
+            department_manager_perms + list(Permission.objects.filter(codename="generate_report"))
+        )
 
         self.stdout.write(
             self.style.SUCCESS(

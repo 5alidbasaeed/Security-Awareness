@@ -1,0 +1,81 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Reports{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div>
+    <h1>Reports</h1>
+    <p class="page-header__sub">Generate exports for leadership and auditors. Every report is archived, hashed and audit-logged.</p>
+  </div>
+</header>
+
+<div class="stack">
+  <section class="card" aria-labelledby="generate-heading">
+    <div class="card__header">
+      <h2 id="generate-heading">Generate a report</h2>
+      <span class="card__note">Figures are recomputed from the event log as it stood on the end date</span>
+    </div>
+    <div class="card__body">
+      <form method="post" action="{% url 'reporting:index' %}" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}<p class="form-error" role="alert">{{ form.non_field_errors.0 }}</p>{% endif %}
+        <div class="form-grid">
+          <div>
+            <label class="label" for="{{ form.kind.id_for_label }}">{{ form.kind.label }}</label>
+            {{ form.kind }}
+            {% for error in form.kind.errors %}<p class="form-error">{{ error }}</p>{% endfor %}
+          </div>
+          <div>
+            <label class="label" for="{{ form.period_start.id_for_label }}">{{ form.period_start.label }}</label>
+            {{ form.period_start }}
+            {% for error in form.period_start.errors %}<p class="form-error">{{ error }}</p>{% endfor %}
+          </div>
+          <div>
+            <label class="label" for="{{ form.period_end.id_for_label }}">{{ form.period_end.label }}</label>
+            {{ form.period_end }}
+            {% for error in form.period_end.errors %}<p class="form-error">{{ error }}</p>{% endfor %}
+          </div>
+          <div class="form-grid__action">
+            <button class="button" type="submit">Generate</button>
+          </div>
+        </div>
+      </form>
+      <ul class="kind-list">
+        {% for spec in kinds %}
+        <li><strong>{{ spec.label }}</strong> · {{ spec.file_format|upper }}{% if spec.employee_level %} <span class="badge">Names individuals</span>{% endif %}<span class="cell-meta">{{ spec.description }}</span></li>
+        {% endfor %}
+      </ul>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="archive-heading">
+    <div class="card__header"><h2 id="archive-heading">Archive</h2><span class="card__note">Reports are immutable; regenerate to get a new one</span></div>
+    <div class="card__body card--flush">
+      {% if page.object_list %}
+      <div class="table-wrap">
+        <table class="table">
+          <caption class="visually-hidden">Generated reports</caption>
+          <thead>
+            <tr><th scope="col">Report</th><th scope="col">Period</th><th scope="col">Generated</th><th scope="col" class="num">Size</th><th scope="col">SHA-256</th><th scope="col"><span class="visually-hidden">Download</span></th></tr>
+          </thead>
+          <tbody>
+            {% for r in page.object_list %}
+            <tr>
+              <td>{{ r.filename }}<span class="cell-meta">{{ r.get_kind_display }} · {{ r.scope_label }}</span></td>
+              <td>{{ r.period_start|date:"M j, Y" }} – {{ r.period_end|date:"M j, Y" }}</td>
+              <td>{{ r.generated_at|date:"M j, Y, H:i" }}<span class="cell-meta">{% if r.generated_by %}{{ r.generated_by.get_username }}{% else %}Scheduled{% endif %}</span></td>
+              <td class="num">{{ r.size_bytes|filesizeformat }}</td>
+              <td><code class="hash" title="{{ r.sha256 }}">{{ r.sha256|slice:":12" }}…</code></td>
+              <td><a href="{% url 'reporting:download' r.pk %}">Download</a></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% include "dashboard/_pagination.html" %}
+      {% else %}
+      <div class="empty"><strong>No reports yet</strong>Generate one above. A monthly executive summary is also created automatically.</div>
+      {% endif %}
+    </div>
+  </section>
+</div>
+{% endblock %}

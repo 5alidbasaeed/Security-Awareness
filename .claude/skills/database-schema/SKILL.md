@@ -76,6 +76,10 @@ No unique constraint on `employee_id` — multiple rows per employee over time a
 - Never write a migration that adds a column resembling `password`/`credential`/`secret` to any table — if a task seems to need this, stop and flag it; it violates a hard project invariant.
 - Index new foreign keys and any column used in a `WHERE`/`ORDER BY` on the dashboard's hot paths (`events_event.occurred_at`, `riskscoresnapshot.computed_at`) at the time you add the column, not as an afterthought.
 
+## Phase 5 additions
+
+- `reporting_generatedreport`: append-only archive (`AppendOnlyQuerySet` + `save()` guard). Columns: kind, file_format, filename, content_type, `content` (BinaryField, deferred in listings via `.without_content()`), `sha256`, size_bytes, row_count, period_start/end, `as_of`, algorithm_version, scope_label, `is_scoped`, `contains_employee_data`, generated_by (null = scheduler), generated_at. Custom permissions `generate_report` and `export_employee_level`. Content lives in Postgres deliberately (no media volume to back up separately); revisit with a retention policy if the archive grows.
+
 ## Phase 4 additions
 
 - `risk_scoring_riskscoresnapshot` as specced above, built. Append-only via `core.managers.AppendOnlyQuerySet` (shared with `events`) plus a `save()` guard. Employee FK is CASCADE (derived data, unlike the event log's PROTECT). "Current score" = `risk_scoring.services.latest_snapshots()`. Tests that need a backdated `computed_at` must use raw SQL (auto_now_add + blocked `update()`).

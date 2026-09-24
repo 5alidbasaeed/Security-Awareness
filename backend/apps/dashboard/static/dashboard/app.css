@@ -253,6 +253,14 @@ progress.progress--low::-moz-progress-bar { background: var(--risk-low); }
 .form-row + .form-row { margin-top: var(--s4); }
 .form-error { color: var(--risk-high-text); font-size: var(--text-sm); margin-bottom: var(--s4); }
 
+/* ---- Forms / flash / reports ------------------------------------------- */
+.form-grid { display: grid; gap: var(--s4); grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr)); align-items: end; }
+.form-grid .field, .form-grid .select { width: 100%; max-width: none; }
+.flash { padding: var(--s3) var(--s4); border-radius: var(--radius-sm); font-size: var(--text-sm); margin-bottom: var(--s4); background: color-mix(in srgb, var(--risk-low) 12%, transparent); color: var(--risk-low-text); }
+.flash--error { background: color-mix(in srgb, var(--risk-high) 12%, transparent); color: var(--risk-high-text); }
+.kind-list { list-style: none; margin: var(--s5) 0 0; padding: var(--s4) 0 0; border-top: 1px solid var(--border); display: grid; gap: var(--s3); font-size: var(--text-sm); }
+.hash { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: var(--text-xs); color: var(--text-secondary); }
+
 /* ---- Responsive -------------------------------------------------------- */
 @media (max-width: 40rem) {
   .container { padding: 0 var(--s4); }

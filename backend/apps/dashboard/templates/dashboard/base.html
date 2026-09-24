@@ -24,6 +24,7 @@
         <li><a class="nav__link" href="{% url 'dashboard:employees' %}"{% if active == "employees" %} aria-current="page"{% endif %}>Employees</a></li>
         <li><a class="nav__link" href="{% url 'dashboard:departments' %}"{% if active == "departments" %} aria-current="page"{% endif %}>Departments</a></li>
         <li><a class="nav__link" href="{% url 'dashboard:training' %}"{% if active == "training" %} aria-current="page"{% endif %}>Training</a></li>
+        {% if perms.reporting.generate_report %}<li><a class="nav__link" href="{% url 'reporting:index' %}"{% if active == "reports" %} aria-current="page"{% endif %}>Reports</a></li>{% endif %}
       </ul>
       <div class="nav__user">
         <a href="{% url 'admin:index' %}">Manage</a>
@@ -39,6 +40,7 @@
 
   {% block main %}
   <main id="main" class="container">
+    {% if messages %}{% for message in messages %}<p class="flash flash--{{ message.level_tag }}" role="status">{{ message }}</p>{% endfor %}{% endif %}
     {% block content %}{% endblock %}
   </main>
   {% endblock %}
