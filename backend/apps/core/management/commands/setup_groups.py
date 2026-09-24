@@ -25,7 +25,7 @@ from django.core.management.base import BaseCommand
 from django.db.models import Q
 
 EMPLOYEE_MODELS = [("employees", "employee"), ("employees", "department")]
-CAMPAIGN_MODELS = [("campaigns", "campaign")]
+CAMPAIGN_MODELS = [("campaigns", "campaign"), ("campaigns", "campaigntemplate"), ("campaigns", "smartgroup")]
 EVENT_MODELS = [("events", "event")]
 CORE_MODELS = [("core", "auditlogentry")]
 TRAINING_MODELS = [

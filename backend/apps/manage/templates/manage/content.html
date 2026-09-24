@@ -3,7 +3,8 @@
 {% block content %}
 {% include "manage/_subnav.html" with manage_section="content" %}
 <header class="page-header"><div><h1>Content library</h1>
-<p class="page-header__sub">Email templates and landing pages held in the phishing engine.</p></div></header>
+<p class="page-header__sub">Email templates and landing pages held in the phishing engine.</p></div>
+{% if perms.campaigns.view_campaigntemplate %}<a class="button button--quiet" href="{% url 'manage:catalog' %}">Catalog &amp; audiences</a>{% endif %}</header>
 {% if engine_error %}<p class="flash flash--error" role="alert">Can't reach the phishing engine: {{ engine_error }}</p>{% endif %}
 <div class="grid-2">
   <section class="card">

@@ -16,6 +16,7 @@ from apps.core.models import AuditLogEntry
 from apps.employees.models import Employee
 from apps.engine.base import TargetContact
 
+from .audience import campaign_audience
 from .models import Campaign
 
 
@@ -99,8 +100,8 @@ def launch_campaign(campaign: Campaign, *, actor, client) -> Campaign:
             raise CampaignLaunchError(
                 f"{campaign} must be Approved before launching (currently {campaign.get_status_display()})."
             )
-        if not campaign.target_department:
-            raise CampaignLaunchError(f"{campaign} has no target department.")
+        if not campaign.target_department_id and not campaign.target_smart_group_id:
+            raise CampaignLaunchError(f"{campaign} has no target department or smart group.")
 
         # A previous attempt may have timed out after Gophish had already created (and sent) the
         # campaign, leaving it Approved here. Adopt that one — creating another would email
@@ -113,20 +114,20 @@ def launch_campaign(campaign: Campaign, *, actor, client) -> Campaign:
             # Exemption enforcement lives here, not in Gophish — is_exempt=False is
             # the only filter standing between "in this department" and "gets
             # targeted." See CLAUDE.md Phase 3 notes on why this didn't exist before.
-            employees = Employee.objects.filter(department=campaign.target_department, is_exempt=False, is_active=True)
+            employees, group_name = campaign_audience(campaign)
             contacts = [_contact_from_employee(e) for e in employees]
             if not contacts:
                 raise CampaignLaunchError(
-                    f"{campaign} has no eligible employees in {campaign.target_department} "
-                    "(everyone is exempt or the department is empty)."
+                    f"{campaign} has no eligible recipients "
+                    "(everyone is exempt/inactive, or the audience is empty)."
                 )
 
-            client.sync_target_group(name=campaign.target_department.name, contacts=contacts)
+            client.sync_target_group(name=group_name, contacts=contacts)
 
             ref = client.create_campaign(
                 name=engine_campaign_name(campaign),
                 template_id=campaign.template_name,
-                target_group_id=campaign.target_department.name,
+                target_group_id=group_name,
                 send_profile_id=settings.GOPHISH_DEFAULT_SEND_PROFILE,
                 page_id=campaign.landing_page_name,
                 url=campaign.landing_page_url,

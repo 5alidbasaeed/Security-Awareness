@@ -1,0 +1,20 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Catalog · Manage{% endblock %}
+{% block content %}
+{% include "manage/_subnav.html" with manage_section="content" %}
+<header class="page-header"><div><h1>Template catalog &amp; audiences</h1>
+<p class="page-header__sub">Tag content by category and difficulty so you can rotate it, and define dynamic audiences (repeat clickers, new hires, high risk) computed when a campaign launches.</p></div></header>
+<div class="grid-2">
+  <section class="card"><div class="card__header"><h2>Templates</h2>{% if can_edit %}<a href="{% url 'manage:catalog-template-new' %}">New</a>{% endif %}</div>
+    <div class="table-wrap"><table class="table"><thead><tr><th>Name</th><th>Category</th><th>Difficulty</th><th>Used</th><th class="num"></th></tr></thead>
+      <tbody>{% for t in templates %}<tr><td>{{ t.name }}{% if not t.is_active %} <span class="badge">Off</span>{% endif %}</td><td>{{ t.category|default:"—" }}</td><td>{{ t.get_difficulty_display }}</td><td>{{ t.times_used }}</td>
+        <td class="num">{% if can_edit %}<a href="{% url 'manage:catalog-template-edit' t.pk %}">Edit</a>{% endif %}</td></tr>
+      {% empty %}<tr><td colspan="5"><div class="empty"><strong>No catalog entries</strong></div></td></tr>{% endfor %}</tbody></table></div>
+  </section>
+  <section class="card"><div class="card__header"><h2>Smart groups</h2>{% if perms.campaigns.change_smartgroup %}<a href="{% url 'manage:smart-group-new' %}">New</a>{% endif %}</div>
+    <ul class="list">{% for g in smart_groups %}<li class="list__item"><span>{{ g.name }} <span class="cell-meta">{{ g.get_rule_display }}{% if g.department %} · {{ g.department }}{% endif %}</span></span>
+      {% if perms.campaigns.change_smartgroup %}<a href="{% url 'manage:smart-group-edit' g.pk %}">Edit</a>{% endif %}</li>
+    {% empty %}<li class="list__item"><span class="cell-meta">No smart groups.</span></li>{% endfor %}</ul>
+  </section>
+</div>
+{% endblock %}

@@ -16,6 +16,11 @@ urlpatterns = [
     path("campaigns/<int:pk>/launch/", views.campaign_launch, name="campaign-launch"),
 
     path("content/", views.content, name="content"),
+    path("content/catalog/", views.catalog, name="catalog"),
+    path("content/catalog/templates/new/", views.catalog_template_edit, name="catalog-template-new"),
+    path("content/catalog/templates/<int:pk>/edit/", views.catalog_template_edit, name="catalog-template-edit"),
+    path("content/catalog/smart-groups/new/", views.smart_group_edit, name="smart-group-new"),
+    path("content/catalog/smart-groups/<int:pk>/edit/", views.smart_group_edit, name="smart-group-edit"),
     path("content/templates/new/", views.template_new, name="template-new"),
     path("content/pages/new/", views.page_new, name="page-new"),
     path("content/pages/<str:name>/preview/", views.page_preview, name="page-preview"),

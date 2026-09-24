@@ -56,7 +56,7 @@ class CampaignForm(ScopedModelForm):
         model = Campaign
         fields = [
             "name", "template_name", "landing_page_name", "landing_page_url",
-            "target_department", "training_module", "scheduled_at",
+            "target_department", "target_smart_group", "training_module", "scheduled_at",
         ]
         widgets = {"scheduled_at": forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M")}
 
@@ -66,6 +66,7 @@ class CampaignForm(ScopedModelForm):
         self.fields["training_module"].required = False
         self.fields["scheduled_at"].required = False
         self.fields["target_department"].required = False
+        self.fields["target_smart_group"].required = False
 
 
 class TrainingModuleForm(forms.ModelForm):

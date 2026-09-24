@@ -97,3 +97,21 @@ def test_a_campaign_already_sent_by_a_timed_out_launch_is_adopted_not_sent_again
     assert campaign.status == Campaign.Status.LAUNCHED and campaign.gophish_campaign_id == "99"
     assert len(client.created_campaigns) == 1  # nothing new was created
     assert client.synced_groups == {}
+
+
+def test_launch_uses_a_smart_group_audience(settings):
+    from apps.campaigns.models import SmartGroup
+
+    settings.CAMPAIGN_LAUNCH_RATE_LIMIT = 5
+    EmployeeFactory()  # active, not exempt
+    EmployeeFactory(is_exempt=True)
+    group = SmartGroup.objects.create(name="Everyone active", rule=SmartGroup.Rule.ALL)
+    campaign = CampaignFactory(status=Campaign.Status.APPROVED, target_department=None, target_smart_group=group)
+    client = FakePhishingEngineClient()
+
+    launch_campaign(campaign, actor=None, client=client)
+
+    campaign.refresh_from_db()
+    assert campaign.status == Campaign.Status.LAUNCHED
+    # exempt employee excluded → exactly one contact synced
+    assert sum(len(v) for v in client.synced_groups.values()) == 1

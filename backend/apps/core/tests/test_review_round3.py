@@ -88,7 +88,7 @@ def test_launch_with_no_eligible_employees_is_a_clear_error():
     campaign = CampaignFactory(status=Campaign.Status.APPROVED, target_department=department)
     client = FakePhishingEngineClient()
 
-    with pytest.raises(CampaignLaunchError, match="no eligible employees"):
+    with pytest.raises(CampaignLaunchError, match="no eligible recipients"):
         launch_campaign(campaign, actor=None, client=client)
 
     assert client.created_campaigns == []

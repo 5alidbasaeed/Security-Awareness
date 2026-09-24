@@ -519,3 +519,71 @@ def schedule_edit(request, pk=None):
         "active": "manage", "form": form, "title": f"Edit {schedule}" if schedule else "New scheduled report",
         "back": reverse("manage:schedules"),
     })
+
+
+# --- template catalog & smart groups ----------------------------------------------------
+
+
+@manage_access("campaigns.view_campaigntemplate", methods=("GET",))
+def catalog(request):
+    from apps.campaigns.models import CampaignTemplate, SmartGroup
+
+    return render(request, "manage/catalog.html", {
+        "active": "manage",
+        "templates": CampaignTemplate.objects.all(),
+        "smart_groups": SmartGroup.objects.select_related("department").all(),
+        "can_edit": request.user.has_perm("campaigns.change_campaigntemplate"),
+    })
+
+
+@manage_access("campaigns.change_campaigntemplate")
+def catalog_template_edit(request, pk=None):
+    from apps.campaigns.models import CampaignTemplate
+
+    obj = get_object_or_404(CampaignTemplate, pk=pk) if pk else None
+    from django import forms as djf
+
+    Form = djf.modelform_factory(CampaignTemplate, fields=[
+        "name", "category", "difficulty", "template_name", "landing_page_name", "landing_page_url", "is_active"])
+    if request.method == "POST":
+        form = Form(request.POST, instance=obj)
+        if form.is_valid():
+            saved = form.save()
+            log_action(actor=request.user, action="campaign_template_saved", target_description=str(saved))
+            messages.success(request, "Saved.")
+            return redirect("manage:catalog")
+    else:
+        form = Form(instance=obj)
+    _apply_field_classes(form)
+    return render(request, "manage/simple_form.html", {"active": "manage", "form": form,
+                  "title": f"Edit {obj}" if obj else "New catalog template", "back": reverse("manage:catalog")})
+
+
+@manage_access("campaigns.change_smartgroup")
+def smart_group_edit(request, pk=None):
+    from apps.campaigns.models import SmartGroup
+
+    obj = get_object_or_404(SmartGroup, pk=pk) if pk else None
+    from django import forms as djf
+
+    Form = djf.modelform_factory(SmartGroup, fields=["name", "rule", "department", "new_hire_days"])
+    if request.method == "POST":
+        form = Form(request.POST, instance=obj)
+        if form.is_valid():
+            saved = form.save()
+            log_action(actor=request.user, action="smart_group_saved", target_description=str(saved))
+            messages.success(request, "Saved.")
+            return redirect("manage:catalog")
+    else:
+        form = Form(instance=obj)
+    _apply_field_classes(form)
+    return render(request, "manage/simple_form.html", {"active": "manage", "form": form,
+                  "title": f"Edit {obj}" if obj else "New smart group", "back": reverse("manage:catalog")})
+
+
+def _apply_field_classes(form):
+    from django import forms as djf
+
+    for field in form.fields.values():
+        widget = field.widget
+        widget.attrs.setdefault("class", "select" if isinstance(widget, djf.Select) else "field")
