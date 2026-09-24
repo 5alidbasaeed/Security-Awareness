@@ -43,5 +43,10 @@ class Employee(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        # Separate from change_employee: Department Managers can edit their own people but
+        # must not be able to pull the raw employee list out of the system.
+        permissions = [("export_employee_data", "Can export employee data as CSV")]
+
     def __str__(self):
         return f"{self.full_name} <{self.email}>"

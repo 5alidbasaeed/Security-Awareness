@@ -1,3 +1,16 @@
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings.dev"
 python_files = ["test_*.py"]
+
+[tool.ruff]
+line-length = 120
+extend-exclude = ["*/migrations/*"]
+
+[tool.ruff.lint]
+# Pinned so results don't depend on the installed ruff version's defaults. Correctness
+# (pyflakes, syntax/statement errors) and import order; Django-idiomatic
+# patterns such as mutable ModelAdmin class attributes (RUF012) are deliberately not enforced.
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["apps", "config"]

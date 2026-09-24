@@ -78,3 +78,22 @@ def test_rate_limit_only_counts_recent_launches(settings):
 
     campaign.refresh_from_db()
     assert campaign.status == Campaign.Status.LAUNCHED
+
+
+def test_a_campaign_already_sent_by_a_timed_out_launch_is_adopted_not_sent_again(settings):
+    # Gophish created (and sent) the campaign but the response never arrived, so it's still Approved here.
+    from apps.campaigns.services import engine_campaign_name
+
+    settings.CAMPAIGN_LAUNCH_RATE_LIMIT = 0  # adoption sends nothing, so the rate limit mustn't block it
+    department = DepartmentFactory()
+    EmployeeFactory(department=department)
+    campaign = CampaignFactory(status=Campaign.Status.APPROVED, target_department=department)
+    client = FakePhishingEngineClient()
+    client.created_campaigns.append({"external_id": "99", "name": engine_campaign_name(campaign)})
+
+    launch_campaign(campaign, actor=None, client=client)
+
+    campaign.refresh_from_db()
+    assert campaign.status == Campaign.Status.LAUNCHED and campaign.gophish_campaign_id == "99"
+    assert len(client.created_campaigns) == 1  # nothing new was created
+    assert client.synced_groups == {}

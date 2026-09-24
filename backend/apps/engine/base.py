@@ -60,6 +60,12 @@ class PhishingEngineClient(ABC):
     ) -> ExternalCampaignRef: ...
 
     @abstractmethod
+    def find_campaign(self, name: str) -> ExternalCampaignRef | None:
+        """The engine's campaign with exactly this name, if one exists. Lets a launch whose
+        create call timed out (after the engine had already sent) adopt it instead of re-sending."""
+        ...
+
+    @abstractmethod
     def launch_campaign(self, external_campaign_id: str) -> None: ...
 
     @abstractmethod

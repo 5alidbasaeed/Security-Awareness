@@ -37,11 +37,16 @@ services:
   # from docker-compose.yml; this only adds a third, dev-only network.
   gophish:
     networks:
-      - public
-      - internal
-      - devaccess
+      public:
+      internal:
+        ipv4_address: ${GOPHISH_INTERNAL_IP:-172.28.0.10}
+      devaccess:
     ports:
       - "3333:3333"
+    environment:
+      # Dev only: the published port arrives on the devaccess network, so the admin
+      # listener has to accept all interfaces here. Production keeps the internal-only bind.
+      GOPHISH_ADMIN_LISTEN: 0.0.0.0:3333
 
 networks:
   devaccess:

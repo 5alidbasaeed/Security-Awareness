@@ -13,6 +13,14 @@ networks:
   internal:
     driver: bridge
     internal: true # no outbound gateway — defense in depth beyond "no published ports"
+    # Fixed subnet so Gophish's admin listener can bind to its address on THIS network only
+    # (see the gophish service). Dynamic addresses come from ip_range, which excludes the
+    # static one, so no other container can ever be handed it. Override the defaults via .env
+    # if 172.28.0.0/24 collides with a network on the host.
+    ipam:
+      config:
+        - subnet: ${INTERNAL_SUBNET:-172.28.0.0/24}
+          ip_range: ${INTERNAL_DYNAMIC_RANGE:-172.28.0.128/25}
 
 volumes:
   postgres-data:
@@ -80,11 +88,19 @@ services:
     # not fix the underlying campaign stuck mid-send — that still needs
     # operator attention.
     restart: unless-stopped
-    networks: [public, internal] # both, per the plan doc's own network description — see CLAUDE.md
+    # Both networks, per the plan doc's own network description — see CLAUDE.md. Being on `public`
+    # is why the admin listener must not bind 0.0.0.0: nginx (and anything else on `public`) could
+    # then reach the admin API directly, which is exactly what invariant #8 / GO-2026-4455 forbid.
+    networks:
+      public:
+      internal:
+        ipv4_address: ${GOPHISH_INTERNAL_IP:-172.28.0.10}
     depends_on:
       mysql:
         condition: service_healthy
     environment:
+      # Admin UI/API listens on the internal-network address only; the phish listener stays on 0.0.0.0:80.
+      GOPHISH_ADMIN_LISTEN: ${GOPHISH_INTERNAL_IP:-172.28.0.10}:3333
       MYSQL_HOST: ${MYSQL_HOST}
       MYSQL_PORT: ${MYSQL_PORT}
       MYSQL_DATABASE: ${MYSQL_DATABASE}

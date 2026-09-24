@@ -1,6 +1,8 @@
+from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
+from django.utils import timezone
 
 from apps.campaigns.models import Campaign
 from apps.campaigns.tests.factories import CampaignFactory
@@ -10,7 +12,7 @@ pytestmark = pytest.mark.django_db
 
 
 def test_only_launched_campaigns_are_queued_for_reconciliation():
-    launched = CampaignFactory(status=Campaign.Status.LAUNCHED, gophish_campaign_id="1")
+    launched = CampaignFactory(status=Campaign.Status.LAUNCHED, gophish_campaign_id="1", launched_at=timezone.now())
     CampaignFactory(status=Campaign.Status.DRAFT)  # never launched — must not be queued
 
     with patch("apps.events.tasks.reconcile_campaign.delay") as delay:
@@ -43,3 +45,16 @@ def test_one_malformed_timeline_entry_does_not_abort_reconciliation():
     event = Event.objects.get()
     assert event.external_id == "good"
     assert "hunter2" not in str(event.metadata)
+
+
+def test_campaigns_launched_before_the_reconcile_window_are_left_alone(settings):
+    settings.RECONCILE_WINDOW_DAYS = 30
+    recent = CampaignFactory(
+        status=Campaign.Status.LAUNCHED, gophish_campaign_id="2", launched_at=timezone.now() - timedelta(days=29)
+    )
+    CampaignFactory(status=Campaign.Status.LAUNCHED, gophish_campaign_id="3", launched_at=timezone.now() - timedelta(days=31))
+
+    with patch("apps.events.tasks.reconcile_campaign.delay") as delay:
+        reconcile_all_active_campaigns()
+
+    delay.assert_called_once_with(recent.pk)

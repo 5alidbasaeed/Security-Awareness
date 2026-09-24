@@ -83,11 +83,23 @@ def test_editing_content_after_submission_resets_to_draft(rf, django_user_model,
     assert campaign.approved_by is None
 
 
-def test_editing_schedule_only_keeps_approval(rf, django_user_model):
+def test_rescheduling_an_approved_campaign_needs_approval_again(rf, django_user_model):
+    # When it goes out is part of what was approved: otherwise a manager could move an
+    # approved send to "now" (or to a sensitive date) without the approver seeing it.
     user = _user(django_user_model, "Campaign Manager")
     campaign = CampaignFactory(status=Campaign.Status.APPROVED)
 
     CampaignAdmin(Campaign, admin.site).save_model(_request(rf, user), campaign, _FormStub(["scheduled_at"]), change=True)
+
+    campaign.refresh_from_db()
+    assert campaign.status == Campaign.Status.DRAFT
+
+
+def test_editing_the_training_module_only_keeps_approval(rf, django_user_model):
+    user = _user(django_user_model, "Campaign Manager")
+    campaign = CampaignFactory(status=Campaign.Status.APPROVED)
+
+    CampaignAdmin(Campaign, admin.site).save_model(_request(rf, user), campaign, _FormStub(["training_module"]), change=True)
 
     campaign.refresh_from_db()
     assert campaign.status == Campaign.Status.APPROVED

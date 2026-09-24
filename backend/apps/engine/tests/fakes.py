@@ -38,6 +38,12 @@ class FakePhishingEngineClient(PhishingEngineClient):
         )
         return ExternalCampaignRef(external_id=external_id)
 
+    def find_campaign(self, name):
+        for created in self.created_campaigns:
+            if created["name"] == name:
+                return ExternalCampaignRef(external_id=created["external_id"])
+        return None
+
     def launch_campaign(self, external_campaign_id):
         self.launched_campaign_ids.append(external_campaign_id)
 

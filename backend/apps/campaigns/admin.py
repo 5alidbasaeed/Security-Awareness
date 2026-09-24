@@ -45,14 +45,16 @@ class CampaignAdmin(DepartmentScopedAdminMixin, AuditedAdminMixin, admin.ModelAd
         "approved_by",
         "approved_at",
     )
-    # What the approver actually approved. Changing any of these after
-    # submission sends the campaign back to Draft for re-approval.
-    APPROVED_CONTENT_FIELDS = {"template_name", "landing_page_name", "landing_page_url", "target_department", "name"}
+    # What the approver actually approved, including when it goes out. Changing any of these
+    # after submission sends the campaign back to Draft for re-approval.
+    APPROVED_CONTENT_FIELDS = {
+        "template_name", "landing_page_name", "landing_page_url", "target_department", "name", "scheduled_at",
+    }
     readonly_fields = WORKFLOW_FIELDS
 
     def get_readonly_fields(self, request, obj=None):
         if obj is not None and obj.status == Campaign.Status.LAUNCHED:
-            return self.WORKFLOW_FIELDS + tuple(sorted(self.APPROVED_CONTENT_FIELDS)) + ("training_module", "scheduled_at")
+            return self.WORKFLOW_FIELDS + tuple(sorted(self.APPROVED_CONTENT_FIELDS)) + ("training_module",)
         return self.WORKFLOW_FIELDS
 
     def save_model(self, request, obj, form, change):

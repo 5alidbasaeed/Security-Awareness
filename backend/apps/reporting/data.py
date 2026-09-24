@@ -7,7 +7,8 @@ what this module returns.
 """
 
 from dataclasses import dataclass
-from datetime import date, datetime, time, timedelta, timezone as dt_timezone
+from datetime import date, datetime, time, timedelta
+from datetime import timezone as dt_timezone
 from functools import cached_property
 
 from django.utils import timezone

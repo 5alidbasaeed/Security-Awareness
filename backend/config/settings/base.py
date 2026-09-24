@@ -141,6 +141,9 @@ CELERY_BEAT_SCHEDULE = {
     },
 }
 
+# Launched campaigns are reconciled against Gophish for this many days after launch, then left alone.
+RECONCILE_WINDOW_DAYS = env.int("RECONCILE_WINDOW_DAYS", default=30)
+
 # --- Email (training reminders) ---
 # Console backend by default — real SMTP via env override on a real
 # deployment, same pattern as DJANGO_SETTINGS_MODULE per-environment.

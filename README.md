@@ -74,9 +74,15 @@ curl -m 3 http://localhost:3333
 docker compose exec django curl -s -o /dev/null -w '%{http_code}\n' http://gophish:3333
 # → a response code (redirect to /login is typical), proving internal
 #   reachability without public exposure
+
+# 6. ...and nothing on the PUBLIC network can reach it either. Gophish sits on
+#    both networks, so its admin listener is bound to its internal-network
+#    address only (GOPHISH_ADMIN_LISTEN in docker-compose.yml), not 0.0.0.0.
+docker compose exec nginx wget -qO- -T 3 http://gophish:3333
+# → "Connection refused". Checks 4 and 6 together are invariant #8.
 ```
 
-All five checks above were run and passed against this exact scaffold. Tear down when done: `docker compose down`.
+Checks 1-5 were run and passed against this scaffold. Check 6 was added in the 2026-09-24 review, after it turned out the admin port *was* reachable from nginx (it listened on 0.0.0.0); the fix was verified with stand-in containers on the real compose networks, not yet against a full Gophish build. Tear down when done: `docker compose down`.
 
 **Known fix baked in**: `mysql` runs with `--sql-mode=NO_ENGINE_SUBSTITUTION` — Gophish's oldest DB migrations insert zero-dates that MySQL 8's default strict mode rejects outright, so it won't boot against MySQL 8.4 without this. Another concrete data point for the upstream-vs-fork decision below.
 

@@ -4,8 +4,11 @@ primary ingestion path, this exists only to catch a missed delivery.
 """
 
 import logging
+from datetime import timedelta
 
 from celery import shared_task
+from django.conf import settings
+from django.utils import timezone
 
 from apps.campaigns.models import Campaign
 from apps.engine.factory import get_client
@@ -19,12 +22,17 @@ logger = logging.getLogger(__name__)
 def reconcile_all_active_campaigns():
     """
     Celery Beat entry point — see CELERY_BEAT_SCHEDULE in settings/base.py.
-    Fans out to reconcile_campaign per launched campaign. "Active" here means
-    "launched" — there's no separate completion/closed state yet, so this
-    keeps reconciling launched campaigns indefinitely. Revisit once campaigns
-    gain a terminal state worth excluding.
+    Fans out to reconcile_campaign per launched campaign. Campaigns have no
+    closed state, so "active" means launched within RECONCILE_WINDOW_DAYS:
+    Gophish results stop changing soon after a send, and without a cut-off
+    every campaign ever launched would be polled every 15 minutes forever.
     """
-    campaign_ids = list(Campaign.objects.filter(status=Campaign.Status.LAUNCHED).values_list("pk", flat=True))
+    window_start = timezone.now() - timedelta(days=settings.RECONCILE_WINDOW_DAYS)
+    campaign_ids = list(
+        Campaign.objects.filter(status=Campaign.Status.LAUNCHED, launched_at__gte=window_start).values_list(
+            "pk", flat=True
+        )
+    )
     for campaign_id in campaign_ids:
         reconcile_campaign.delay(campaign_id)
     logger.info("reconcile_all_active_campaigns: queued %d campaign(s)", len(campaign_ids))
@@ -52,7 +60,8 @@ def reconcile_campaign(campaign_id: int):
             event_type=engine_event.event_type,
             external_id=engine_event.external_id,
             time=engine_event.occurred_at,
-            metadata=engine_event.raw,
+            # Same field the webhook stores, so an event's metadata has one shape whichever path saw it first.
+            metadata=engine_event.raw.get("details") or {},
         )
         if outcome == IngestOutcome.CREATED:
             created += 1

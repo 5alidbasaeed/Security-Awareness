@@ -36,6 +36,27 @@ def _contact_from_employee(employee: Employee) -> TargetContact:
     return TargetContact(email=employee.email, first_name=first_name, last_name=last_name)
 
 
+def engine_campaign_name(campaign: Campaign) -> str:
+    """Unique per Django campaign, so a launch can recognise one it already sent (see find_campaign)."""
+    return f"{campaign.name} [#{campaign.pk}]"
+
+
+def _mark_launched(campaign: Campaign, external_id: str, *, actor, target_count, adopted=False) -> Campaign:
+    campaign.gophish_campaign_id = external_id
+    campaign.status = Campaign.Status.LAUNCHED
+    campaign.launched_at = timezone.now()
+    campaign.save()
+    log_action(
+        actor=actor,
+        action="campaign_launched",
+        target_description=str(campaign),
+        gophish_campaign_id=external_id,
+        target_count=target_count,
+        adopted_existing_engine_campaign=adopted,
+    )
+    return campaign
+
+
 def launch_campaign(campaign: Campaign, *, actor, client) -> Campaign:
     """
     actor may be None (the Celery Beat scheduler has no user) — log_action
@@ -59,6 +80,13 @@ def launch_campaign(campaign: Campaign, *, actor, client) -> Campaign:
         if not campaign.target_department:
             raise CampaignLaunchError(f"{campaign} has no target department.")
 
+        # A previous attempt may have timed out after Gophish had already created (and sent) the
+        # campaign, leaving it Approved here. Adopt that one — creating another would email
+        # everyone a second time. Checked before the rate limit: adopting sends nothing.
+        existing = client.find_campaign(engine_campaign_name(campaign))
+        if existing is not None:
+            return _mark_launched(campaign, existing.external_id, actor=actor, target_count=None, adopted=True)
+
         if not _rate_limited():
             # Exemption enforcement lives here, not in Gophish — is_exempt=False is
             # the only filter standing between "in this department" and "gets
@@ -74,7 +102,7 @@ def launch_campaign(campaign: Campaign, *, actor, client) -> Campaign:
             client.sync_target_group(name=campaign.target_department.name, contacts=contacts)
 
             ref = client.create_campaign(
-                name=campaign.name,
+                name=engine_campaign_name(campaign),
                 template_id=campaign.template_name,
                 target_group_id=campaign.target_department.name,
                 send_profile_id=settings.GOPHISH_DEFAULT_SEND_PROFILE,
@@ -82,19 +110,7 @@ def launch_campaign(campaign: Campaign, *, actor, client) -> Campaign:
                 url=campaign.landing_page_url,
             )
 
-            campaign.gophish_campaign_id = ref.external_id
-            campaign.status = Campaign.Status.LAUNCHED
-            campaign.launched_at = timezone.now()
-            campaign.save()
-
-            log_action(
-                actor=actor,
-                action="campaign_launched",
-                target_description=str(campaign),
-                gophish_campaign_id=campaign.gophish_campaign_id,
-                target_count=len(contacts),
-            )
-            return campaign
+            return _mark_launched(campaign, ref.external_id, actor=actor, target_count=len(contacts))
 
     # Only reached when rate limited (the launch path returns above). Logged outside the atomic
     # block: raising inside it would roll the audit entry back.

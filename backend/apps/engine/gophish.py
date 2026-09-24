@@ -122,6 +122,17 @@ class GophishClient(PhishingEngineClient):
         response.raise_for_status()
         return ExternalCampaignRef(external_id=str(response.json()["id"]))
 
+    def find_campaign(self, name: str) -> ExternalCampaignRef | None:
+        # /summary, not /api/campaigns/: the full listing embeds every result and timeline entry.
+        response = requests.get(
+            f"{self._base_url}/api/campaigns/summary", headers=self._headers(), timeout=self._timeout
+        )
+        response.raise_for_status()
+        for item in response.json().get("campaigns") or []:
+            if item.get("name") == name:
+                return ExternalCampaignRef(external_id=str(item["id"]))
+        return None
+
     def launch_campaign(self, external_campaign_id: str) -> None:
         raise NotImplementedError(
             "Gophish has no REST endpoint to launch an already-created campaign — "

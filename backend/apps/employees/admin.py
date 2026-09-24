@@ -6,6 +6,7 @@ from django.http import HttpResponse
 from apps.core.admin_mixins import AuditedAdminMixin, DepartmentScopedAdminMixin
 from apps.core.audit import log_action
 from apps.core.csv_safe import csv_safe
+from apps.core.scoping import managed_departments
 
 from .models import Department, Employee
 
@@ -19,13 +20,20 @@ class EmployeeAdmin(DepartmentScopedAdminMixin, AuditedAdminMixin, admin.ModelAd
     search_fields = ("full_name", "email")
     actions = ["export_as_csv"]
 
+    def get_readonly_fields(self, request, obj=None):
+        # Exempting someone removes them from every simulation. A Department Manager must not be
+        # able to exempt their own weakest performers and so improve their department's figures.
+        if managed_departments(request.user) is not None:
+            return (*super().get_readonly_fields(request, obj), "is_exempt")
+        return super().get_readonly_fields(request, obj)
+
     @admin.action(description="Export selected employees as CSV")
     def export_as_csv(self, request, queryset):
-        # PII export is Admin-only, not just "can view employees" — a Viewer
-        # (view_employee only, per setup_groups) must not be able to pull
-        # the raw employee list even though the action is visible to them.
+        # PII export is Security-Admin-only, not "can view/change employees": a Report Viewer or a
+        # Department Manager must not be able to pull the raw employee list even though the
+        # action is visible to them.
         if not self.require_permission(
-            request, "employees.change_employee", "You don't have permission to export employee data."
+            request, "employees.export_employee_data", "You don't have permission to export employee data."
         ):
             return
 

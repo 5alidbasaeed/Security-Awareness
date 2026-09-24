@@ -2,9 +2,8 @@ from django.contrib import messages
 
 from apps.employees.models import Department
 
-from .scoping import managed_departments
-
 from .audit import log_action
+from .scoping import managed_departments
 
 
 class AuditedAdminMixin:
@@ -87,4 +86,9 @@ class DepartmentScopedAdminMixin:
         managed = self._managed_departments(request)
         if managed is not None and db_field.related_model is Department:
             kwargs["queryset"] = managed
+            # ...or clear the department, which moves the record out of every
+            # manager's scope and out of every campaign at once.
+            formfield = super().formfield_for_foreignkey(db_field, request, **kwargs)
+            formfield.required = True
+            return formfield
         return super().formfield_for_foreignkey(db_field, request, **kwargs)

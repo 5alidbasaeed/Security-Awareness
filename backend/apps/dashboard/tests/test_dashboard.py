@@ -200,8 +200,9 @@ def test_sortable_headers_expose_aria_sort(client, django_user_model):
 
 
 def test_training_status_filter(client, django_user_model):
-    from apps.training.tests.factories import TrainingAssignmentFactory
     from django.utils import timezone
+
+    from apps.training.tests.factories import TrainingAssignmentFactory
 
     done = TrainingAssignmentFactory(completed_at=timezone.now(), employee=EmployeeFactory(full_name="Done Person"))
     open_ = TrainingAssignmentFactory(employee=EmployeeFactory(full_name="Open Person"))

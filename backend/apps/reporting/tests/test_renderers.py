@@ -103,8 +103,9 @@ def test_evidence_package_is_deterministic_for_the_same_inputs():
 def test_evidence_audit_log_only_covers_the_period_and_names_the_actor(django_user_model):
     user = django_user_model.objects.create_user("alice", password="x")
     inside = log_action(actor=user, action="campaign_approved", target_description="in period")
-    from apps.core.models import AuditLogEntry
     from django.db import connection
+
+    from apps.core.models import AuditLogEntry
 
     with connection.cursor() as cursor:  # audit rows are auto_now_add; backdate one out of the period
         old = log_action(actor=user, action="campaign_launched", target_description="out of period")

@@ -53,3 +53,22 @@ def test_reminded_recently_is_not_reminded_again(mailoutbox):
 
     assert sent == 0
     assert len(mailoutbox) == 0
+
+
+def test_no_reminders_for_a_deactivated_module():
+    from datetime import timedelta
+
+    from django.core import mail
+    from django.utils import timezone
+
+    from apps.training.models import TrainingAssignment
+    from apps.training.tasks import send_training_reminders
+    from apps.training.tests.factories import TrainingAssignmentFactory
+
+    assignment = TrainingAssignmentFactory()
+    TrainingAssignment.objects.filter(pk=assignment.pk).update(assigned_at=timezone.now() - timedelta(days=5))
+    assignment.module.is_active = False
+    assignment.module.save()
+
+    assert send_training_reminders() == 0
+    assert mail.outbox == []

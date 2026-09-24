@@ -25,7 +25,9 @@ REMINDER_COOLDOWN = timedelta(hours=24)  # ...and don't remind again more often 
 def send_training_reminders():
     now = timezone.now()
     due_for_reminder = (
-        TrainingAssignment.objects.filter(completed_at__isnull=True, assigned_at__lte=now - REMINDER_AFTER)
+        TrainingAssignment.objects.filter(
+            completed_at__isnull=True, module__is_active=True, assigned_at__lte=now - REMINDER_AFTER
+        )
         .exclude(last_reminded_at__gte=now - REMINDER_COOLDOWN)
         .select_related("employee", "module")
     )
