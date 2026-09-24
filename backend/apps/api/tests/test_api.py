@@ -185,6 +185,6 @@ def test_the_api_has_no_launch_approve_or_send_endpoint():
     from apps.api import urls
 
     names = {p.name for p in urls.urlpatterns}
-    assert names == {"whoami", "training-modules", "email-templates", "landing-pages", "campaigns"}
+    assert names == {"whoami", "training-modules", "email-templates", "landing-pages", "campaigns", "reported-emails"}
     for word in ("launch", "approve", "send", "submit", "delete"):
         assert not any(word in (p.name or "") or word in str(p.pattern) for p in urls.urlpatterns)

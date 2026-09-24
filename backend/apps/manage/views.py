@@ -58,6 +58,7 @@ def index(request):
             ("Training", "manage:training", "Modules and quizzes.", can("training.change_trainingmodule")),
             ("Employees", "manage:employees", "People and their departments.", can("employees.change_employee")),
             ("Departments", "manage:departments", "Organizational units.", can("employees.view_department")),
+            ("Reported emails", "manage:reported", "Triage suspicious emails employees reported.", can("intake.view_reportedemail")),
             ("API keys", "manage:api-keys", "Keys for drafting content programmatically.", request.user.is_staff),
         ],
     })
@@ -410,3 +411,40 @@ def question_delete(request, pk, question_pk):
     question.delete()
     messages.success(request, "Question removed.")
     return redirect("manage:module-edit", pk=pk)
+
+
+# --- reported-email triage --------------------------------------------------------------
+
+
+@manage_access("intake.view_reportedemail", methods=("GET",))
+def reported(request):
+    from apps.intake.models import ReportedEmail
+
+    verdict = request.GET.get("verdict", "new")
+    qs = ReportedEmail.objects.select_related("reporter", "reporter__department", "triaged_by")
+    qs = qs.filter(reporter__in=visible_employees(request.user))
+    if verdict:
+        qs = qs.filter(verdict=verdict)
+    return render(request, "manage/reported.html", {
+        "active": "manage", "page": _page(request, qs), "verdict": verdict,
+        "verdicts": ReportedEmail.Verdict.choices,
+        "can_triage": request.user.has_perm("intake.change_reportedemail"),
+    })
+
+
+@manage_access("intake.change_reportedemail", methods=("POST",))
+def reported_triage(request, pk):
+    from apps.intake.models import ReportedEmail
+
+    report = get_object_or_404(ReportedEmail.objects.filter(reporter__in=visible_employees(request.user)), pk=pk)
+    verdict = request.POST.get("verdict")
+    if verdict not in ReportedEmail.Verdict.values or verdict == ReportedEmail.Verdict.NEW:
+        messages.error(request, "Choose a verdict.")
+    else:
+        report.verdict = verdict
+        report.triage_notes = (request.POST.get("triage_notes") or "").strip()
+        report.triaged_by, report.triaged_at = request.user, timezone.now()
+        report.save()
+        log_action(actor=request.user, action="reported_email_triaged", target_description=str(report), verdict=verdict)
+        messages.success(request, f"Marked as {report.get_verdict_display().lower()}.")
+    return redirect(f"{reverse('manage:reported')}?verdict=new")

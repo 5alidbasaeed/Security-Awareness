@@ -1,0 +1,19 @@
+{% extends "portal/base.html" %}
+{% block title %}This was a training exercise{% endblock %}
+{% block content %}
+<article class="card learn"><div class="card__body">
+  <p class="badge badge--accent">Security awareness exercise</p>
+  <h1>This was a simulated phishing email</h1>
+  <p>No harm done — it came from your company's security training programme, and nothing you typed was stored as a password. The goal is to practise spotting these safely, before a real one arrives.</p>
+  <h2>What to look for next time</h2>
+  <ul class="learn-list">
+    <li><strong>The real sender.</strong> Check the full address, not just the display name. Lookalike domains swap or add letters.</li>
+    <li><strong>Where links really go.</strong> Hover (or long-press) to see the address before you click.</li>
+    <li><strong>Pressure.</strong> Urgent deadlines, account-lock threats and unexpected prizes are there to rush you.</li>
+    <li><strong>Unexpected requests.</strong> Be wary of asks for passwords, payment changes or gift cards, even from someone you know.</li>
+    <li><strong>Sign in the usual way.</strong> Open the site yourself from a bookmark instead of from an email link.</li>
+  </ul>
+  <p>When in doubt, <strong>report it</strong> — you'll never be in trouble for reporting.</p>
+  <p class="cell-meta">You may be assigned a short training module; it will show up in your training portal.</p>
+</div></article>
+{% endblock %}

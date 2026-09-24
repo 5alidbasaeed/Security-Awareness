@@ -39,7 +39,8 @@ TRAINING_MODELS = [
 RISK_MODELS = [("risk_scoring", "riskscoresnapshot")]  # computed, read-only in the admin
 REPORT_MODELS = [("reporting", "generatedreport")]  # immutable archive, read-only in the admin
 API_MODELS = [("api", "apikey")]
-MANAGED_MODELS = EMPLOYEE_MODELS + CAMPAIGN_MODELS + EVENT_MODELS + CORE_MODELS + TRAINING_MODELS + RISK_MODELS + REPORT_MODELS + API_MODELS
+INTAKE_MODELS = [("intake", "reportedemail")]
+MANAGED_MODELS = EMPLOYEE_MODELS + CAMPAIGN_MODELS + EVENT_MODELS + CORE_MODELS + TRAINING_MODELS + RISK_MODELS + REPORT_MODELS + API_MODELS + INTAKE_MODELS
 
 
 def _perms_for(models, codename_prefixes=("add_", "change_", "delete_", "view_")):

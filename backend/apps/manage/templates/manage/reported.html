@@ -1,0 +1,34 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Reported emails · Manage{% endblock %}
+{% block content %}
+{% include "manage/_subnav.html" with manage_section="reported" %}
+<header class="page-header"><div><h1>Reported emails</h1>
+<p class="page-header__sub">Suspicious emails employees flagged. Reports of our own simulations are counted automatically; this queue is for everything else.</p></div></header>
+<form class="toolbar" method="get">
+  <label class="visually-hidden" for="verdict">Verdict</label>
+  <select class="select" id="verdict" name="verdict"><option value="">All</option>
+    {% for value, label in verdicts %}<option value="{{ value }}"{% if value == verdict %} selected{% endif %}>{{ label }}</option>{% endfor %}
+  </select>
+  <button class="button" type="submit">Filter</button>
+</form>
+<div class="card"><ul class="list">
+  {% for r in page %}
+  <li class="list__item report-item">
+    <span><strong>{{ r.subject|default:"(no subject)" }}</strong>
+      <span class="cell-meta">From {{ r.sender|default:"unknown sender" }} · reported by {{ r.reporter.full_name }} · {{ r.reported_at|date:"M j, H:i" }} · {{ r.get_source_display }}</span>
+      {% if r.notes %}<span class="cell-meta">“{{ r.notes|truncatechars:200 }}”</span>{% endif %}
+      {% if r.verdict != "new" %}<span class="cell-meta">{{ r.get_verdict_display }} — {{ r.triaged_by }}{% if r.triage_notes %}: {{ r.triage_notes }}{% endif %}</span>{% endif %}
+    </span>
+    {% if can_triage and r.verdict == "new" %}
+    <form class="triage-form" method="post" action="{% url 'manage:reported-triage' r.pk %}">{% csrf_token %}
+      <label class="visually-hidden" for="v{{ r.pk }}">Verdict</label>
+      <select class="select" id="v{{ r.pk }}" name="verdict">{% for value, label in verdicts %}{% if value != "new" %}<option value="{{ value }}">{{ label }}</option>{% endif %}{% endfor %}</select>
+      <label class="visually-hidden" for="n{{ r.pk }}">Notes</label>
+      <input class="field" id="n{{ r.pk }}" name="triage_notes" placeholder="Notes (optional)">
+      <button class="button" type="submit">Save</button>
+    </form>
+    {% endif %}
+  </li>
+  {% empty %}<li class="list__item"><span class="cell-meta">Nothing here.</span></li>{% endfor %}
+</ul>{% include "dashboard/_pagination.html" %}</div>
+{% endblock %}

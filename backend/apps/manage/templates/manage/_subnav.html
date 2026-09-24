@@ -6,5 +6,6 @@
   {% if perms.training.view_trainingmodule %}<a href="{% url 'manage:training' %}"{% if manage_section == "training" %} aria-current="page"{% endif %}>Training</a>{% endif %}
   {% if perms.employees.view_employee %}<a href="{% url 'manage:employees' %}"{% if manage_section == "employees" %} aria-current="page"{% endif %}>Employees</a>{% endif %}
   {% if perms.employees.view_department %}<a href="{% url 'manage:departments' %}"{% if manage_section == "departments" %} aria-current="page"{% endif %}>Departments</a>{% endif %}
+  {% if perms.intake.view_reportedemail %}<a href="{% url 'manage:reported' %}"{% if manage_section == "reported" %} aria-current="page"{% endif %}>Reported emails</a>{% endif %}
   <a href="{% url 'manage:api-keys' %}"{% if manage_section == "api-keys" %} aria-current="page"{% endif %}>API keys</a>
 </nav>

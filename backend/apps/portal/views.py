@@ -153,3 +153,32 @@ def certificate(request, pk):
         return redirect("portal:assignment", pk=item.pk)
     attempt = item.quiz_attempts.filter(passed=True).order_by("-completed_at").first()
     return render(request, "portal/certificate.html", {"item": item, "attempt": attempt, "employee": request.employee})
+
+
+@portal_required
+@require_http_methods(["GET", "POST"])
+def report_email(request):
+    from apps.intake.models import ReportedEmail
+
+    if request.method == "POST":
+        subject = (request.POST.get("subject") or "").strip()[:300]
+        sender = (request.POST.get("sender") or "").strip()[:300]
+        notes = (request.POST.get("notes") or "").strip()[:5000]
+        if not (subject or sender or notes):
+            messages.error(request, "Tell us at least the subject, the sender or what looked wrong.")
+        else:
+            ReportedEmail.objects.create(reporter=request.employee, subject=subject, sender=sender, notes=notes,
+                                         source=ReportedEmail.Source.PORTAL)
+            log_action(actor=None, action="email_reported", target_description=subject or sender or "(no subject)",
+                       via="portal")
+            messages.success(request, "Thanks — the security team will look at it. Reporting is exactly the right move.")
+            return redirect("portal:home")
+    return render(request, "portal/report.html")
+
+
+def learn(request):
+    """
+    Teachable moment: where a simulation's landing page sends someone who just clicked or
+    submitted. Public (no sign-in) and anonymous — it never records or shows who arrived.
+    """
+    return render(request, "portal/learn.html")

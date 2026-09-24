@@ -10,4 +10,5 @@ urlpatterns = [
     path("v1/email-templates", views.email_templates, name="email-templates"),
     path("v1/landing-pages", views.landing_pages, name="landing-pages"),
     path("v1/campaigns", views.campaigns, name="campaigns"),
+    path("v1/reported-emails", views.reported_emails, name="reported-emails"),
 ]

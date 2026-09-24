@@ -195,3 +195,29 @@ def campaigns(request):
          "note": "Created as a draft. A person must submit, approve and launch it in the dashboard."},
         status=201,
     )
+
+
+# --- Reported emails (report-button / mail-integration intake) --------------------------
+
+
+@api_endpoint(scope=Scope.REPORTS_WRITE, methods=("POST",))
+def reported_emails(request):
+    from apps.employees.models import Employee
+    from apps.intake.models import ReportedEmail
+
+    data, error = parse_json_body(request)
+    if error:
+        return error
+    missing = _require(data, "reporter_email")
+    if missing:
+        return JsonResponse({"error": missing}, status=400)
+    reporter = Employee.objects.filter(email__iexact=data["reporter_email"], is_active=True).first()
+    if reporter is None:
+        return JsonResponse({"error": "reporter_email is not an active employee."}, status=400)
+    report = ReportedEmail.objects.create(
+        reporter=reporter, subject=str(data.get("subject", ""))[:300], sender=str(data.get("sender", ""))[:300],
+        notes=str(data.get("notes", ""))[:5000], headers=str(data.get("headers", ""))[:20000],
+        source=ReportedEmail.Source.API,
+    )
+    _audit(request, "email_reported", report.subject or report.sender or "(no subject)")
+    return JsonResponse({"id": report.id, "verdict": report.verdict}, status=201)

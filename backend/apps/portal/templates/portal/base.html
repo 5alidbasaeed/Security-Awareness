@@ -15,6 +15,7 @@
     {% if request.session.portal_employee_id %}
     <div class="nav__user">
       <a href="{% url 'portal:home' %}">My training</a>
+      <a href="{% url 'portal:report' %}">Report an email</a>
       <form class="inline-form" method="post" action="{% url 'portal:logout' %}">{% csrf_token %}<button class="button button--quiet" type="submit">Sign out</button></form>
     </div>
     {% endif %}

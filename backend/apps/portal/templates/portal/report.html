@@ -1,0 +1,14 @@
+{% extends "portal/base.html" %}
+{% block title %}Report an email{% endblock %}
+{% block content %}
+<header class="page-header"><div><h1>Report a suspicious email</h1>
+<p class="page-header__sub">Don't click anything in it. Tell us what you can, then delete it.</p></div></header>
+<div class="card"><div class="card__body">
+  <form class="form-stack" method="post">{% csrf_token %}
+    <div class="form-row"><label class="label" for="subject">Subject</label><input class="field" id="subject" name="subject" maxlength="300"></div>
+    <div class="form-row"><label class="label" for="sender">Sender address</label><input class="field" id="sender" name="sender" maxlength="300"></div>
+    <div class="form-row"><label class="label" for="notes">What looked wrong?</label><textarea class="field" id="notes" name="notes" rows="4"></textarea></div>
+    <div class="form-actions"><button class="button" type="submit">Send report</button></div>
+  </form>
+</div></div>
+{% endblock %}

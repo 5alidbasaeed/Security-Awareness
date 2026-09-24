@@ -319,3 +319,12 @@ progress.progress--low::-moz-progress-bar { background: var(--risk-low); }
 .questions-card { margin-top: var(--s5); }
 .answer-row { display: flex; align-items: center; gap: var(--s3); margin-top: var(--s2); }
 .answer-row .field { flex: 1; }
+.learn { max-width: 44rem; margin: 0 auto; }
+.learn h1 { margin: var(--s3) 0; }
+.learn h2 { font-size: var(--text-lg); margin-top: var(--s5); }
+.learn-list { padding-left: var(--s5); }
+.learn-list li + li { margin-top: var(--s2); }
+.report-item { align-items: flex-start; flex-wrap: wrap; }
+.report-item > span .cell-meta { margin-top: var(--s1); }
+.triage-form { display: flex; gap: var(--s2); flex-wrap: wrap; align-items: center; }
+.triage-form .field { min-width: 10rem; }

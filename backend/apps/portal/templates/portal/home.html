@@ -1,5 +1,6 @@
 {% extends "portal/base.html" %}
-{% block title %}My training{% endblock %}
+{% block title %}My training<p class="footnote">Got a suspicious email? <a href="{% url 'portal:report' %}">Report it</a> — reporting is the most useful thing you can do.</p>
+{% endblock %}
 {% block content %}
 <header class="page-header"><div><h1>Hi {{ employee.full_name }}</h1>
 <p class="page-header__sub">Your assigned security awareness training.</p></div></header>
@@ -15,4 +16,5 @@
   </li>
   {% empty %}<li class="list__item"><span class="cell-meta">Nothing assigned right now. Nice work.</span></li>{% endfor %}
 </ul></div>
+<p class="footnote">Got a suspicious email? <a href="{% url 'portal:report' %}">Report it</a> — reporting is the most useful thing you can do.</p>
 {% endblock %}

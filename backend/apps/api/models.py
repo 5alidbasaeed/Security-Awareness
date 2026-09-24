@@ -25,6 +25,7 @@ class Scope(models.TextChoices):
     TRAINING_WRITE = "training:write", "Create and edit training modules and quizzes"
     CONTENT_WRITE = "content:write", "Create and edit email templates and landing pages"
     CAMPAIGNS_WRITE = "campaigns:write", "Create draft campaigns (never launch)"
+    REPORTS_WRITE = "reports:write", "Submit suspicious emails employees reported (mail integration)"
 
 
 # Each scope requires the owner to also hold this Django permission, so a key is never
@@ -34,6 +35,7 @@ SCOPE_REQUIRED_PERMISSION = {
     Scope.TRAINING_WRITE: "training.add_trainingmodule",
     Scope.CONTENT_WRITE: "campaigns.change_campaign",
     Scope.CAMPAIGNS_WRITE: "campaigns.add_campaign",
+    Scope.REPORTS_WRITE: "intake.add_reportedemail",
 }
 
 

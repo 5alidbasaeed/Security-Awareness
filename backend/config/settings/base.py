@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     "apps.api",
     "apps.manage",
     "apps.portal",
+    "apps.intake",
 ]
 
 MIDDLEWARE = [

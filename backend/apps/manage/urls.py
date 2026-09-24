@@ -35,6 +35,9 @@ urlpatterns = [
     path("departments/new/", views.department_edit, name="department-new"),
     path("departments/<int:pk>/edit/", views.department_edit, name="department-edit"),
 
+    path("reported/", views.reported, name="reported"),
+    path("reported/<int:pk>/triage/", views.reported_triage, name="reported-triage"),
+
     path("api-keys/", views_apikeys.api_keys, name="api-keys"),
     path("api-keys/<int:pk>/revoke/", views_apikeys.api_key_revoke, name="api-key-revoke"),
 ]
