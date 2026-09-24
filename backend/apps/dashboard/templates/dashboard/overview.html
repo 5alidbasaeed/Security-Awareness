@@ -1,0 +1,120 @@
+{% extends "dashboard/base.html" %}
+{% load dashboard %}
+{% block title %}Overview{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div>
+    <h1>Overview</h1>
+    <p class="page-header__sub">Phishing-simulation risk across {{ summary.employees }} employee{{ summary.employees|pluralize }}.</p>
+  </div>
+</header>
+
+<div class="stack">
+  <section class="stats" aria-label="Key figures">
+    <div class="card stat">
+      <div class="stat__label">Average risk score</div>
+      <div class="stat__value">{{ summary.average_score|score_fmt }}</div>
+      <div class="stat__note">
+        {% if summary.average_score is not None %}{% with level=summary.average_score|risk_level %}<span class="badge badge--{{ level }}">{{ level|level_label }}</span>{% endwith %}{% endif %}
+        {% include "dashboard/_delta.html" %}
+      </div>
+    </div>
+    <div class="card stat">
+      <div class="stat__label">High-risk employees</div>
+      <div class="stat__value">{{ summary.high_risk_employees }}</div>
+      <div class="stat__note">Score {{ summary.high_risk_threshold }} or above</div>
+    </div>
+    <div class="card stat">
+      <div class="stat__label">Training completion</div>
+      <div class="stat__value">{{ summary.training.completion_rate_percent|percent }}</div>
+      <div class="stat__note">
+        {{ summary.training.outstanding }} outstanding{% if summary.training.overdue %} · <span class="overdue">{{ summary.training.overdue }} overdue</span>{% endif %}
+      </div>
+    </div>
+    <div class="card stat">
+      <div class="stat__label">Employees scored</div>
+      <div class="stat__value">{{ summary.employees_scored }}</div>
+      <div class="stat__note">of {{ summary.employees }}</div>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="trend-heading">
+    <div class="card__header">
+      <h2 id="trend-heading">Risk trend</h2>
+      <span class="card__note">Last 12 weeks · lower is better</span>
+    </div>
+    <div class="card__body">
+      {% include "dashboard/_chart.html" with chart_id="overview-trend" label="Average risk score over the last 12 weeks" %}
+    </div>
+  </section>
+
+  <div class="grid-2">
+    <section class="card" aria-labelledby="dept-heading">
+      <div class="card__header"><h2 id="dept-heading">Departments</h2><a href="{% url 'dashboard:departments' %}">View all</a></div>
+      <div class="card__body card--flush">
+        {% if departments %}
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th scope="col">Department</th><th scope="col">Average risk</th><th scope="col" class="num">High risk</th></tr></thead>
+            <tbody>
+              {% for d in departments %}
+              <tr>
+                <td><a href="{% url 'dashboard:department-detail' d.department_id %}">{{ d.name }}</a><span class="cell-meta">{{ d.employees }} employee{{ d.employees|pluralize }}</span></td>
+                <td>{% include "dashboard/_risk_badge.html" with value=d.average_score %}</td>
+                <td class="num">{{ d.high_risk_employees }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <div class="empty"><strong>No departments yet</strong>Add departments and employees in Manage.</div>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="risk-heading">
+      <div class="card__header"><h2 id="risk-heading">Highest risk</h2><a href="{% url 'dashboard:employees' %}">View all</a></div>
+      <div class="card__body card--flush">
+        {% if highest_risk %}
+        <ul class="list">
+          {% for e in highest_risk %}
+          <li class="list__item">
+            <span><a href="{% url 'dashboard:employee-detail' e.pk %}">{{ e.full_name }}</a><span class="cell-meta">{{ e.department|default:"No department" }}</span></span>
+            <span>{% include "dashboard/_risk_badge.html" with value=e.current_score %}</span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="empty"><strong>Nobody is scored yet</strong>Scores appear after the first campaign results arrive.</div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+
+  <section class="card" aria-labelledby="campaigns-heading">
+    <div class="card__header"><h2 id="campaigns-heading">Recent campaigns</h2><a href="{% url 'dashboard:campaigns' %}">View all</a></div>
+    <div class="card__body card--flush">
+      {% if recent_campaigns %}
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th scope="col">Campaign</th><th scope="col" class="num">Targeted</th><th scope="col" class="num">Failed</th><th scope="col" class="num">Reported</th></tr></thead>
+          <tbody>
+            {% for row in recent_campaigns %}
+            <tr>
+              <td><a href="{% url 'dashboard:campaign-detail' row.campaign.pk %}">{{ row.campaign.name }}</a><span class="cell-meta">{{ row.campaign.target_department|default:"No department" }}</span></td>
+              <td class="num">{{ row.summary.targeted }}</td>
+              <td class="num">{{ row.summary.failure_rate_percent|percent }}</td>
+              <td class="num">{{ row.summary.report_rate_percent|percent }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty"><strong>No campaigns have launched yet</strong>Launch an approved campaign from Manage.</div>
+      {% endif %}
+    </div>
+  </section>
+</div>
+{% endblock %}

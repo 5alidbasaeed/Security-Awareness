@@ -1,0 +1,40 @@
+{% extends "dashboard/base.html" %}
+{% load dashboard %}
+{% block title %}Training{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div>
+    <h1>Training</h1>
+    <p class="page-header__sub">Assignments created after failed simulations. Completion is tracked separately from risk scores.</p>
+  </div>
+</header>
+
+<div class="stack">
+  <section class="stats" aria-label="Key figures">
+    <div class="card stat"><div class="stat__label">Assigned</div><div class="stat__value">{{ compliance.assigned }}</div><div class="stat__note">All time</div></div>
+    <div class="card stat"><div class="stat__label">Completed</div><div class="stat__value">{{ compliance.completed }}</div><div class="stat__note">{{ compliance.completion_rate_percent|percent }} completion</div></div>
+    <div class="card stat"><div class="stat__label">Outstanding</div><div class="stat__value">{{ compliance.outstanding }}</div><div class="stat__note">Not yet completed</div></div>
+    <div class="card stat"><div class="stat__label">Overdue</div><div class="stat__value">{{ compliance.overdue }}</div><div class="stat__note">Past their due date</div></div>
+  </section>
+
+  <form method="get" action="{% url 'dashboard:training' %}" role="search" hx-target="#training-results" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#training-indicator">
+    <div class="toolbar">
+      <label class="visually-hidden" for="q">Search assignments</label>
+      <input class="field" id="q" name="q" type="search" value="{{ q }}" placeholder="Search by employee" autocomplete="off"
+             hx-get="{% url 'dashboard:training' %}" hx-trigger="input changed delay:250ms, search" hx-include="closest form">
+      <label class="visually-hidden" for="status">Status</label>
+      <select class="select" id="status" name="status" hx-get="{% url 'dashboard:training' %}" hx-trigger="change" hx-include="closest form">
+        <option value="outstanding"{% if status == "outstanding" %} selected{% endif %}>Outstanding</option>
+        <option value="overdue"{% if status == "overdue" %} selected{% endif %}>Overdue</option>
+        <option value="completed"{% if status == "completed" %} selected{% endif %}>Completed</option>
+        <option value="all"{% if status == "all" %} selected{% endif %}>All</option>
+      </select>
+      <noscript><button class="button" type="submit">Filter</button></noscript>
+      <span id="training-indicator" class="htmx-indicator" role="status">Loading…</span>
+    </div>
+    <div class="card">
+      {% include "dashboard/_training_table.html" %}
+    </div>
+  </form>
+</div>
+{% endblock %}

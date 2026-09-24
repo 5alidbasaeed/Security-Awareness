@@ -1,0 +1,28 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Employees{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div>
+    <h1>Employees</h1>
+    <p class="page-header__sub">Current risk score for everyone you can see. Add or edit people in Manage.</p>
+  </div>
+</header>
+
+<form method="get" action="{% url 'dashboard:employees' %}" role="search" hx-target="#employee-results" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#employee-indicator">
+  <div class="toolbar">
+    <label class="visually-hidden" for="q">Search employees</label>
+    <input class="field" id="q" name="q" type="search" value="{{ q }}" placeholder="Search by name or email" autocomplete="off"
+           hx-get="{% url 'dashboard:employees' %}" hx-trigger="input changed delay:250ms, search" hx-include="closest form">
+    <label class="visually-hidden" for="department">Department</label>
+    <select class="select" id="department" name="department" hx-get="{% url 'dashboard:employees' %}" hx-trigger="change" hx-include="closest form">
+      <option value="">All departments</option>
+      {% for d in departments %}<option value="{{ d.pk }}"{% if department == d.pk|stringformat:"s" %} selected{% endif %}>{{ d.name }}</option>{% endfor %}
+    </select>
+    <noscript><button class="button" type="submit">Search</button></noscript>
+    <span id="employee-indicator" class="htmx-indicator" role="status">Searching…</span>
+  </div>
+  <div class="card">
+    {% include "dashboard/_employee_table.html" %}
+  </div>
+</form>
+{% endblock %}

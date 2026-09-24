@@ -95,11 +95,11 @@ def test_launch_with_no_eligible_employees_is_a_clear_error():
     assert client.created_campaigns == []
 
 
-def test_anonymous_analytics_request_redirects_to_the_admin_login(client):
+def test_anonymous_analytics_request_redirects_to_the_dashboard_login(client):
     response = client.get(reverse("analytics:departments"))
 
     assert response.status_code == 302
-    assert response["Location"].startswith(reverse("admin:login"))
+    assert response["Location"].startswith(reverse("dashboard:login"))
 
 
 def test_csv_export_neutralises_spreadsheet_formulas(rf, django_user_model):

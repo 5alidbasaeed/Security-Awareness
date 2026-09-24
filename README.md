@@ -88,7 +88,7 @@ All five checks above were run and passed against this exact scaffold. Tear down
 - **Custom HTMX dashboard templates, risk scoring (Phase 4), reporting (Phase 5)** — deliberately deferred; Django admin is the interim UI.
 - **MFA on admin login** — explicitly out of scope for now by user decision (see CLAUDE.md invariant #7), not a deferral. Admin login is plain Django session auth. Revisit before this handles anything beyond local dev/testing.
 - **Employee self-service training/quiz UI, real SMTP for reminders, training content authoring** — Phase 2 scope, deliberately deferred (see CLAUDE.md).
-- Custom dashboard UI (Phase 4.1) — the analytics JSON endpoints exist; the pages/charts do not.
+- Employee-facing training/quiz pages (needs the SSO decision) and campaign creation in the dashboard (management stays in the admin).
 
 ## Open decisions carried from the plan doc
 
@@ -100,6 +100,12 @@ See `CLAUDE.md` → "Open decisions". Two are partially addressed by this scaffo
 ## Subagents & skills
 
 `.claude/agents/` and `.claude/skills/` have project-scoped subagents and reference material for backend, frontend, database, architecture review, security review, debugging, and testing. See `CLAUDE.md` for the index.
+
+## Dashboard (Phase 4.1)
+
+Open **http://localhost:8000/** (dev override, see above) and sign in with a staff account that can view risk data (Security Admin, Campaign Manager, Report Viewer, Department Manager — Department Managers see only their own departments). Pages: Overview, Campaigns (+ funnel per campaign), Employees (live search, sort, department filter; per-person score history and what drives the score), Departments, Training. It is read-only; create and edit things in **Manage** (`/admin/`). Charts and interactions are HTMX + Chart.js, self-hosted (no CDN), under a strict Content-Security-Policy.
+
+To see it with realistic data locally: `docker compose exec django python manage.py seed_demo_data` (DEBUG only; add `--reset` to remove it).
 
 ## Risk scoring & analytics (Phase 4)
 

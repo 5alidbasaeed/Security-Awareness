@@ -58,6 +58,15 @@ Contrast: body text on `surface`/`surface-muted` must hit WCAG AA (4.5:1). Risk 
 - Every `hx-get`/`hx-post` that can take >200ms (filter/search, campaign launch) gets an `hx-indicator` — don't ship a control with no loading state.
 - Forms that submit via HTMX still validate server-side using Django forms — there is no client-side-only validation path.
 
+## As built (Phase 4.1) — `apps/dashboard`
+
+- **Files**: `templates/dashboard/` (`base.html`, pages, and `_partials` for HTMX targets), `static/dashboard/app.css` (all tokens + components), `charts.js`, `vendor/` (self-hosted htmx + Chart.js with licenses). Add a page = view in `views.py` wrapped in `@dashboard_access`, query via `scope.py`, numbers from `risk_scoring.analytics`, template extending `base.html`.
+- **Token additions to the table above**: each risk color has a darker `-text` twin (`--risk-*-text`) for small badge text (AA on the tint); dark-mode values for every token; `--radius` 12px / `--radius-sm` 8px. The `--s1..--s8` scale is the 4px spacing scale.
+- **CSP is strict** (no inline `<script>`, `style=`, `onclick=`): chart data goes in `{{ chart|json_script:id }}` and is read by `charts.js`; dynamic bar widths use `<progress>`, never `style="width:.."`. A test fails the build if a template contains an inline style/script.
+- **HTMX rules learned the hard way**: put `hx-include="closest form"` on the *inputs*, never the `<form>` (child sort/pagination links inherit it and double-send the query); an empty `?sort=` must mean "default" (`request.GET.get("sort") or DEFAULT`); every filter control has an `hx-indicator`; full pages and fragments share one view (`HX-Request` header picks the template).
+- **Thresholds/levels**: `analytics.risk_level()` and `HIGH/MEDIUM_RISK_THRESHOLD` are the only source; the Chart.js threshold lines receive them from the view.
+- **Verify in a real browser** (tall viewport avoids scroll-capture artifacts): console clean (a CSP violation shows up there), no horizontal overflow at 375px, dark mode, HTMX search/sort round-trips.
+
 ## What NOT to do
 
 - No React/Vue/client-side state management — if a screen seems to need it, that's a signal to reconsider the interaction, not to introduce a framework.

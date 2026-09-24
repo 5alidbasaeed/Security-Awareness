@@ -1,0 +1,105 @@
+{% extends "dashboard/base.html" %}
+{% load dashboard %}
+{% block title %}{{ employee.full_name }}{% endblock %}
+{% block content %}
+<p class="breadcrumb"><a href="{% url 'dashboard:employees' %}">Employees</a></p>
+<header class="page-header">
+  <div>
+    <h1>{{ employee.full_name }}</h1>
+    <p class="page-header__sub">
+      {{ employee.email }} ·
+      {% if employee.department %}<a href="{% url 'dashboard:department-detail' employee.department.pk %}">{{ employee.department }}</a>{% else %}No department{% endif %}
+      {% if employee.is_exempt %}· <span class="badge">Exempt from simulations</span>{% endif %}
+    </p>
+  </div>
+</header>
+
+<div class="stack">
+  <section class="stats" aria-label="Key figures">
+    <div class="card stat">
+      <div class="stat__label">Current risk score</div>
+      <div class="stat__value">{{ employee.current_score|score_fmt }}</div>
+      <div class="stat__note">{% if employee.current_score is not None %}{% with level=employee.current_score|risk_level %}<span class="badge badge--{{ level }}">{{ level|level_label }}</span>{% endwith %}{% else %}Not scored yet{% endif %}</div>
+    </div>
+    <div class="card stat">
+      <div class="stat__label">Trend, last 30 days</div>
+      <div class="stat__value">{{ trend|trend_label }}</div>
+      <div class="stat__note">Lower is better</div>
+    </div>
+    <div class="card stat">
+      <div class="stat__label">Simulations failed</div>
+      <div class="stat__value">{{ metrics.campaigns_failed|default:0 }}</div>
+      <div class="stat__note">{{ metrics.campaigns_reported|default:0 }} reported</div>
+    </div>
+    <div class="card stat">
+      <div class="stat__label">Training completion</div>
+      <div class="stat__value">{{ training.completion_rate_percent|percent }}</div>
+      <div class="stat__note">{{ training.outstanding }} outstanding{% if training.overdue %} · <span class="overdue">{{ training.overdue }} overdue</span>{% endif %}</div>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="history-heading">
+    <div class="card__header"><h2 id="history-heading">Score history</h2><span class="card__note">Every recomputed snapshot</span></div>
+    <div class="card__body">
+      {% include "dashboard/_chart.html" with chart_id="employee-history" label="Risk score history for "|add:employee.full_name %}
+    </div>
+  </section>
+
+  <div class="grid-2">
+    <section class="card" aria-labelledby="training-heading">
+      <div class="card__header"><h2 id="training-heading">Training</h2></div>
+      <div class="card__body card--flush">
+        {% if assignments %}
+        <ul class="list">
+          {% for a in assignments %}
+          <li class="list__item">
+            <span>{{ a.module.title }}<span class="cell-meta">Assigned {{ a.assigned_at|date:"M j, Y" }}{% if a.due_at %} · Due {{ a.due_at|date:"M j, Y" }}{% endif %}</span></span>
+            {% if a.completed_at %}<span class="badge badge--low">Completed</span>
+            {% elif a.due_at and a.due_at < now %}<span class="badge badge--high">Overdue</span>
+            {% elif a.started_at %}<span class="badge badge--accent">In progress</span>
+            {% else %}<span class="badge">Assigned</span>{% endif %}
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="empty"><strong>No training assigned</strong>Training is assigned automatically after a failed simulation.</div>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="activity-heading">
+      <div class="card__header"><h2 id="activity-heading">Recent activity</h2></div>
+      <div class="card__body card--flush">
+        {% if events %}
+        <ul class="timeline">
+          {% for ev in events %}
+          <li class="timeline__item">
+            <span>{{ ev.event_type|event_label }}<span class="cell-meta">{{ ev.campaign.name }}</span></span>
+            <span class="muted">{{ ev.occurred_at|date:"M j, H:i" }}</span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="empty"><strong>No activity yet</strong>Simulation events for this person appear here.</div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+
+  {% if metrics %}
+  <section class="card" aria-labelledby="why-heading">
+    <div class="card__header"><h2 id="why-heading">What drives this score</h2><span class="card__note">Algorithm {{ algorithm_version }}</span></div>
+    <div class="card__body">
+      <p class="muted">The worst outcome on each campaign counts once (submitting data outweighs a click). Reporting the email earns credit, repeat failures add a penalty, and older results fade over time.</p>
+      <ul class="list">
+        <li class="list__item"><span>Campaigns failed</span><strong>{{ metrics.campaigns_failed }}</strong></li>
+        <li class="list__item"><span>…where data was submitted</span><strong>{{ metrics.credential_attempt_campaigns }}</strong></li>
+        <li class="list__item"><span>…where the link was only clicked</span><strong>{{ metrics.click_only_campaigns }}</strong></li>
+        <li class="list__item"><span>Campaigns reported</span><strong>{{ metrics.campaigns_reported }}</strong></li>
+        <li class="list__item"><span>Repeat failures</span><strong>{{ metrics.repeat_failures }}</strong></li>
+      </ul>
+    </div>
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

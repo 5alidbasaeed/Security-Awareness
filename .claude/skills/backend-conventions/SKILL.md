@@ -17,6 +17,7 @@ apps/
 ├── training/        # TrainingModule, Quiz, TrainingAssignment, completion tracking (Phase 2)
 ├── risk_scoring/    # RiskScoreSnapshot model + scoring algorithm(s), versioned (Phase 4, not built yet)
 ├── engine/          # PhishingEngineClient adapter + Gophish-specific implementation
+├── dashboard/       # read-only staff dashboard (templates + HTMX + Chart.js), Phase 4.1
 └── core/            # shared utilities, RBAC/permissions helpers, audit log
 ```
 

@@ -1,0 +1,26 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Sign in{% endblock %}
+{% block body_class %}auth{% endblock %}
+{% block nav %}{% endblock %}
+{% block main %}
+<main id="main" class="card auth__card">
+  <h1 class="auth__title">Security Awareness</h1>
+  <p class="auth__sub">Sign in to view campaign results and risk trends.</p>
+  <form method="post" action="{% url 'dashboard:login' %}">
+    {% csrf_token %}
+    {% if form.errors %}<p class="form-error" role="alert">That username and password didn’t match. Try again.</p>{% endif %}
+    <div class="form-row">
+      <label class="label" for="id_username">Username</label>
+      <input class="field" id="id_username" name="username" type="text" autocomplete="username" autofocus required>
+    </div>
+    <div class="form-row">
+      <label class="label" for="id_password">Password</label>
+      <input class="field" id="id_password" name="password" type="password" autocomplete="current-password" required>
+    </div>
+    <div class="form-row">
+      <button class="button button--block" type="submit">Sign in</button>
+    </div>
+    <input type="hidden" name="next" value="{{ next }}">
+  </form>
+</main>
+{% endblock %}

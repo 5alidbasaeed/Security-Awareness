@@ -1,0 +1,11 @@
+{% if chart.has_data %}
+<div class="chart">
+  <canvas data-chart-source="{{ chart_id }}" role="img" aria-label="{{ label }}"></canvas>
+</div>
+{{ chart|json_script:chart_id }}
+{% else %}
+<div class="empty">
+  <strong>No score history yet</strong>
+  Scores appear here once campaign results start arriving.
+</div>
+{% endif %}

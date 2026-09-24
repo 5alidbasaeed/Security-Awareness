@@ -1,0 +1,42 @@
+{% extends "dashboard/base.html" %}
+{% load dashboard %}
+{% block title %}Departments{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div>
+    <h1>Departments</h1>
+    <p class="page-header__sub">Risk and training compliance by department.</p>
+  </div>
+</header>
+
+<div class="card">
+  {% if rows %}
+  <div class="table-wrap">
+    <table class="table">
+      <caption class="visually-hidden">Departments with average risk and training compliance</caption>
+      <thead>
+        <tr>
+          <th scope="col">Department</th><th scope="col">Average risk</th>
+          <th scope="col" class="num">High risk</th><th scope="col" class="num">Scored</th>
+          <th scope="col" class="num">Training complete</th><th scope="col" class="num">Overdue</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for d in rows %}
+        <tr>
+          <td><a href="{% url 'dashboard:department-detail' d.department_id %}">{{ d.name }}</a></td>
+          <td>{% include "dashboard/_risk_badge.html" with value=d.average_score %}</td>
+          <td class="num">{{ d.high_risk_employees }}</td>
+          <td class="num">{{ d.employees_scored }} / {{ d.employees }}</td>
+          <td class="num">{{ d.training.completion_rate_percent|percent }}</td>
+          <td class="num">{% if d.training.overdue %}<span class="overdue">{{ d.training.overdue }}</span>{% else %}0{% endif %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <div class="empty"><strong>No departments yet</strong>Add departments in Manage.</div>
+  {% endif %}
+</div>
+{% endblock %}

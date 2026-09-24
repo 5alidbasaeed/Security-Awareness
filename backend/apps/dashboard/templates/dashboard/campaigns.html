@@ -1,0 +1,24 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Campaigns{% endblock %}
+{% block content %}
+<header class="page-header">
+  <div>
+    <h1>Campaigns</h1>
+    <p class="page-header__sub">Results for every simulated phishing campaign.</p>
+  </div>
+</header>
+
+<form class="toolbar" method="get" action="{% url 'dashboard:campaigns' %}" hx-target="#campaign-results" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#campaign-indicator">
+  <label class="visually-hidden" for="status">Status</label>
+  <select class="select" id="status" name="status" hx-get="{% url 'dashboard:campaigns' %}" hx-trigger="change">
+    <option value="">All statuses</option>
+    {% for value, label in statuses %}<option value="{{ value }}"{% if value == status %} selected{% endif %}>{{ label }}</option>{% endfor %}
+  </select>
+  <noscript><button class="button" type="submit">Filter</button></noscript>
+  <span id="campaign-indicator" class="htmx-indicator" role="status">Loading…</span>
+</form>
+
+<div class="card">
+  {% include "dashboard/_campaign_table.html" %}
+</div>
+{% endblock %}

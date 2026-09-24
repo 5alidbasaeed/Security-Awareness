@@ -48,6 +48,13 @@ Run this checklist on top of (not instead of) general code quality review. Each 
 - [ ] Is a derived fact (`passed`) also a hand-editable field that can contradict its source (`score_percent`)?
 - [ ] Is the web server timeout longer than the sum of the external calls a request chains?
 
+## Dashboard / frontend (Phase 4.1)
+- [ ] Does a new dashboard view start from `dashboard/scope.py` (never `Model.objects`) and use `@dashboard_access`?
+- [ ] Does a template add an inline `style=`/`<script>`/`onclick=`, or load anything from another origin? The dashboard CSP forbids it.
+- [ ] Is a risk level/threshold hardcoded in a template or JS instead of coming from `risk_scoring.analytics`?
+- [ ] Is colour ever the only signal? Every risk/status badge needs its text label.
+- [ ] Does `hx-include` sit on a container that also holds HTMX links (double-sent params)? Does an empty query param bypass a default?
+
 ## Network / secrets
 - [ ] Does a Docker Compose or Nginx change publish a port for Postgres, Redis, MySQL, or Gophish's admin/API outside the `internal` network?
 - [ ] Is any new dev-convenience Compose file named `docker-compose.override.yml`? That exact filename is auto-loaded by plain `docker compose up` with no flag — a real deployment running the standard command on a fresh clone would silently inherit whatever it publishes. Dev-only network/port overrides must use a different filename (`docker-compose.dev.yml` is the existing convention) and be loaded explicitly via `-f`. Found and fixed once already — see git history.

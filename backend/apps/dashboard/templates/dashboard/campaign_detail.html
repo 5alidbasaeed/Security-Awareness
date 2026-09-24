@@ -1,0 +1,70 @@
+{% extends "dashboard/base.html" %}
+{% load dashboard %}
+{% block title %}{{ campaign.name }}{% endblock %}
+{% block content %}
+<p class="breadcrumb"><a href="{% url 'dashboard:campaigns' %}">Campaigns</a></p>
+<header class="page-header">
+  <div>
+    <h1>{{ campaign.name }}</h1>
+    <p class="page-header__sub">
+      {{ campaign.target_department|default:"No department" }}
+      · <span class="badge{% if campaign.status == "launched" %} badge--accent{% endif %}">{{ campaign.get_status_display }}</span>
+      {% if campaign.launched_at %}· Launched {{ campaign.launched_at|date:"M j, Y" }}{% endif %}
+      {% if campaign.training_module %}· Training: {{ campaign.training_module }}{% endif %}
+    </p>
+  </div>
+</header>
+
+<div class="stack">
+  <section class="stats" aria-label="Key figures">
+    <div class="card stat"><div class="stat__label">Targeted</div><div class="stat__value">{{ summary.targeted }}</div><div class="stat__note">Employees sent the email</div></div>
+    <div class="card stat"><div class="stat__label">Failure rate</div><div class="stat__value">{{ summary.failure_rate_percent|percent }}</div><div class="stat__note">{{ summary.failed }} clicked or submitted</div></div>
+    <div class="card stat"><div class="stat__label">Submitted data</div><div class="stat__value">{{ summary.submit_rate_percent|percent }}</div><div class="stat__note">{{ summary.submitted_data }} employee{{ summary.submitted_data|pluralize }}</div></div>
+    <div class="card stat"><div class="stat__label">Reported</div><div class="stat__value">{{ summary.report_rate_percent|percent }}</div><div class="stat__note">{{ summary.reported }} employee{{ summary.reported|pluralize }}</div></div>
+  </section>
+
+  <section class="card" aria-labelledby="funnel-heading">
+    <div class="card__header"><h2 id="funnel-heading">Funnel</h2><span class="card__note">Share of employees sent the email</span></div>
+    <div class="card__body">
+      {% if summary.targeted %}
+      <ol class="funnel">
+        {% for step in steps %}
+        <li class="funnel__row">
+          <span>{{ step.label }}</span>
+          <progress max="{{ step.max }}" value="{{ step.value }}"{% if step.label == "Submitted data" or step.label == "Clicked the link" %} class="progress--high"{% elif step.label == "Reported the email" %} class="progress--low"{% endif %} aria-label="{{ step.label }}: {{ step.value }} of {{ step.max }}"></progress>
+          <span class="funnel__value">{{ step.value }}<small>{{ step.percent|percent }}</small></span>
+        </li>
+        {% endfor %}
+      </ol>
+      <p class="footnote">Opened ({{ summary.opened_diagnostic_only }}) is a delivery diagnostic only. Mail clients prefetch tracking pixels, so it is never used in a rate or a risk score.</p>
+      {% else %}
+      <div class="empty"><strong>No results yet</strong>Results appear as soon as the first emails are sent.</div>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="failures-heading">
+    <div class="card__header"><h2 id="failures-heading">Employees who failed</h2><span class="card__note">Clicked the link or submitted data</span></div>
+    <div class="card__body card--flush">
+      {% if failures %}
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th scope="col">Employee</th><th scope="col">Outcome</th><th scope="col">When</th></tr></thead>
+          <tbody>
+            {% for f in failures %}
+            <tr>
+              <td><a href="{% url 'dashboard:employee-detail' f.employee.pk %}">{{ f.employee.full_name }}</a><span class="cell-meta">{{ f.employee.department|default:"No department" }}</span></td>
+              <td><span class="badge {% if f.outcome == "Submitted data" %}badge--high{% else %}badge--medium{% endif %}">{{ f.outcome }}</span></td>
+              <td>{{ f.at|date:"M j, Y, H:i" }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty"><strong>Nobody has failed this campaign</strong>Clicks and data submissions will be listed here.</div>
+      {% endif %}
+    </div>
+  </section>
+</div>
+{% endblock %}

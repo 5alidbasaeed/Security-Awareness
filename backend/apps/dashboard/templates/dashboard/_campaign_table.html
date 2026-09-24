@@ -1,0 +1,33 @@
+{% load dashboard %}<div id="campaign-results" class="results">
+  {% if rows %}
+  <div class="table-wrap">
+    <table class="table">
+      <caption class="visually-hidden">Campaigns and their results</caption>
+      <thead>
+        <tr>
+          <th scope="col">Campaign</th><th scope="col">Status</th>
+          <th scope="col" class="num">Targeted</th><th scope="col" class="num">Failed</th>
+          <th scope="col" class="num">Submitted data</th><th scope="col" class="num">Reported</th>
+          <th scope="col">Launched</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in rows %}
+        <tr>
+          <td><a href="{% url 'dashboard:campaign-detail' row.campaign.pk %}">{{ row.campaign.name }}</a><span class="cell-meta">{{ row.campaign.target_department|default:"No department" }}</span></td>
+          <td><span class="badge{% if row.campaign.status == "launched" %} badge--accent{% endif %}">{{ row.campaign.get_status_display }}</span></td>
+          <td class="num">{{ row.summary.targeted }}</td>
+          <td class="num">{{ row.summary.failure_rate_percent|percent }}</td>
+          <td class="num">{{ row.summary.submit_rate_percent|percent }}</td>
+          <td class="num">{{ row.summary.report_rate_percent|percent }}</td>
+          <td>{{ row.campaign.launched_at|date:"M j, Y"|default:"—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "dashboard/_pagination.html" with hx=True %}
+  {% else %}
+  <div class="empty"><strong>No campaigns match</strong>Create and approve a campaign in Manage to see results here.</div>
+  {% endif %}
+</div>

@@ -1,0 +1,50 @@
+{% extends "dashboard/base.html" %}
+{% load dashboard %}
+{% block title %}{{ department.name }}{% endblock %}
+{% block content %}
+<p class="breadcrumb"><a href="{% url 'dashboard:departments' %}">Departments</a></p>
+<header class="page-header">
+  <div>
+    <h1>{{ department.name }}</h1>
+    <p class="page-header__sub">{{ summary.employees }} employee{{ summary.employees|pluralize }}</p>
+  </div>
+</header>
+
+<div class="stack">
+  <section class="stats" aria-label="Key figures">
+    <div class="card stat">
+      <div class="stat__label">Average risk score</div>
+      <div class="stat__value">{{ summary.average_score|score_fmt }}</div>
+      <div class="stat__note">{% include "dashboard/_delta.html" %}</div>
+    </div>
+    <div class="card stat"><div class="stat__label">High-risk employees</div><div class="stat__value">{{ summary.high_risk_employees }}</div><div class="stat__note">Score {{ summary.high_risk_threshold }} or above</div></div>
+    <div class="card stat"><div class="stat__label">Training completion</div><div class="stat__value">{{ summary.training.completion_rate_percent|percent }}</div><div class="stat__note">{{ summary.training.outstanding }} outstanding{% if summary.training.overdue %} · <span class="overdue">{{ summary.training.overdue }} overdue</span>{% endif %}</div></div>
+    <div class="card stat"><div class="stat__label">Employees scored</div><div class="stat__value">{{ summary.employees_scored }}</div><div class="stat__note">of {{ summary.employees }}</div></div>
+  </section>
+
+  <section class="card" aria-labelledby="trend-heading">
+    <div class="card__header"><h2 id="trend-heading">Risk trend</h2><span class="card__note">Last 12 weeks · lower is better</span></div>
+    <div class="card__body">
+      {% include "dashboard/_chart.html" with chart_id="department-trend" label="Average risk score for this department over the last 12 weeks" %}
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="members-heading">
+    <div class="card__header"><h2 id="members-heading">Highest risk in this department</h2><a href="{% url 'dashboard:employees' %}?department={{ department.pk }}">View everyone</a></div>
+    <div class="card__body card--flush">
+      {% if members %}
+      <ul class="list">
+        {% for e in members %}
+        <li class="list__item">
+          <span><a href="{% url 'dashboard:employee-detail' e.pk %}">{{ e.full_name }}</a><span class="cell-meta">{{ e.email }}</span></span>
+          <span>{% include "dashboard/_risk_badge.html" with value=e.current_score %}</span>
+        </li>
+        {% endfor %}
+      </ul>
+      {% else %}
+      <div class="empty"><strong>No employees in this department</strong>Add people in Manage.</div>
+      {% endif %}
+    </div>
+  </section>
+</div>
+{% endblock %}

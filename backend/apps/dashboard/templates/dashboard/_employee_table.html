@@ -1,0 +1,33 @@
+{% load dashboard %}<div id="employee-results" class="results">
+  {% if request.GET.sort %}<input type="hidden" name="sort" value="{{ request.GET.sort }}">{% endif %}
+  {% if page.object_list %}
+  <div class="table-wrap">
+    <table class="table">
+      <caption class="visually-hidden">Employees with their current risk score</caption>
+      <thead>
+        <tr>
+          <th scope="col" aria-sort="{% sort_state 'name' %}"><a href="{% sort_link 'name' %}" hx-get="{% sort_link 'name' %}">Employee</a></th>
+          <th scope="col" aria-sort="{% sort_state 'department' %}"><a href="{% sort_link 'department' %}" hx-get="{% sort_link 'department' %}">Department</a></th>
+          <th scope="col" aria-sort="{% sort_state 'score' %}"><a href="{% sort_link 'score' %}" hx-get="{% sort_link 'score' %}">Risk score</a></th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in page.object_list %}
+        <tr>
+          <td>
+            <a href="{% url 'dashboard:employee-detail' e.pk %}">{{ e.full_name }}</a>
+            {% if e.is_exempt %}<span class="badge">Exempt</span>{% endif %}
+            <span class="cell-meta">{{ e.email }}</span>
+          </td>
+          <td>{{ e.department|default:"—" }}</td>
+          <td>{% include "dashboard/_risk_badge.html" with value=e.current_score %}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% include "dashboard/_pagination.html" with hx=True %}
+  {% else %}
+  <div class="empty"><strong>No employees match</strong>Try a different search or department.</div>
+  {% endif %}
+</div>

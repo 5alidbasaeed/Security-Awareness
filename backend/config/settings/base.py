@@ -32,16 +32,19 @@ INSTALLED_APPS = [
     "apps.training",
     "apps.risk_scoring",
     "apps.engine",
+    "apps.dashboard",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "apps.dashboard.middleware.DashboardSecurityHeadersMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -91,6 +94,12 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+# Served by WhiteNoise from the Django container itself — the dashboard has no
+# CDN or external asset host (VPN-only deployment, CLAUDE.md invariant #8).
+STORAGES = {
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "whitenoise.storage.CompressedStaticFilesStorage"},
+}
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -135,9 +144,10 @@ DEFAULT_FROM_EMAIL = env("DJANGO_DEFAULT_FROM_EMAIL", default="noreply@example.c
 # --- Training ---
 TRAINING_DUE_DAYS = env.int("TRAINING_DUE_DAYS", default=14)
 
-# Anonymous hits on staff-only pages (the /analytics/ API) go to the admin login
-# until the Phase 4.1 dashboard has its own.
-LOGIN_URL = "admin:login"
+# Anonymous hits on staff-only pages (the dashboard, the /analytics/ API) go to the dashboard login.
+LOGIN_URL = "dashboard:login"
+LOGIN_REDIRECT_URL = "dashboard:overview"
+LOGOUT_REDIRECT_URL = "dashboard:login"
 
 # --- Campaign launch rate limiting (Phase 3) ---
 # Applies to both the admin "Launch" action and the scheduler — see

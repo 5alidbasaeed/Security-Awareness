@@ -1,0 +1,46 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="htmx-config" content='{"includeIndicatorStyles": false, "allowEval": false, "allowScriptTags": false}'>
+  <title>{% block title %}Overview{% endblock %} · Security Awareness</title>
+  <link rel="stylesheet" href="{% static 'dashboard/app.css' %}">
+  <script src="{% static 'dashboard/vendor/htmx-2.0.4.min.js' %}" defer></script>
+  <script src="{% static 'dashboard/vendor/chart-4.4.7.umd.js' %}" defer></script>
+  <script src="{% static 'dashboard/charts.js' %}" defer></script>
+</head>
+<body class="{% block body_class %}{% endblock %}">
+  {% block nav %}
+  <a class="skip-link" href="#main">Skip to content</a>
+  <nav class="nav" aria-label="Primary">
+    <div class="container nav__inner">
+      <a class="nav__brand" href="{% url 'dashboard:overview' %}">Security Awareness</a>
+      <ul class="nav__links">
+        <li><a class="nav__link" href="{% url 'dashboard:overview' %}"{% if active == "overview" %} aria-current="page"{% endif %}>Overview</a></li>
+        <li><a class="nav__link" href="{% url 'dashboard:campaigns' %}"{% if active == "campaigns" %} aria-current="page"{% endif %}>Campaigns</a></li>
+        <li><a class="nav__link" href="{% url 'dashboard:employees' %}"{% if active == "employees" %} aria-current="page"{% endif %}>Employees</a></li>
+        <li><a class="nav__link" href="{% url 'dashboard:departments' %}"{% if active == "departments" %} aria-current="page"{% endif %}>Departments</a></li>
+        <li><a class="nav__link" href="{% url 'dashboard:training' %}"{% if active == "training" %} aria-current="page"{% endif %}>Training</a></li>
+      </ul>
+      <div class="nav__user">
+        <a href="{% url 'admin:index' %}">Manage</a>
+        <span>{{ request.user.get_username }}</span>
+        <form class="inline-form" method="post" action="{% url 'dashboard:logout' %}">
+          {% csrf_token %}
+          <button class="button button--quiet" type="submit">Sign out</button>
+        </form>
+      </div>
+    </div>
+  </nav>
+  {% endblock %}
+
+  {% block main %}
+  <main id="main" class="container">
+    {% block content %}{% endblock %}
+  </main>
+  {% endblock %}
+</body>
+</html>

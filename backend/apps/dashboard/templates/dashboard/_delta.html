@@ -1,0 +1,1 @@
+{% load dashboard %}{% if delta is None %}<span>Not enough history yet</span>{% elif delta < 0 %}<span class="trend--improving">▼ {{ delta|signed }} · improving</span>{% elif delta > 0 %}<span class="trend--worsening">▲ {{ delta|signed }} · worsening</span>{% else %}<span>▬ No change</span>{% endif %}

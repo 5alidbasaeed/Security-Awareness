@@ -18,11 +18,23 @@ from .models import RiskScoreSnapshot
 from .services import latest_snapshots
 
 HIGH_RISK_THRESHOLD = 60
+MEDIUM_RISK_THRESHOLD = 30
 TREND_LOOKBACK_DAYS = 30
 TREND_DELTA = 5  # points of movement before we call it improving/worsening
 
 
-def _rate(part: int, whole: int):
+def risk_level(score) -> str:
+    """The one place a score becomes low/medium/high — the UI reads this, never its own numbers."""
+    if score is None:
+        return "unscored"
+    if score >= HIGH_RISK_THRESHOLD:
+        return "high"
+    if score >= MEDIUM_RISK_THRESHOLD:
+        return "medium"
+    return "low"
+
+
+def rate(part: int, whole: int):
     return round(100 * part / whole, 1) if whole else None
 
 
@@ -56,9 +68,9 @@ def campaign_summary(campaign) -> dict:
         "submitted_data": submitted,
         "reported": reported,
         "failed": failed,
-        "failure_rate_percent": _rate(failed, targeted),
-        "submit_rate_percent": _rate(submitted, targeted),
-        "report_rate_percent": _rate(reported, targeted),
+        "failure_rate_percent": rate(failed, targeted),
+        "submit_rate_percent": rate(submitted, targeted),
+        "report_rate_percent": rate(reported, targeted),
     }
 
 
@@ -72,17 +84,17 @@ def training_compliance(assignments) -> dict:
     return {
         **totals,
         "outstanding": totals["assigned"] - totals["completed"],
-        "completion_rate_percent": _rate(totals["completed"], totals["assigned"]),
+        "completion_rate_percent": rate(totals["completed"], totals["assigned"]),
     }
 
 
-def department_summary(department) -> dict:
-    employees = Employee.objects.filter(department=department)
+def scope_summary(employees) -> dict:
+    """Summary for any set of employees: a department, or everyone a user may see."""
     scores = latest_snapshots().filter(employee__in=employees)
-    stats = scores.aggregate(average=Avg("score"), scored=Count("id"), high=Count("id", filter=Q(score__gte=HIGH_RISK_THRESHOLD)))
+    stats = scores.aggregate(
+        average=Avg("score"), scored=Count("id"), high=Count("id", filter=Q(score__gte=HIGH_RISK_THRESHOLD))
+    )
     return {
-        "department_id": department.pk,
-        "name": department.name,
         "employees": employees.count(),
         "employees_scored": stats["scored"],
         "average_score": float(stats["average"]) if stats["average"] is not None else None,
@@ -90,6 +102,11 @@ def department_summary(department) -> dict:
         "high_risk_threshold": HIGH_RISK_THRESHOLD,
         "training": training_compliance(TrainingAssignment.objects.filter(employee__in=employees)),
     }
+
+
+def department_summary(department) -> dict:
+    summary = scope_summary(Employee.objects.filter(department=department))
+    return {"department_id": department.pk, "name": department.name, **summary}
 
 
 def score_history(employee) -> list[dict]:
@@ -117,24 +134,21 @@ def trend_direction(history: list[dict], now=None) -> str:
     return "stagnant"
 
 
-def department_trend(department, weeks: int = 12, now=None) -> list[dict]:
+def trend_series(snapshots, weeks: int = 12, now=None) -> list[dict]:
     """
     Average of each employee's latest-known score as of the end of each week,
     so an employee with no new snapshot that week still counts at their last value.
+    `snapshots` is any RiskScoreSnapshot queryset (one department, everyone visible, ...).
     """
     now = now or timezone.now()
-    snapshots = list(
-        RiskScoreSnapshot.objects.filter(employee__department=department)
-        .order_by("computed_at", "id")
-        .values("employee_id", "score", "computed_at")
-    )
+    rows = list(snapshots.order_by("computed_at", "id").values("employee_id", "score", "computed_at"))
     latest: dict[int, float] = {}
     index = 0
     series = []
     for weeks_ago in range(weeks - 1, -1, -1):
         week_end = now - timedelta(weeks=weeks_ago)
-        while index < len(snapshots) and snapshots[index]["computed_at"] <= week_end:
-            latest[snapshots[index]["employee_id"]] = float(snapshots[index]["score"])
+        while index < len(rows) and rows[index]["computed_at"] <= week_end:
+            latest[rows[index]["employee_id"]] = float(rows[index]["score"])
             index += 1
         series.append(
             {
@@ -144,3 +158,15 @@ def department_trend(department, weeks: int = 12, now=None) -> list[dict]:
             }
         )
     return series
+
+
+def department_trend(department, weeks: int = 12, now=None) -> list[dict]:
+    return trend_series(RiskScoreSnapshot.objects.filter(employee__department=department), weeks=weeks, now=now)
+
+
+def series_delta(series: list[dict]):
+    """Change between the last two weeks that have data (lower score is better), or None."""
+    points = [point["average_score"] for point in series if point["average_score"] is not None]
+    if len(points) < 2:
+        return None
+    return round(points[-1] - points[-2], 1)
