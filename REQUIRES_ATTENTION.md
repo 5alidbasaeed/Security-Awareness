@@ -89,10 +89,28 @@ Checked out `claude/optimistic-bardeen-v7ee7l`, rebuilt, migrated, ran `setup_gr
 | **`POST /portal/sign-in/` was unthrottled** — a public form that emails whoever it is asked about, so anyone could flood employees' inboxes or tie up web workers | Two limits in the shared Redis cache: per address (default 3/hour) and per client (default 20/hour). Every attempt counts, including unknown addresses. Over the limit the response is identical and nothing is sent, so there is still no "does this address exist?" oracle. Only a hash of the address is stored. Settings: `PORTAL_LINK_EMAIL_LIMIT`, `PORTAL_LINK_IP_LIMIT`, `PORTAL_LINK_WINDOW_SECONDS`. Verified live: 7 requests, 7 identical answers, 3 emails sent |
 | `EMAIL_TIMEOUT` was unset, so a slow or black-holed SMTP relay blocked a gunicorn worker until the OS gave up | `EMAIL_TIMEOUT` defaults to 10 seconds |
 | The deliverability checker's POST (arbitrary outbound DNS lookups from the internal network) was open to any view-only role | Now needs `campaigns.change_campaign` |
-| **Windows checkouts crash-loop Gophish**: Git's CRLF conversion turned `gophish/entrypoint.sh` into `#!/bin/sh`, so the container failed with "no such file or directory" | `.gitattributes` forces LF for scripts, Dockerfiles, YAML and config |
+| **Windows checkouts crash-loop Gophish**: Git's CRLF conversion turned `gophish/entrypoint.sh` into `#!/bin/sh
+`, so the container failed with "no such file or directory" | `.gitattributes` forces LF for scripts, Dockerfiles, YAML and config |
 | `backend/dump.rdb` and `backend/celerybeat-schedule.db` (runtime artifacts; the Redis dump held Celery task metadata) were committed | Untracked and git-ignored |
 
 **Upgrading an existing running stack — do this once.** The `internal` network now has a fixed subnet, so Compose recreates it and can reattach your existing postgres/redis/mysql containers *without their DNS names*; Django and Celery then fail with `No address associated with hostname`. Run `docker compose down` (no `-v`, data volumes are kept) and then `docker compose up -d --build`.
 
 **Still open (new, low):** the sign-in email is sent inside the web request, so response time differs slightly between a known and an unknown address. Moving the send into a Celery task would make it uniform and non-blocking.
+
+---
+
+## End-to-end run of the Phase 6 build (2026-09-24)
+
+Ran `backend/e2e/run_e2e.py` against the live stack, up to but not including sending email: **92 of 92 checks pass**, and Gophish gained no campaign. Unit suite: 326 passing. The run found:
+
+| Finding | Fix |
+|---|---|
+| **The landing-page preview lost its sandbox.** The view sets `Content-Security-Policy: sandbox` for author-controlled HTML, but `DashboardSecurityHeadersMiddleware` (extended to the `manage` pages) overwrote it with the ordinary page policy, so the preview ran in the app's own origin | The middleware now only sets its policy when the view hasn't set a stricter one. Regression test added, and confirmed to fail on the old code |
+| **Privacy retention counted from the wrong date.** `anonymize_stale_employees` used `created_at`, so someone employed for years and deactivated yesterday would be irreversibly anonymized on the next run once `PII_RETENTION_DAYS` is set | New `Employee.deactivated_at`, stamped on every deactivation path (including the importer's partial save) and cleared on reactivation; retention counts from it. Rows deactivated before the field existed get their clock started on the first run rather than being anonymized at once. Migration `employees.0005` |
+
+**Deployment note:** run `migrate` after deploying (adds `employees.0005`). Nothing is anonymized until `PII_RETENTION_DAYS` is set above 0, and then only people deactivated for at least that long.
+
+**Reviewed and found sound:** smart groups can't bypass exemptions (the exempt/inactive filter is the base of every audience query); the API cannot launch or approve anything; every management view is permission-gated; API keys are own-keys-only and limited to the owner's permissions; the importer's deactivation is opt-in and reversible.
+
+**Not exercised (needs real mail):** the portal sign-in email, training reminders, coaching, escalations and scheduled-report emails. The E2E used a signed magic link directly, and the console backend for everything else.
 

@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.utils import timezone
 
 
 class Department(models.Model):
@@ -46,11 +47,27 @@ class Employee(models.Model):
         help_text="Offboarded employees are deactivated, never deleted — their event history is immutable.",
     )
     created_at = models.DateTimeField(auto_now_add=True)
+    deactivated_at = models.DateTimeField(
+        null=True, blank=True, editable=False,
+        help_text="When they were offboarded. Starts the privacy-retention clock; cleared if they are reactivated.",
+    )
 
     class Meta:
-        # Separate from change_employee: Department Managers can edit their own people but
+        # Separate from change_employee: Department Managers can edit their own people but: Department Managers can edit their own people but
         # must not be able to pull the raw employee list out of the system.
         permissions = [("export_employee_data", "Can export employee data as CSV")]
+
+    def save(self, *args, **kwargs):
+        # Stamp the moment of deactivation on every path that goes through save(), including the
+        # importer's save(update_fields=["is_active"]). Retention counts from here, not from created_at.
+        if not self.is_active and self.deactivated_at is None:
+            self.deactivated_at = timezone.now()
+        elif self.is_active and self.deactivated_at is not None:
+            self.deactivated_at = None
+        update_fields = kwargs.get("update_fields")
+        if update_fields is not None and "is_active" in update_fields:
+            kwargs["update_fields"] = list(set(update_fields) | {"deactivated_at"})
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.full_name} <{self.email}>"

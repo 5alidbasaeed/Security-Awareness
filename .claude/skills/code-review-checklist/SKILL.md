@@ -93,3 +93,8 @@ If every box above is empty, defer to the general `code-review` skill for correc
 - [ ] After checking a branch out on Windows: do container scripts keep LF endings (`.gitattributes`), and did `docker compose down && up` run after any change to a network's subnet (stale DNS aliases)?
 - [ ] Are runtime artifacts (`*.rdb`, beat schedules, sqlite files) ignored and untracked?
 
+## End-to-end review findings (Phase 6)
+- [ ] Does any middleware or post-processing overwrite a header a view set deliberately (CSP `sandbox`, cache headers)? Use `setdefault`; a stricter view policy must win.
+- [ ] Does a time-based job (retention, reminders, escalation) measure from the right event? "Deactivated N days ago" needs a `deactivated_at`, not `created_at`. Check that the stamp is set on every code path, including partial `save(update_fields=...)` and bulk updates.
+- [ ] Did you run `python -m e2e.run_e2e` after changing anything that crosses services (webhooks, Celery, Gophish adapter, permissions)? Unit tests with a fake engine can't catch integration drift.
+

@@ -131,7 +131,7 @@ def test_anonymise_scrubs_long_deactivated_employees(settings):
     settings.PII_RETENTION_DAYS = 30
     keep = EmployeeFactory(is_active=True)
     old = EmployeeFactory(is_active=False, full_name="Jo Real", email="jo@corp.example")
-    Employee.objects.filter(pk=old.pk).update(created_at=timezone.now() - timedelta(days=60))
+    Employee.objects.filter(pk=old.pk).update(deactivated_at=timezone.now() - timedelta(days=60))
     event = EventFactory(employee=old)  # history must survive
 
     assert anonymize_stale_employees() == 1

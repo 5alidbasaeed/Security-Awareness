@@ -292,3 +292,25 @@ def test_delta_label_uses_the_shared_trend_threshold(delta, text):
     html = render_to_string("dashboard/_delta.html", {"delta": delta, "delta_direction": change_direction(delta)})
 
     assert text in html
+
+
+def test_a_stricter_policy_set_by_a_view_is_not_overwritten_by_the_middleware(client, django_user_model, monkeypatch):
+    """
+    Regression (found by the end-to-end run): the landing-page preview sets `Content-Security-Policy: sandbox`
+    for author-controlled HTML, but the dashboard middleware replaced it with the page policy, silently
+    dropping the sandbox (opaque origin, no forms).
+    """
+    class FakeClient:
+        def get_landing_page_html(self, name):
+            return "<html><form action='/manage/'><button>Sign in</button></form></html>"
+
+    monkeypatch.setattr("apps.manage.views.get_client", lambda: FakeClient())
+    admin = django_user_model.objects.create_superuser("root", "r@example.com", "x")
+    client.force_login(admin)
+
+    response = client.get(reverse("manage:page-preview", args=["Some Page"]))
+
+    assert response.status_code == 200
+    assert response["Content-Security-Policy"] == "sandbox"
+    # ...while ordinary pages still get the strict page policy from the middleware.
+    assert "script-src 'self'" in client.get(reverse("dashboard:overview"))["Content-Security-Policy"]

@@ -151,3 +151,12 @@ Mandatory-training enrolment, overdue-training manager escalation, scheduled-rep
 
 ### Phase 7
 Production hardening and operability (admin MFA/SSO, throttling, backups, monitoring, real SMTP relay, data-governance) is written up in `phishing-training-platform-plan.md` → "Phase 7", and open operational items are tracked in `REQUIRES_ATTENTION.md`.
+
+## End-to-end check (no email is sent)
+
+`backend/e2e/run_e2e.py` drives the whole platform over real HTTP against the running stack — real Postgres, Redis, Celery worker and Gophish — and stops short of sending: content authoring in Gophish, draft campaign via the API, the approval workflow and role checks, the launch service with a guard client (real Gophish target-group sync, but the call that would email is intercepted, and it asserts Gophish gained no campaign), signed webhooks into ingestion (password stripped, idempotent), Celery scoring and training assignment, dashboard row scoping, the employee portal (magic link, quiz, certificate, report-a-phish), API keys and scopes, and reports plus the evidence package. It tags all of its data (`E2E`, `e2e_`, `@e2e.example`) and removes it first and last, so it is safe to re-run. It refuses to run unless `DEBUG` is on.
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml run --rm -T -v "$PWD/backend:/app" django python -m e2e.run_e2e
+```
+
