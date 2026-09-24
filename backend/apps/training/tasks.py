@@ -33,7 +33,7 @@ def send_training_reminders():
     now = timezone.now()
     due_for_reminder = (
         TrainingAssignment.objects.filter(
-            completed_at__isnull=True, module__is_active=True, employee__is_active=True,
+            completed_at__isnull=True, waived_at__isnull=True, module__is_active=True, employee__is_active=True,
             assigned_at__lte=now - REMINDER_AFTER
         )
         .exclude(last_reminded_at__gte=now - REMINDER_COOLDOWN)
@@ -81,7 +81,7 @@ def enforce_training_policies():
             people = people.filter(department_id=policy.department_id)
         recent_cutoff = now - timedelta(days=policy.repeat_every_days)
         already = TrainingAssignment.objects.filter(module=policy.module, assigned_at__gte=recent_cutoff).values("employee_id")
-        open_ = TrainingAssignment.objects.filter(module=policy.module, completed_at__isnull=True).values("employee_id")
+        open_ = TrainingAssignment.objects.filter(module=policy.module, completed_at__isnull=True, waived_at__isnull=True).values("employee_id")
         for employee in people.exclude(pk__in=already).exclude(pk__in=open_):
             TrainingAssignment.objects.create(employee=employee, module=policy.module,
                                               due_at=now + timedelta(days=policy.due_days))
@@ -112,7 +112,7 @@ def escalate_overdue_training():
     for department in Department.objects.prefetch_related("managers").select_related("manager"):
         overdue = (
             TrainingAssignment.objects.filter(
-                employee__department=department, employee__is_active=True, completed_at__isnull=True,
+                employee__department=department, employee__is_active=True, completed_at__isnull=True, waived_at__isnull=True,
                 due_at__lt=now - ESCALATE_AFTER_OVERDUE,
             ).select_related("employee", "module").order_by("due_at")
         )

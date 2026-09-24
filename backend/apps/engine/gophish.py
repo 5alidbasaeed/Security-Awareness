@@ -183,17 +183,21 @@ class GophishClient(PhishingEngineClient):
             )
         response.raise_for_status()
 
-    def send_test_email(self, *, profile_name, to_email):
+    def send_test_email(self, *, profile_name, to_email, template=None, url=""):
         profile = self._find_by_name("/api/smtp/", profile_name)
         if profile is None:
             raise ValueError(f"No sending profile named {profile_name!r}. Save the settings first.")
-        body = {
-            "template": {
-                "name": "SMTP test", "subject": "Test message from Security Awareness",
+        if template is None:
+            content = {
+                "subject": "Test message from Security Awareness",
                 "text": "This is a test message. Your SMTP settings work.",
                 "html": "<p>This is a test message. Your SMTP settings work.</p>",
-            },
-            "first_name": "Test", "last_name": "", "email": to_email, "position": "", "url": "",
+            }
+        else:
+            content = {**template, "subject": f"[TEST] {template['subject']}"}
+        body = {
+            "template": {"name": "Test send", **content},
+            "first_name": "Test", "last_name": "Recipient", "email": to_email, "position": "", "url": url,
             "smtp": profile,
         }
         # A test send waits on the relay, so allow longer than an ordinary API call.
@@ -206,6 +210,19 @@ class GophishClient(PhishingEngineClient):
             result = {}
         if not response.ok or result.get("success") is False:
             raise RuntimeError(result.get("message") or f"the engine answered {response.status_code}")
+
+    def import_site(self, url):
+        response = requests.post(
+            f"{self._base_url}/api/import/site", json={"url": url, "include_resources": False},
+            headers=self._headers(), timeout=max(self._timeout, 30),
+        )
+        try:
+            result = response.json()
+        except ValueError:
+            result = {}
+        if not response.ok or not result.get("html"):
+            raise RuntimeError(result.get("message") or f"the engine could not fetch that page ({response.status_code})")
+        return result["html"]
 
     def list_landing_pages(self) -> list[dict]:
         response = requests.get(f"{self._base_url}/api/pages/", headers=self._headers(), timeout=self._timeout)

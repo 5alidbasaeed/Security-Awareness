@@ -25,6 +25,9 @@ class AuditLogEntry(models.Model):
     class Meta:
         ordering = ["-occurred_at"]
         verbose_name_plural = "audit log entries"
+        # Who may change staff accounts and roles (Security Admin only). Lives here because auth's own
+        # model permissions are never granted to the app's roles.
+        permissions = [("manage_user_access", "Can manage staff accounts and roles")]
 
     def __str__(self):
         return f"{self.action} — {self.target_description}"

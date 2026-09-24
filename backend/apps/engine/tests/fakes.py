@@ -25,6 +25,8 @@ class FakePhishingEngineClient(PhishingEngineClient):
         self.sending_profiles: dict[str, str] = {"default": "1"}  # name -> id
         self.profile_settings: dict[str, dict] = {}
         self.test_emails: list[tuple] = []
+        self.last_test: dict = {}  # template/url of the most recent test send
+        self.site_pages: dict[str, str] = {}  # url -> html served by import_site, populate in a test as needed
         self._next_campaign_id = 1
         self._next_group_id = 1
         self._next_content_id = 1
@@ -109,12 +111,18 @@ class FakePhishingEngineClient(PhishingEngineClient):
         }
         self.sending_profiles.setdefault(name, self._content_id())
 
-    def send_test_email(self, *, profile_name, to_email):
+    def send_test_email(self, *, profile_name, to_email, template=None, url=""):
         if profile_name not in self.profile_settings:
             raise ValueError(f"No sending profile named {profile_name!r}.")
         if getattr(self, "test_email_error", None):
             raise RuntimeError(self.test_email_error)
         self.test_emails.append((profile_name, to_email))
+        self.last_test = {"template": template, "url": url}
+
+    def import_site(self, url):
+        if url not in self.site_pages:
+            raise RuntimeError("the engine could not fetch that page (404)")
+        return self.site_pages[url]
 
     def list_sending_profiles(self):
         return [{"name": n, "external_id": i} for n, i in sorted(self.sending_profiles.items())]

@@ -279,7 +279,7 @@ def test_sort_links_do_not_inherit_the_search_forms_include(client, django_user_
     form_tag = body[body.index("<form method=\"get\""):]
     form_tag = form_tag[: form_tag.index(">") + 1]
     assert "hx-include" not in form_tag
-    assert body.count('hx-include="closest form"') == 2  # only the search box and the department select
+    assert body.count('hx-include="closest form"') == 4  # only the search box and the three filter selects
 
 
 @pytest.mark.parametrize("delta, text", [(-0.3, "vs last week · stagnant"), (-6.0, "vs last week · improving"), (7.5, "vs last week · worsening")])

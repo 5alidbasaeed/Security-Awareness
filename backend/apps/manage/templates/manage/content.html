@@ -4,9 +4,9 @@
 {% include "manage/_subnav.html" with manage_section="content" %}
 <header class="page-header"><div><h1>Content library</h1>
 <p class="page-header__sub">Email templates and landing pages held in the phishing engine.</p></div>
-{% if perms.campaigns.view_campaigntemplate %}<a class="button button--quiet" href="{% url 'manage:catalog' %}">Catalog &amp; audiences</a>{% endif %}
+<div class="actions">{% if perms.campaigns.view_campaigntemplate %}<a class="button button--quiet" href="{% url 'manage:catalog' %}">Catalog &amp; audiences</a>{% endif %}
 <a class="button button--quiet" href="{% url 'manage:images' %}">Image library ({{ image_count }})</a>
-<a class="button button--quiet" href="{% url 'manage:deliverability' %}">Deliverability check</a></header>
+<a class="button button--quiet" href="{% url 'manage:deliverability' %}">Deliverability check</a></div></header>
 {% if engine_error %}<p class="flash flash--error" role="alert">Can't reach the phishing engine: {{ engine_error }}</p>{% endif %}
 <div class="grid-2">
   <section class="card">
@@ -19,7 +19,7 @@
     </ul>
   </section>
   <section class="card">
-    <div class="card__header"><h2>Landing pages</h2><span class="actions">{% if perms.campaigns.change_campaign %}<a href="{% url 'manage:page-new' %}">Paste HTML</a><a href="{% url 'manage:landing-new' %}">New</a>{% endif %}</span></div>
+    <div class="card__header"><h2>Landing pages</h2><span class="actions">{% if perms.campaigns.change_campaign %}<a href="{% url 'manage:landing-clone' %}">Clone a page</a><a href="{% url 'manage:page-new' %}">Paste HTML</a><a href="{% url 'manage:landing-new' %}">New</a>{% endif %}</span></div>
     <ul class="list">
       {% for d in landing_drafts %}<li class="list__item"><span>{{ d.name }}<span class="cell-meta">{{ d.get_layout_display }}</span></span>
         <span class="actions"><a href="{% url 'manage:page-preview' d.name %}" target="_blank" rel="noopener">Preview</a>{% if perms.campaigns.change_campaign %}<a href="{% url 'manage:landing-edit' d.pk %}">Edit</a>{% endif %}</span></li>

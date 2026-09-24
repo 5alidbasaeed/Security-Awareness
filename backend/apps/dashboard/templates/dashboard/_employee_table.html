@@ -3,12 +3,16 @@
   {% if page.object_list %}
   <div class="table-wrap">
     <table class="table">
-      <caption class="visually-hidden">Employees with their current risk score</caption>
+      <caption class="visually-hidden">Employees with their current risk score, test history and training status</caption>
       <thead>
         <tr>
           <th scope="col" aria-sort="{% sort_state 'name' %}"><a href="{% sort_link 'name' %}" hx-get="{% sort_link 'name' %}">Employee</a></th>
           <th scope="col" aria-sort="{% sort_state 'department' %}"><a href="{% sort_link 'department' %}" hx-get="{% sort_link 'department' %}">Department</a></th>
           <th scope="col" aria-sort="{% sort_state 'score' %}"><a href="{% sort_link 'score' %}" hx-get="{% sort_link 'score' %}">Risk score</a></th>
+          <th scope="col" class="num" aria-sort="{% sort_state 'failed' %}"><a href="{% sort_link 'failed' %}" hx-get="{% sort_link 'failed' %}">Failed</a></th>
+          <th scope="col" class="num" aria-sort="{% sort_state 'reported' %}"><a href="{% sort_link 'reported' %}" hx-get="{% sort_link 'reported' %}">Reported</a></th>
+          <th scope="col" aria-sort="{% sort_state 'last_tested' %}"><a href="{% sort_link 'last_tested' %}" hx-get="{% sort_link 'last_tested' %}">Last tested</a></th>
+          <th scope="col">Training</th>
         </tr>
       </thead>
       <tbody>
@@ -17,10 +21,21 @@
           <td>
             <a href="{% url 'dashboard:employee-detail' e.pk %}">{{ e.full_name }}</a>
             {% if e.is_exempt %}<span class="badge">Exempt</span>{% endif %}
+            {% if not e.is_active %}<span class="badge">Inactive</span>{% endif %}
+            {% if e.failed >= 2 %}<span class="badge badge--high">Repeat</span>{% endif %}
             <span class="cell-meta">{{ e.email }}</span>
           </td>
           <td>{{ e.department|default:"—" }}</td>
           <td>{% include "dashboard/_risk_badge.html" with value=e.current_score %}</td>
+          <td class="num">{{ e.failed }}<span class="cell-meta">of {{ e.tests }} test{{ e.tests|pluralize }}</span></td>
+          <td class="num">{{ e.reported }}</td>
+          <td>{{ e.last_tested|date:"M j, Y"|default:"Never" }}</td>
+          <td>
+            {% if e.has_overdue %}<span class="badge badge--high">Overdue</span>
+            {% elif e.has_outstanding %}<span class="badge badge--accent">In progress</span>
+            {% elif e.has_completed %}<span class="badge badge--low">Complete</span>
+            {% else %}<span class="muted">None assigned</span>{% endif %}
+          </td>
         </tr>
         {% endfor %}
       </tbody>
@@ -28,6 +43,6 @@
   </div>
   {% include "dashboard/_pagination.html" with hx=True %}
   {% else %}
-  <div class="empty"><strong>No employees match</strong>Try a different search or department.</div>
+  <div class="empty"><strong>No employees match</strong>Try a different search, department or filter.</div>
   {% endif %}
 </div>

@@ -9,6 +9,7 @@
     <p class="page-header__sub">{{ summary.employees }} employee{{ summary.employees|pluralize }}</p>
   </div>
 </header>
+{% include "dashboard/_period_nav.html" %}
 
 <div class="stack">
   <section class="stats" aria-label="Key figures">
@@ -22,10 +23,106 @@
     <div class="card stat"><div class="stat__label">Employees scored</div><div class="stat__value">{{ summary.employees_scored }}</div><div class="stat__note">of {{ summary.employees }}</div></div>
   </section>
 
+  {% if metrics.suppressed %}
+  <p class="flash flash--warning" role="status">Simulation results for this department are hidden: it has fewer people than the minimum reporting cohort.</p>
+  {% else %}
+  <section class="stats" aria-label="Simulation results for {{ period.label }}">
+    <div class="card stat"><div class="stat__label">Failure rate</div><div class="stat__value">{{ metrics.failure_rate|percent }}</div><div class="stat__note">{{ metrics.failed }} of {{ metrics.tested }} tests{% if failure_vs_org is not None %} · {{ failure_vs_org|points }} vs organisation{% endif %}</div></div>
+    <div class="card stat"><div class="stat__label">Report rate</div><div class="stat__value">{{ metrics.report_rate|percent }}</div><div class="stat__note">{{ metrics.reported }} reported{% if report_vs_org is not None %} · {{ report_vs_org|points }} vs organisation{% endif %}</div></div>
+    <div class="card stat"><div class="stat__label">Test coverage</div><div class="stat__value">{{ metrics.coverage_percent|percent }}</div><div class="stat__note">{{ metrics.covered }} of {{ metrics.eligible }} eligible employees</div></div>
+    <div class="card stat"><div class="stat__label">Median time to click</div><div class="stat__value">{{ metrics.median_seconds_to_fail|duration }}</div><div class="stat__note">Report: {{ metrics.median_seconds_to_report|duration }}</div></div>
+    <div class="card stat"><div class="stat__label">Repeat failures</div><div class="stat__value">{{ metrics.repeat_offenders }}</div><div class="stat__note">Failed two or more campaigns</div></div>
+  </section>
+  {% endif %}
+
   <section class="card" aria-labelledby="trend-heading">
     <div class="card__header"><h2 id="trend-heading">Risk trend</h2><span class="card__note">Last 12 weeks · lower is better</span></div>
     <div class="card__body">
       {% include "dashboard/_chart.html" with chart_id="department-trend" label="Average risk score for this department over the last 12 weeks" %}
+    </div>
+  </section>
+
+  <div class="grid-2">
+    <section class="card" aria-labelledby="dist-heading">
+      <div class="card__header"><h2 id="dist-heading">Risk distribution</h2><span class="card__note">{{ distribution.total }} employee{{ distribution.total|pluralize }}</span></div>
+      <div class="card__body">
+        <ul class="funnel">
+          {% include "dashboard/_dist_row.html" with label="High risk" value=distribution.high total=distribution.total cls="progress--high" %}
+          {% include "dashboard/_dist_row.html" with label="Medium risk" value=distribution.medium total=distribution.total cls="progress--medium" %}
+          {% include "dashboard/_dist_row.html" with label="Low risk" value=distribution.low total=distribution.total cls="progress--low" %}
+          {% include "dashboard/_dist_row.html" with label="Not scored yet" value=distribution.unscored total=distribution.total cls="" %}
+        </ul>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="repeat-heading">
+      <div class="card__header"><h2 id="repeat-heading">Repeat failures</h2><a href="{% url 'dashboard:employees' %}?department={{ department.pk }}&amp;focus=repeat">View all</a></div>
+      <div class="card__body card--flush">
+        {% if repeat_offenders %}
+        <ul class="list">
+          {% for e in repeat_offenders %}
+          <li class="list__item"><span><a href="{% url 'dashboard:employee-detail' e.pk %}">{{ e.full_name }}</a><span class="cell-meta">{{ e.email }}</span></span><span class="badge badge--high">{{ e.failed }} campaigns</span></li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="empty"><strong>No repeat failures</strong>Nobody here has failed two campaigns.</div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+
+  <section class="card" aria-labelledby="campaigns-heading">
+    <div class="card__header"><h2 id="campaigns-heading">Campaign results for this department</h2><span class="card__note">{{ period.label }}</span></div>
+    <div class="card__body card--flush">
+      {% if campaign_rows %}
+      <div class="table-wrap">
+        <table class="table">
+          <caption class="visually-hidden">How this department did on each campaign</caption>
+          <thead><tr><th scope="col">Campaign</th><th scope="col" class="num">Tested</th><th scope="col" class="num">Failure rate</th><th scope="col" class="num">Submitted data</th><th scope="col" class="num">Report rate</th><th scope="col" class="num">Did nothing</th></tr></thead>
+          <tbody>
+            {% for row in campaign_rows %}
+            <tr>
+              <td><a href="{% url 'dashboard:campaign-detail' row.campaign.pk %}">{{ row.campaign.name }}</a><span class="cell-meta">{{ row.campaign.launched_at|date:"M j, Y" }}</span></td>
+              <td class="num">{{ row.tested }}</td>
+              <td class="num">{{ row.failure_rate|percent }}</td>
+              <td class="num">{{ row.submit_rate|percent }}</td>
+              <td class="num">{{ row.report_rate|percent }}</td>
+              <td class="num">{{ row.no_action }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty"><strong>No campaigns in this period</strong>Results appear once this department has been tested.</div>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="modules-heading">
+    <div class="card__header"><h2 id="modules-heading">Training by module</h2><a href="{% url 'dashboard:training' %}?department={{ department.pk }}">View assignments</a></div>
+    <div class="card__body card--flush">
+      {% if modules %}
+      <div class="table-wrap">
+        <table class="table">
+          <caption class="visually-hidden">Training completion in this department for each module</caption>
+          <thead><tr><th scope="col">Module</th><th scope="col" class="num">Assigned</th><th scope="col" class="num">Completed</th><th scope="col" class="num">Completion</th><th scope="col" class="num">Overdue</th></tr></thead>
+          <tbody>
+            {% for m in modules %}
+            <tr>
+              <td>{{ m.module__title }}</td>
+              <td class="num">{{ m.assigned }}</td>
+              <td class="num">{{ m.completed }}</td>
+              <td class="num">{{ m.completion_rate_percent|percent }}</td>
+              <td class="num">{% if m.overdue %}<span class="overdue">{{ m.overdue }}</span>{% else %}0{% endif %}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty"><strong>No training assigned</strong>Training is assigned automatically after a failed simulation.</div>
+      {% endif %}
     </div>
   </section>
 

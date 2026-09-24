@@ -145,6 +145,20 @@ class PhishingEngineClient(ABC):
         ...
 
     @abstractmethod
-    def send_test_email(self, *, profile_name: str, to_email: str) -> None:
-        """Sends ONE plain test message through the profile. Raises with the relay's message on failure."""
+    def send_test_email(self, *, profile_name: str, to_email: str, template: dict | None = None, url: str = "") -> None:
+        """
+        Sends ONE message through the profile. With no `template` it is a plain "settings work" check;
+        with one ({"subject", "html", "text"}) it sends that email, subject prefixed "[TEST]", with every
+        tracked link pointing at `url` (the training page, never a live campaign). Raises with the
+        relay's message on failure.
+        """
+        ...
+
+    @abstractmethod
+    def import_site(self, url: str) -> str:
+        """
+        Fetches a web page and returns its raw HTML. The fetch happens on the ENGINE's network, not
+        this server's (Django sits on the internal-only network and has no route to the internet) —
+        the caller (campaigns.clone) is responsible for validating and sanitising whatever comes back.
+        """
         ...

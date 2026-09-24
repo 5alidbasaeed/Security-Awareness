@@ -1,0 +1,46 @@
+{% extends "manage/base.html" %}
+{% block title %}Governance · Manage{% endblock %}
+{% block content %}
+<header class="page-header"><div><h1>Governance</h1>
+<p class="page-header__sub">How this program supports your security-awareness obligations, and whether the evidence behind it is current.</p></div>
+{% if can_reports %}<a class="button button--quiet" href="{% url 'reporting:index' %}">Reports &amp; evidence packages</a>{% endif %}</header>
+
+<div class="summary-strip">
+  <span class="badge badge--low">{{ summary.ok }} in order</span>
+  <span class="badge {% if summary.attention %}badge--medium{% endif %}">{{ summary.attention }} need attention</span>
+  <span class="badge">{{ summary.info }} for information</span>
+</div>
+
+<section class="card" aria-labelledby="health-h"><div class="card__header"><h2 id="health-h">Control health</h2>
+  <span class="card__note">Live checks over this program's own data.</span></div>
+  <ul class="check-list">
+    {% for c in checks %}
+    <li class="check-list__item">
+      <span>{% if c.status == "ok" %}<span class="badge badge--low">In order</span>{% elif c.status == "attention" %}<span class="badge badge--medium">Needs attention</span>{% else %}<span class="badge">Info</span>{% endif %}</span>
+      <span><span class="check-list__label">{{ c.label }}</span><span class="cell-meta">{{ c.detail }}</span></span>
+      <span>{% if c.link %}<a href="{% url c.link %}">Open</a>{% endif %}</span>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section class="card" aria-labelledby="fw-h"><div class="card__header"><h2 id="fw-h">Standards this evidence supports</h2>
+  <span class="card__note">Indicative mapping. Confirm each against your own control library before relying on it in an audit.</span></div>
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Framework</th><th>Reference</th><th>What it asks for</th><th>Evidence from this platform</th></tr></thead>
+    <tbody>{% for fw, ref, need, evidence in frameworks %}<tr><td>{{ fw }}</td><td class="nowrap">{{ ref }}</td><td>{{ need }}</td><td>{{ evidence }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  <p class="footnote">The platform produces evidence; it does not certify compliance. The evidence package (Reports) bundles the figures, the audit log and the method with checksums so an auditor can verify them.</p>
+</section>
+
+<section class="card" aria-labelledby="pol-h"><div class="card__header"><h2 id="pol-h">Policy settings in force</h2>
+  <span class="card__note">Read-only here on purpose: change them through your deployment's change control.</span></div>
+  {% for group, items in policy_groups.items %}
+  <div class="table-wrap"><table class="table">
+    <caption class="visually-hidden">{{ group }}</caption>
+    <thead><tr><th>{{ group }}</th><th>Current value</th><th>Why it matters</th></tr></thead>
+    <tbody>{% for s in items %}<tr><td>{{ s.name }}{% if s.env %}<span class="cell-meta">{{ s.env }}</span>{% endif %}</td><td class="nowrap">{{ s.value }}</td><td>{{ s.why }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% endfor %}
+</section>
+{% endblock %}

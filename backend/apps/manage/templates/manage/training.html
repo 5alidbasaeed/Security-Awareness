@@ -6,13 +6,15 @@
 <div class="header-actions">{% if perms.training.view_trainingpolicy %}<a class="button button--quiet" href="{% url 'manage:policies' %}">Mandatory training</a>{% endif %}
 {% if perms.training.change_trainingmodule %}<a class="button" href="{% url 'manage:module-new' %}">New module</a>{% endif %}</div></header>
 <div class="card"><div class="table-wrap"><table class="table">
-  <thead><tr><th>Title</th><th>Minutes</th><th>Slides</th><th>Quiz</th><th>Active</th><th class="num">Actions</th></tr></thead>
+  <thead><tr><th>Title</th><th>Minutes</th><th>Slides</th><th>Quiz</th><th>Pass mark</th><th>Assigned</th><th>Completed</th><th>Active</th><th class="num">Actions</th></tr></thead>
   <tbody>
     {% for m in page %}
     <tr><td>{{ m.title }}</td><td>{{ m.duration_minutes }}</td><td>{{ m.slide_count|default:'—' }}</td><td>{% if m.quiz %}Yes{% else %}—{% endif %}</td>
-      <td>{% if m.is_active %}Yes{% else %}No{% endif %}</td>
+      <td>{% if m.quiz %}{{ m.quiz.passing_score_percent }}%{% else %}—{% endif %}</td>
+      <td>{{ m.assigned_total }}</td><td>{{ m.completed_total }}</td>
+      <td>{% if m.is_active %}Yes{% else %}<span class="badge">Retired</span>{% endif %}</td>
       <td class="num">{% if m.slide_count %}<a href="{% url 'manage:module-preview' m.pk %}">Preview</a> · {% elif m.quiz %}<a href="{% url 'manage:module-preview-quiz' m.pk %}">Preview quiz</a> · {% endif %}{% if perms.training.change_trainingmodule %}<a href="{% url 'manage:module-edit' m.pk %}">Edit</a>{% endif %}</td></tr>
-    {% empty %}<tr><td colspan="6"><div class="empty"><strong>No modules yet</strong></div></td></tr>{% endfor %}
+    {% empty %}<tr><td colspan="9"><div class="empty"><strong>No modules yet</strong></div></td></tr>{% endfor %}
   </tbody>
 </table></div>{% include "dashboard/_pagination.html" %}</div>
 {% endblock %}

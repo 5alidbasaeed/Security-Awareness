@@ -1,6 +1,7 @@
 {% extends "portal/base.html" %}
 {% block title %}Quiz · {{ item.module.title }}{% endblock %}
 {% block content %}
+<div class="slide-wrap">
 <p class="breadcrumb"><a href="{% url 'portal:assignment' item.pk %}">{{ item.module.title }}</a></p>
 <header class="page-header"><div><h1>Quiz</h1>
 <p class="page-header__sub">{{ questions|length }} question{{ questions|length|pluralize }} · pass mark {{ quiz.passing_score_percent }}%</p></div></header>
@@ -12,4 +13,5 @@
   </form>
   {% if attempts %}<p class="footnote">Previous attempts: {% for a in attempts %}{{ a.score_percent }}%{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}
 </div></div>
+</div>
 {% endblock %}

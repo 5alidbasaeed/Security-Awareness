@@ -1,0 +1,3 @@
+<nav class="subnav" aria-label="Reporting period">
+  {% for key, label, days in periods %}<a href="?period={{ key }}"{% if period.key == key %} aria-current="page"{% endif %}>{{ label }}</a>{% endfor %}
+</nav>

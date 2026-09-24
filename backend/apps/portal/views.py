@@ -86,7 +86,7 @@ def logout(request):
 
 @portal_required
 def home(request):
-    assignments = request.employee.training_assignments.select_related("module").order_by("completed_at", "due_at")
+    assignments = request.employee.training_assignments.filter(waived_at__isnull=True).select_related("module").order_by("completed_at", "due_at")
     return render(request, "portal/home.html", {
         "employee": request.employee, "assignments": assignments, "now": timezone.now(),
     })
@@ -94,7 +94,7 @@ def home(request):
 
 def _own_assignment(request, pk):
     # Always filtered through the signed-in employee: another person's assignment is a 404.
-    return get_object_or_404(request.employee.training_assignments.select_related("module"), pk=pk)
+    return get_object_or_404(request.employee.training_assignments.filter(waived_at__isnull=True).select_related("module"), pk=pk)
 
 
 @portal_required

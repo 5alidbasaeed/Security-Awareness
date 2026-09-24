@@ -89,6 +89,14 @@ class TrainingAssignment(models.Model):
     started_at = models.DateTimeField(null=True, blank=True)
     completed_at = models.DateTimeField(null=True, blank=True)
     last_reminded_at = models.DateTimeField(null=True, blank=True)
+    waived_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text="A documented exception: the assignment no longer counts as outstanding or overdue, and is never counted as completed.",
+    )
+    waived_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+",
+    )
+    waiver_reason = models.CharField(max_length=300, blank=True)
     triggered_by_event = models.ForeignKey(
         "events.Event",
         on_delete=models.SET_NULL,
@@ -109,6 +117,27 @@ class TrainingAssignment(models.Model):
 
     def __str__(self):
         return f"{self.employee} — {self.module}"
+
+
+class TrainingExtension(models.Model):
+    """
+    One recorded extension of an assignment's due date. Append-only: it is the evidence that a
+    deadline moved, why, and who allowed it, and it lets a past report be reproduced with the due
+    date that applied at the time instead of one rewritten later.
+    """
+
+    assignment = models.ForeignKey(TrainingAssignment, on_delete=models.CASCADE, related_name="extensions")
+    previous_due_at = models.DateTimeField(null=True, blank=True)
+    new_due_at = models.DateTimeField()
+    reason = models.CharField(max_length=300)
+    extended_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="+")
+    extended_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["extended_at", "pk"]
+
+    def __str__(self):
+        return f"{self.assignment} - due {self.new_due_at:%Y-%m-%d}"
 
 
 class QuizAttempt(models.Model):

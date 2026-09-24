@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views, views_apikeys
+from . import views, views_actions, views_apikeys, views_governance
 
 app_name = "manage"
 
@@ -13,6 +13,8 @@ urlpatterns = [
     path("campaigns/<int:pk>/submit/", views.campaign_submit, name="campaign-submit"),
     path("campaigns/<int:pk>/approve/", views.campaign_approve, name="campaign-approve"),
     path("campaigns/<int:pk>/reject/", views.campaign_reject, name="campaign-reject"),
+    path("campaigns/<int:pk>/duplicate/", views.campaign_duplicate, name="campaign-duplicate"),
+    path("campaigns/<int:pk>/delete/", views.campaign_delete, name="campaign-delete"),
     path("campaigns/<int:pk>/launch/", views.campaign_launch, name="campaign-launch"),
 
     path("content/", views.content, name="content"),
@@ -27,6 +29,7 @@ urlpatterns = [
     path("content/images/upload/", views.image_upload_json, name="image-upload"),
     path("content/images/<int:pk>/file/", views.image_file, name="image-file"),
     path("content/images/<int:pk>/delete/", views.image_delete, name="image-delete"),
+    path("content/pages/clone/", views.landing_clone, name="landing-clone"),
     path("content/pages/design/new/", views.landing_edit, name="landing-new"),
     path("content/pages/design/<int:pk>/edit/", views.landing_edit, name="landing-edit"),
     path("content/templates/new/", views.template_edit, name="template-new"),
@@ -48,24 +51,44 @@ urlpatterns = [
     path("training/<int:pk>/preview/quiz/", views.module_preview_quiz, name="module-preview-quiz"),
     path("content/templates/<str:name>/preview/", views.email_preview, name="email-preview"),
     path("training/policies/", views.policies, name="policies"),
+    path("training/policies/<int:pk>/toggle/", views_actions.policy_toggle, name="policy-toggle"),
     path("training/policies/new/", views.policy_edit, name="policy-new"),
     path("training/policies/<int:pk>/edit/", views.policy_edit, name="policy-edit"),
 
     path("employees/", views.employees, name="employees"),
     path("employees/new/", views.employee_edit, name="employee-new"),
+    path("employees/export/", views_actions.employees_export, name="employee-export"),
     path("employees/import/", views.employee_import, name="employee-import"),
+    path("employees/<int:pk>/toggle-active/", views.employee_toggle_active, name="employee-toggle-active"),
     path("employees/<int:pk>/edit/", views.employee_edit, name="employee-edit"),
 
     path("departments/", views.departments, name="departments"),
     path("departments/new/", views.department_edit, name="department-new"),
+    path("departments/<int:pk>/delete/", views.department_delete, name="department-delete"),
     path("departments/<int:pk>/edit/", views.department_edit, name="department-edit"),
 
     path("scheduled-reports/", views.schedules, name="schedules"),
+    path("scheduled-reports/<int:pk>/toggle/", views_actions.schedule_toggle, name="schedule-toggle"),
+    path("scheduled-reports/<int:pk>/delete/", views_actions.schedule_delete, name="schedule-delete"),
     path("scheduled-reports/new/", views.schedule_edit, name="schedule-new"),
     path("scheduled-reports/<int:pk>/edit/", views.schedule_edit, name="schedule-edit"),
 
     path("reported/", views.reported, name="reported"),
     path("reported/<int:pk>/triage/", views.reported_triage, name="reported-triage"),
+
+    path("governance/", views_governance.governance_overview, name="governance"),
+    path("audit-log/", views_governance.audit_log, name="audit-log"),
+    path("audit-log/export/", views_governance.audit_log_export, name="audit-log-export"),
+    path("users/", views_governance.users, name="users"),
+    path("users/review/export/", views_governance.access_review_export, name="access-review-export"),
+    path("users/review/complete/", views_governance.access_review_complete, name="access-review-complete"),
+    path("users/<int:pk>/edit/", views_governance.user_edit, name="user-edit"),
+    path("exemptions/", views_governance.exemptions, name="exemptions"),
+    path("exemptions/<int:pk>/end/", views_governance.exemption_end, name="exemption-end"),
+    path("assignments/", views_governance.assignments, name="assignments"),
+    path("assignments/new/", views_governance.assignment_new, name="assignment-new"),
+    path("assignments/<int:pk>/extend/", views_governance.assignment_extend, name="assignment-extend"),
+    path("assignments/<int:pk>/waive/", views_governance.assignment_waive, name="assignment-waive"),
 
     path("api-keys/", views_apikeys.api_keys, name="api-keys"),
     path("api-keys/<int:pk>/revoke/", views_apikeys.api_key_revoke, name="api-key-revoke"),

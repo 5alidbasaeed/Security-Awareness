@@ -17,6 +17,49 @@
     return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   }
 
+  // Rates per campaign / response speed: several labelled series on a 0-100% axis. Series alternate
+  // solid and dashed so the chart still reads without colour.
+  function drawLines(canvas, data, grid, muted) {
+    var unit = data.unit || "";
+    charts.push(new Chart(canvas, {
+      type: "line",
+      data: {
+        labels: data.labels,
+        datasets: data.datasets.map(function (series) {
+          var color = token(series.color);
+          return {
+            label: series.label,
+            data: series.values,
+            borderColor: color,
+            backgroundColor: color,
+            borderWidth: 2,
+            borderDash: series.dashed ? [6, 4] : [],
+            pointStyle: series.dashed ? "triangle" : "circle",
+            pointRadius: 3,
+            pointHoverRadius: 5,
+            cubicInterpolationMode: "monotone",
+            spanGaps: true,
+          };
+        }),
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: reduceMotion() ? false : { duration: 400 },
+        animations: { x: { duration: 0 } },
+        interaction: { mode: "index", intersect: false },
+        scales: {
+          y: { min: 0, max: data.y_max, ticks: { color: muted, stepSize: 25, callback: function (v) { return v + unit; } }, grid: { color: grid }, border: { display: false } },
+          x: { ticks: { color: muted, maxTicksLimit: 8, maxRotation: 0 }, grid: { display: false }, border: { color: grid } },
+        },
+        plugins: {
+          legend: { position: "bottom", labels: { color: muted, usePointStyle: true, boxWidth: 8, boxHeight: 8 } },
+          tooltip: { callbacks: { label: function (item) { return item.dataset.label + ": " + (item.parsed.y === null ? "no data" : item.parsed.y + unit); } } },
+        },
+      },
+    }));
+  }
+
   function draw(canvas) {
     var source = document.getElementById(canvas.dataset.chartSource);
     if (!source || typeof Chart === "undefined") return;
@@ -26,6 +69,7 @@
     var accent = token("--accent");
     var grid = token("--border");
     var muted = token("--text-secondary");
+    if (data.kind === "lines") { drawLines(canvas, data, grid, muted); return; }
     var threshold = function (value, color, label) {
       return {
         label: label,

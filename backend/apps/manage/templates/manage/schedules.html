@@ -10,7 +10,9 @@
   <tbody>{% for s in schedules %}
     <tr><td>{{ s.name }}{% if not s.is_active %} <span class="badge">Paused</span>{% endif %}</td><td>{{ s.get_kind_display }}</td><td>{{ s.get_frequency_display }}</td>
       <td>{{ s.recipient_list|join:", " }}</td><td>{{ s.last_period_end|default:"—" }}</td>
-      <td class="num">{% if perms.reporting.change_reportschedule %}<a href="{% url 'manage:schedule-edit' s.pk %}">Edit</a>{% endif %}</td></tr>
+      <td class="num actions">{% if perms.reporting.change_reportschedule %}<a href="{% url 'manage:schedule-edit' s.pk %}">Edit</a>
+        <form class="inline-form" method="post" action="{% url 'manage:schedule-toggle' s.pk %}">{% csrf_token %}<button class="button button--quiet" type="submit">{% if s.is_active %}Pause{% else %}Resume{% endif %}</button></form>{% endif %}
+        {% if perms.reporting.delete_reportschedule %}<form class="inline-form" method="post" hx-boost="true" hx-confirm="Delete the schedule “{{ s.name }}”? Its recipients stop receiving it." action="{% url 'manage:schedule-delete' s.pk %}">{% csrf_token %}<button class="button button--quiet" type="submit">Delete</button></form>{% endif %}</td></tr>
   {% empty %}<tr><td colspan="6"><div class="empty"><strong>No schedules</strong>e.g. a monthly executive summary to the CISO.</div></td></tr>{% endfor %}</tbody>
 </table></div></div>
 {% endblock %}

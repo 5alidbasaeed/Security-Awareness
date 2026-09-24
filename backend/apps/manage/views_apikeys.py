@@ -45,19 +45,23 @@ def api_keys(request):
             new_key = raw
             messages.success(request, "Key created. Copy it now — it won't be shown again.")
 
-    keys = ApiKey.objects.filter(owner=request.user)
+    oversight = request.user.has_perm("api.change_apikey")  # Security Admin: every key, not just their own
+    keys = ApiKey.objects.select_related("owner") if oversight else ApiKey.objects.filter(owner=request.user)
     return render(request, "manage/api_keys.html", {
-        "active": "manage", "keys": keys, "new_key": new_key,
+        "active": "manage", "keys": keys.order_by("revoked_at", "-created_at"), "new_key": new_key, "oversight": oversight,
+        "now": timezone.now(),
         "grantable": grantable, "all_scopes": Scope.choices,
     })
 
 
 @manage_access(methods=("POST",))
 def api_key_revoke(request, pk):
-    key = get_object_or_404(ApiKey, pk=pk, owner=request.user)
+    keys = ApiKey.objects.all() if request.user.has_perm("api.change_apikey") else ApiKey.objects.filter(owner=request.user)
+    key = get_object_or_404(keys, pk=pk)
     if key.revoked_at is None:
         key.revoked_at = timezone.now()
         key.save(update_fields=["revoked_at"])
-        log_action(actor=request.user, action="api_key_revoked", target_description=f"{key.name} ({key.prefix})")
+        log_action(actor=request.user, action="api_key_revoked", target_description=f"{key.name} ({key.prefix})",
+                   owner=key.owner.get_username(), by_owner=key.owner_id == request.user.pk)
         messages.success(request, f"Key “{key.name}” revoked.")
     return redirect("manage:api-keys")

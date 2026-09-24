@@ -12,20 +12,9 @@ leaderboard that punishes people discourages reporting.
 from django.db.models import Count, Q
 
 from apps.events.models import Event
-from apps.training.models import TrainingAssignment
 
 REPORT_POINTS = 10
 TRAINING_POINTS = 5
-
-
-def points_for(employee) -> dict:
-    reports = Event.objects.filter(employee=employee, event_type=Event.EventType.PHISHING_REPORTED).count()
-    completed = TrainingAssignment.objects.filter(employee=employee, completed_at__isnull=False).count()
-    return {
-        "reports": reports,
-        "training_completed": completed,
-        "points": reports * REPORT_POINTS + completed * TRAINING_POINTS,
-    }
 
 
 def leaderboard(employees, limit=10) -> list[dict]:

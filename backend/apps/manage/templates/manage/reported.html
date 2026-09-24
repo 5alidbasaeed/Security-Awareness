@@ -9,6 +9,7 @@
   <select class="select" id="verdict" name="verdict"><option value="">All</option>
     {% for value, label in verdicts %}<option value="{{ value }}"{% if value == verdict %} selected{% endif %}>{{ label }}</option>{% endfor %}
   </select>
+  <label class="visually-hidden" for="q">Search</label><input class="field" id="q" type="search" name="q" value="{{ q }}" placeholder="Search subject, sender or reporter">
   <button class="button" type="submit">Filter</button>
 </form>
 <div class="card"><ul class="list">

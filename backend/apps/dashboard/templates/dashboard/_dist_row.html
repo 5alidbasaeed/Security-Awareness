@@ -1,0 +1,5 @@
+<li class="funnel__row">
+  <span>{{ label }}</span>
+  <progress max="{{ total|default:1 }}" value="{{ value }}"{% if cls %} class="{{ cls }}"{% endif %} aria-label="{{ label }}: {{ value }} of {{ total }}"></progress>
+  <span class="funnel__value">{{ value }}</span>
+</li>

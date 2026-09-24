@@ -5,36 +5,65 @@
 <header class="page-header">
   <div>
     <h1>Departments</h1>
-    <p class="page-header__sub">Risk and training compliance by department.</p>
+    <p class="page-header__sub">Risk, test results and training compliance by department, compared with the organisation.</p>
   </div>
 </header>
+{% include "dashboard/_period_nav.html" %}
 
 <div class="card">
   {% if rows %}
   <div class="table-wrap">
     <table class="table">
-      <caption class="visually-hidden">Departments with average risk and training compliance</caption>
+      <caption class="visually-hidden">Departments with risk, simulation results and training compliance for {{ period.label }}</caption>
       <thead>
         <tr>
-          <th scope="col">Department</th><th scope="col">Average risk</th>
-          <th scope="col" class="num">High risk</th><th scope="col" class="num">Scored</th>
-          <th scope="col" class="num">Training complete</th><th scope="col" class="num">Overdue</th>
+          <th scope="col" aria-sort="{% sort_state 'name' %}"><a href="{% sort_link 'name' %}">Department</a></th>
+          <th scope="col" aria-sort="{% sort_state 'risk' %}"><a href="{% sort_link 'risk' %}">Average risk</a></th>
+          <th scope="col" class="num">Trend</th>
+          <th scope="col" class="num">High risk</th>
+          <th scope="col" class="num" aria-sort="{% sort_state 'failure' %}"><a href="{% sort_link 'failure' %}">Failure rate</a></th>
+          <th scope="col" class="num">Vs organisation</th>
+          <th scope="col" class="num" aria-sort="{% sort_state 'report' %}"><a href="{% sort_link 'report' %}">Report rate</a></th>
+          <th scope="col" class="num" aria-sort="{% sort_state 'coverage' %}"><a href="{% sort_link 'coverage' %}">Coverage</a></th>
+          <th scope="col" class="num">Repeat failures</th>
+          <th scope="col" class="num" aria-sort="{% sort_state 'training' %}"><a href="{% sort_link 'training' %}">Training complete</a></th>
+          <th scope="col" class="num">Overdue</th>
         </tr>
       </thead>
       <tbody>
         {% for d in rows %}
         <tr>
-          <td><a href="{% url 'dashboard:department-detail' d.department_id %}">{{ d.name }}</a></td>
+          <td><a href="{% url 'dashboard:department-detail' d.department_id %}">{{ d.name }}</a><span class="cell-meta">{{ d.employees_scored }} of {{ d.employees }} scored</span></td>
           <td>{% include "dashboard/_risk_badge.html" with value=d.average_score %}</td>
+          <td class="num">{% if d.delta is None %}—{% else %}<span class="trend--{{ d.delta_direction }}">{% if d.delta < 0 %}▼{% elif d.delta > 0 %}▲{% else %}▬{% endif %} {{ d.delta|signed }}</span><span class="cell-meta">{{ d.delta_direction|trend_label }}</span>{% endif %}</td>
           <td class="num">{{ d.high_risk_employees }}</td>
-          <td class="num">{{ d.employees_scored }} / {{ d.employees }}</td>
+          <td class="num">{{ d.metrics.failure_rate|percent }}<span class="cell-meta">{{ d.metrics.failed }} of {{ d.metrics.tested }}</span></td>
+          <td class="num">{% if d.failure_vs_org is None %}—{% else %}<span class="{% if d.failure_vs_org > 0 %}overdue{% endif %}">{{ d.failure_vs_org|points }}</span>{% endif %}</td>
+          <td class="num">{{ d.metrics.report_rate|percent }}</td>
+          <td class="num">{{ d.metrics.coverage_percent|percent }}<span class="cell-meta">{{ d.metrics.covered }} of {{ d.metrics.eligible }}</span></td>
+          <td class="num">{{ d.metrics.repeat_offenders }}</td>
           <td class="num">{{ d.training.completion_rate_percent|percent }}</td>
           <td class="num">{% if d.training.overdue %}<span class="overdue">{{ d.training.overdue }}</span>{% else %}0{% endif %}</td>
         </tr>
         {% endfor %}
       </tbody>
+      {% if not org.suppressed %}
+      <tfoot>
+        <tr>
+          <th scope="row">Organisation</th>
+          <td></td><td></td><td></td>
+          <td class="num">{{ org.failure_rate|percent }}<span class="cell-meta">{{ org.failed }} of {{ org.tested }}</span></td>
+          <td></td>
+          <td class="num">{{ org.report_rate|percent }}</td>
+          <td class="num">{{ org.coverage_percent|percent }}<span class="cell-meta">{{ org.covered }} of {{ org.eligible }}</span></td>
+          <td class="num">{{ org.repeat_offenders }}</td>
+          <td></td><td></td>
+        </tr>
+      </tfoot>
+      {% endif %}
     </table>
   </div>
+  <p class="footnote card__body">Rates cover {{ period.label|lower }}. Coverage is the share of eligible employees (active, not exempt) tested in that time. Targets: failure at most {{ targets.failure_rate }}%, report at least {{ targets.report_rate }}%, coverage at least {{ targets.coverage }}%, training completion at least {{ targets.training_completion }}%.</p>
   {% else %}
   <div class="empty"><strong>No departments yet</strong>Add departments in Manage.</div>
   {% endif %}

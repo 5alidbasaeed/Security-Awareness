@@ -29,6 +29,14 @@
     {% if perms.reporting.view_reportschedule %}<a href="{% url 'manage:schedules' %}"{% if section == "schedules" %} aria-current="page"{% endif %}>Scheduled reports</a>{% endif %}
     {% if perms.campaigns.approve_campaign %}<a href="{% url 'manage:mail-settings' %}"{% if section == "mail" %} aria-current="page"{% endif %}>Mail settings</a>{% endif %}
     <a href="{% url 'manage:api-keys' %}"{% if section == "api-keys" %} aria-current="page"{% endif %}>API keys</a>
+    {% if perms.core.view_auditlogentry or perms.training.view_trainingassignment or perms.employees.view_employee or perms.core.manage_user_access %}
+    <span class="admin-side__heading">Governance</span>
+    {% if perms.core.view_auditlogentry %}<a href="{% url 'manage:governance' %}"{% if section == "governance" %} aria-current="page"{% endif %}>Program &amp; controls</a>{% endif %}
+    {% if perms.training.view_trainingassignment %}<a href="{% url 'manage:assignments' %}"{% if section == "assignments" %} aria-current="page"{% endif %}>Training assignments</a>{% endif %}
+    {% if perms.employees.view_employee %}<a href="{% url 'manage:exemptions' %}"{% if section == "exemptions" %} aria-current="page"{% endif %}>Exemptions</a>{% endif %}
+    {% if perms.core.manage_user_access %}<a href="{% url 'manage:users' %}"{% if section == "users" %} aria-current="page"{% endif %}>Users &amp; access</a>{% endif %}
+    {% if perms.core.view_auditlogentry %}<a href="{% url 'manage:audit-log' %}"{% if section == "audit" %} aria-current="page"{% endif %}>Audit log</a>{% endif %}
+    {% endif %}
   </aside>
   <main id="main" class="admin-main">
     {% if messages %}{% for message in messages %}<p class="flash flash--{{ message.level_tag }}" role="status">{{ message }}</p>{% endfor %}{% endif %}

@@ -1,0 +1,17 @@
+{% extends "manage/base.html" %}
+{% block title %}Change access · Manage{% endblock %}
+{% block content %}
+<header class="page-header"><div><h1>Change access for {{ target.get_username }}</h1>
+<p class="page-header__sub">{{ target.get_full_name|default:target.email }}</p></div></header>
+<div class="card"><div class="card__body">
+  <form class="form-stack" method="post" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}<p class="form-error" role="alert">{{ form.non_field_errors.0 }}</p>{% endif %}
+    {% include "manage/_form_fields.html" %}
+    <div class="form-actions">
+      <button class="button" type="submit">Save</button>
+      <a class="button button--quiet" href="{% url back %}">Cancel</a>
+    </div>
+  </form>
+</div></div>
+{% endblock %}

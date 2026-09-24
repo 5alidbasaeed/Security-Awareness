@@ -4,7 +4,7 @@
 <header class="page-header">
   <div>
     <h1>Employees</h1>
-    <p class="page-header__sub">Current risk score for everyone you can see. Add or edit people in Manage.</p>
+    <p class="page-header__sub">Current risk, test history and training status for everyone you can see. Add or edit people in Manage.</p>
   </div>
 </header>
 
@@ -17,6 +17,14 @@
     <select class="select" id="department" name="department" hx-get="{% url 'dashboard:employees' %}" hx-trigger="change" hx-include="closest form">
       <option value="">All departments</option>
       {% for d in departments %}<option value="{{ d.pk }}"{% if department == d.pk|stringformat:"s" %} selected{% endif %}>{{ d.name }}</option>{% endfor %}
+    </select>
+    <label class="visually-hidden" for="level">Risk level</label>
+    <select class="select" id="level" name="level" hx-get="{% url 'dashboard:employees' %}" hx-trigger="change" hx-include="closest form">
+      {% for value, label in level_choices %}<option value="{{ value }}"{% if level == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
+    </select>
+    <label class="visually-hidden" for="focus">Show</label>
+    <select class="select" id="focus" name="focus" hx-get="{% url 'dashboard:employees' %}" hx-trigger="change" hx-include="closest form">
+      {% for value, label in focus_choices %}<option value="{{ value }}"{% if focus == value %} selected{% endif %}>{{ label }}</option>{% endfor %}
     </select>
     <noscript><button class="button" type="submit">Search</button></noscript>
     <span id="employee-indicator" class="htmx-indicator" role="status">Searching…</span>

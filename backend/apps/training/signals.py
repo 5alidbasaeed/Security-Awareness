@@ -26,7 +26,7 @@ def auto_assign_training_on_failure(sender, instance, created, **kwargs):
     # Dedupe: a second failure on the same module while an assignment is
     # already outstanding shouldn't spam a duplicate one.
     already_assigned = TrainingAssignment.objects.filter(
-        employee=instance.employee, module=module, completed_at__isnull=True
+        employee=instance.employee, module=module, completed_at__isnull=True, waived_at__isnull=True
     ).exists()
     if already_assigned:
         return

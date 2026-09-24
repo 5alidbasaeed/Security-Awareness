@@ -9,8 +9,9 @@
   <thead><tr><th>Policy</th><th>Module</th><th>Who</th><th>Every</th><th>Due within</th><th>Active</th><th class="num"></th></tr></thead>
   <tbody>{% for p in policies %}
     <tr><td>{{ p.name }}</td><td>{{ p.module }}</td><td>{{ p.department|default:"Everyone" }}</td><td>{{ p.repeat_every_days }} days</td><td>{{ p.due_days }} days</td>
-      <td>{% if p.is_active %}Yes{% else %}No{% endif %}</td>
-      <td class="num">{% if perms.training.change_trainingpolicy %}<a href="{% url 'manage:policy-edit' p.pk %}">Edit</a>{% endif %}</td></tr>
+      <td>{% if p.is_active %}Yes{% else %}<span class="badge">Paused</span>{% endif %}</td>
+      <td class="num actions">{% if perms.training.change_trainingpolicy %}<a href="{% url 'manage:policy-edit' p.pk %}">Edit</a>
+        <form class="inline-form" method="post" action="{% url 'manage:policy-toggle' p.pk %}">{% csrf_token %}<button class="button button--quiet" type="submit">{% if p.is_active %}Pause{% else %}Resume{% endif %}</button></form>{% endif %}</td></tr>
   {% empty %}<tr><td colspan="7"><div class="empty"><strong>No policies</strong>e.g. "Annual awareness — everyone — every 365 days".</div></td></tr>{% endfor %}</tbody>
 </table></div></div>
 {% endblock %}

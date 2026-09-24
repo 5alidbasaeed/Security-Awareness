@@ -44,13 +44,36 @@
     <p class="form-error" role="alert" id="compose-error" hidden></p>
     {{ form.body_html }}
   </form>
-  <section class="card builder__preview">
-    <div class="card__header"><h2>Preview</h2><span class="card__note">What the recipient sees</span></div>
-    <div class="card__body">
-      {% if preview_url %}<iframe class="preview-frame" src="{{ preview_url }}" title="Preview"></iframe>
-      {% else %}<p class="cell-meta">Create it once and the preview appears here.</p>{% endif %}
-    </div>
-  </section>
+  <div class="builder__side">
+    <section class="card builder__preview">
+      <div class="card__header"><h2>Preview</h2><span class="card__note">What the recipient sees</span></div>
+      <div class="card__body">
+        {% if preview_url %}<iframe class="preview-frame" src="{{ preview_url }}" title="Preview"></iframe>
+        {% else %}<p class="cell-meta">Create it once and the preview appears here.</p>{% endif %}
+      </div>
+    </section>
+    {% if draft %}
+    <section class="card">
+      <div class="card__header"><h2>Checks</h2><span class="card__note">Advice, not rules</span></div>
+      <ul class="list">
+        {% for level, message in checks %}<li class="list__item"><span>{% if level == "warn" %}<span class="badge badge--high">Check</span>{% else %}<span class="badge">Note</span>{% endif %} {{ message }}</span></li>
+        {% empty %}<li class="list__item"><span><span class="badge badge--low">OK</span> Nothing to flag.</span></li>{% endfor %}
+      </ul>
+    </section>
+    <section class="card">
+      <div class="card__header"><h2>Send yourself a test</h2><span class="card__note">Sends one real message</span></div>
+      <div class="card__body">
+        <form class="form-stack" method="post" novalidate>{% csrf_token %}
+          <input type="hidden" name="action" value="test">
+          <div class="form-row"><label class="label" for="test-to">Send to</label>
+            <input class="field" id="test-to" type="email" name="to" value="{{ test_default }}" required>
+            <p class="cell-meta">Your own address, or an approved company domain. The subject is marked [TEST] and its links go to the training page, not a real simulation. Save first so the test matches what you see.</p></div>
+          <div class="form-actions"><button class="button button--quiet" type="submit">Send test</button></div>
+        </form>
+      </div>
+    </section>
+    {% endif %}
+  </div>
 </div>
 <script src="{% static 'dashboard/email_editor.js' %}" defer></script>
 {% endblock %}

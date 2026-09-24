@@ -1,0 +1,34 @@
+{% extends "manage/base.html" %}
+{% block title %}Users &amp; access · Manage{% endblock %}
+{% block content %}
+<header class="page-header"><div><h1>Users &amp; access</h1>
+<p class="page-header__sub">Who can sign in to this console and what they can do. Review this list regularly and record that you did.</p></div>
+<div class="header-actions">
+  <form method="post" action="{% url 'manage:access-review-export' %}">{% csrf_token %}<button class="button button--quiet" type="submit">Export for review (CSV)</button></form>
+</div></header>
+<div class="card"><div class="card__body">
+  <p>{% if last_review %}<strong>Last access review:</strong> {{ last_review.occurred_at|date:"d M Y" }} by {{ last_review.actor|default:"unknown" }}.
+    {% if review_overdue %}<span class="badge badge--medium">Due again</span>{% else %}<span class="badge badge--low">Up to date</span>{% endif %}
+    {% else %}<strong>No access review has been recorded.</strong> <span class="badge badge--medium">Due</span>{% endif %}
+    {% if dormant_count %}<span class="badge badge--medium">{{ dormant_count }} dormant</span>{% endif %}</p>
+  <form class="toolbar" method="post" action="{% url 'manage:access-review-complete' %}">{% csrf_token %}
+    <label class="visually-hidden" for="note">Note</label><input class="field" id="note" name="note" maxlength="300" placeholder="Note (optional), e.g. reviewed with the CISO">
+    <button class="button" type="submit">I have reviewed this list</button>
+  </form>
+  <p class="cell-meta">Recording the review is an attestation: it is written to the audit log with your name and the number of accounts. It is due again every {{ review_days }} days.</p>
+</div></div>
+<div class="card"><div class="table-wrap"><table class="table">
+  <thead><tr><th>Account</th><th>Roles</th><th>Departments</th><th>Last sign-in</th><th>Status</th><th class="num">Actions</th></tr></thead>
+  <tbody>
+    {% for r in rows %}
+    <tr><td>{{ r.user.get_username }}<span class="cell-meta">{{ r.user.get_full_name|default:r.user.email }}</span></td>
+      <td>{% if r.user.is_superuser %}<span class="badge badge--accent">Superuser</span> {% endif %}{% for role in r.roles %}<span class="badge">{{ role }}</span> {% empty %}{% if not r.user.is_superuser %}<span class="badge badge--medium">No role</span>{% endif %}{% endfor %}</td>
+      <td>{{ r.departments|join:", "|default:"—" }}</td>
+      <td>{% if r.user.last_login %}{{ r.user.last_login|date:"d M Y" }}{% else %}Never{% endif %}</td>
+      <td>{% if not r.user.is_active %}<span class="badge">Disabled</span>{% elif r.dormant %}<span class="badge badge--medium">Dormant</span>{% elif not r.user.is_staff %}<span class="badge">No console access</span>{% else %}<span class="badge badge--low">Active</span>{% endif %}</td>
+      <td class="num actions">{% if r.user.pk != request.user.pk and not r.user.is_superuser %}<a href="{% url 'manage:user-edit' r.user.pk %}">Change access</a>{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="6"><div class="empty"><strong>No staff accounts</strong></div></td></tr>{% endfor %}
+  </tbody>
+</table></div></div>
+<p class="footnote">New accounts are created in Django admin (so the password is set there, never in this console). Superusers are also managed there.</p>
+{% endblock %}

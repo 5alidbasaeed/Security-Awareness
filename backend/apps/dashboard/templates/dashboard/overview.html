@@ -8,6 +8,7 @@
     <p class="page-header__sub">Phishing-simulation risk across {{ summary.employees }} employee{{ summary.employees|pluralize }}.</p>
   </div>
 </header>
+{% include "dashboard/_period_nav.html" %}
 
 <div class="stack">
   <section class="stats" aria-label="Key figures">
@@ -38,6 +39,49 @@
     </div>
   </section>
 
+  {% if program.suppressed %}
+  <p class="flash flash--warning" role="status">Programme metrics are hidden: there are fewer employees than the minimum reporting cohort, so the figures could identify individuals.</p>
+  {% else %}
+  <section class="card" aria-labelledby="health-heading">
+    <div class="card__header"><h2 id="health-heading">Programme health against targets</h2><span class="card__note">{{ period.label }} · targets are set in configuration</span></div>
+    <div class="card__body card--flush">
+      <div class="table-wrap">
+        <table class="table">
+          <caption class="visually-hidden">Programme indicators compared with their targets</caption>
+          <thead><tr><th scope="col">Indicator</th><th scope="col" class="num">Current</th><th scope="col" class="num">Target</th><th scope="col">Status</th></tr></thead>
+          <tbody>
+            {% for row in scorecard %}
+            <tr>
+              <td>{{ row.label }}</td>
+              <td class="num">{{ row.value|percent }}</td>
+              <td class="num">{{ row.qualifier }} {{ row.target }}%</td>
+              <td><span class="badge {{ row.status|grade_badge }}">{{ row.status|grade_label }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <p class="footnote card__body">Failure means the employee clicked the link or submitted data; each employee counts once per campaign. Coverage is the share of eligible employees (active, not exempt) tested in the period. These indicators support awareness-training controls such as ISO/IEC 27001:2022 A.6.3, NIST CSF 2.0 PR.AT and PCI DSS v4.0 12.6.</p>
+  </section>
+
+  <section class="stats" aria-label="Programme figures">
+    <div class="card stat"><div class="stat__label">Simulations run</div><div class="stat__value">{{ program.campaigns_run }}</div><div class="stat__note">{{ program.tested }} test{{ program.tested|pluralize }} across {{ program.covered }} of {{ program.eligible }} eligible employees</div></div>
+    <div class="card stat"><div class="stat__label">Reports per failure</div><div class="stat__value">{{ program.resilience_ratio|ratio }}</div><div class="stat__note">{% if program.resilience_ratio is None %}{% if program.tested and not program.failed %}Nobody failed{% else %}No data yet{% endif %}{% elif program.resilience_ratio >= 1 %}More reports than failures{% else %}More failures than reports{% endif %}</div></div>
+    <div class="card stat"><div class="stat__label">Median time to click</div><div class="stat__value">{{ program.median_seconds_to_fail|duration }}</div><div class="stat__note">After the email is sent</div></div>
+    <div class="card stat"><div class="stat__label">Median time to report</div><div class="stat__value">{{ program.median_seconds_to_report|duration }}</div><div class="stat__note">Faster is better</div></div>
+    <div class="card stat"><div class="stat__label">Submitted data</div><div class="stat__value">{{ program.submit_rate|percent }}</div><div class="stat__note">{{ program.submitted }} test{{ program.submitted|pluralize }} · the most serious failure</div></div>
+    <div class="card stat"><div class="stat__label">Did nothing</div><div class="stat__value">{{ program.no_action }}</div><div class="stat__note">Neither failed nor reported</div></div>
+  </section>
+
+  <section class="card" aria-labelledby="rates-heading">
+    <div class="card__header"><h2 id="rates-heading">Results by campaign</h2><span class="card__note">Most recent launches · failure should fall, reporting should rise</span></div>
+    <div class="card__body">
+      {% include "dashboard/_chart.html" with chart=rates_chart chart_id="overview-rates" label="Failure rate and report rate for each recent campaign" empty_title="No campaigns in this period" empty_text="Results appear once a campaign has launched." %}
+    </div>
+  </section>
+  {% endif %}
+
   <section class="card" aria-labelledby="trend-heading">
     <div class="card__header">
       <h2 id="trend-heading">Risk trend</h2>
@@ -48,8 +92,40 @@
     </div>
   </section>
 
-  {% if improvement.delta is not None %}<p class="flash" role="status">Programme trend: average risk has moved {{ improvement.delta }} over ~6 months{% if improvement.improved_percent %} ({{ improvement.improved_percent }}% {% if improvement.delta <= 0 %}better{% else %}worse{% endif %}){% endif %}. Lower is better.</p>{% endif %}
-<div class="grid-2">
+  {% if improvement.delta is not None %}<p class="flash{% if improvement.delta > 0 %} flash--warning{% endif %}" role="status">Compared with about 6 months ago, average risk went from {{ improvement.baseline }} to {{ improvement.current }} — {% if improvement.delta < 0 %}an improvement{% elif improvement.delta > 0 %}higher, which is worse{% else %}unchanged{% endif %}. Lower is better.</p>{% endif %}
+
+  <div class="grid-2">
+    <section class="card" aria-labelledby="dist-heading">
+      <div class="card__header"><h2 id="dist-heading">Risk distribution</h2><span class="card__note">{{ distribution.total }} employee{{ distribution.total|pluralize }}</span></div>
+      <div class="card__body">
+        <ul class="funnel">
+          {% include "dashboard/_dist_row.html" with label="High risk" value=distribution.high total=distribution.total cls="progress--high" %}
+          {% include "dashboard/_dist_row.html" with label="Medium risk" value=distribution.medium total=distribution.total cls="progress--medium" %}
+          {% include "dashboard/_dist_row.html" with label="Low risk" value=distribution.low total=distribution.total cls="progress--low" %}
+          {% include "dashboard/_dist_row.html" with label="Not scored yet" value=distribution.unscored total=distribution.total cls="" %}
+        </ul>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="attention-heading">
+      <div class="card__header"><h2 id="attention-heading">Needs attention</h2><span class="card__note">Active employees</span></div>
+      <div class="card__body card--flush">
+        {% if program.suppressed %}
+        <div class="empty"><strong>Hidden</strong>Too few employees to list without identifying anyone.</div>
+        {% else %}
+        <ul class="list">
+          <li class="list__item"><span><a href="{% url 'dashboard:employees' %}?focus=repeat">Repeat failures</a><span class="cell-meta">Failed two or more campaigns</span></span><strong>{{ attention.repeat }}</strong></li>
+          <li class="list__item"><span><a href="{% url 'dashboard:employees' %}?focus=high_risk_untrained">High risk, no training completed</a><span class="cell-meta">Score {{ summary.high_risk_threshold }} or above and nothing finished</span></span><strong>{{ attention.high_risk_untrained }}</strong></li>
+          <li class="list__item"><span><a href="{% url 'dashboard:training' %}?status=overdue">Training overdue</a><span class="cell-meta">People past a due date</span></span><strong>{{ attention.overdue_training }}</strong></li>
+          <li class="list__item"><span><a href="{% url 'dashboard:employees' %}?focus=never_tested">Never tested</a><span class="cell-meta">A gap in coverage</span></span><strong>{{ attention.never_tested }}</strong></li>
+          {% if triage_open is not None %}<li class="list__item"><span><a href="{% url 'manage:reported' %}">Reported emails to review</a><span class="cell-meta">Real reports awaiting a verdict</span></span><strong>{{ triage_open }}</strong></li>{% endif %}
+        </ul>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+
+  <div class="grid-2">
     <section class="card" aria-labelledby="dept-heading">
       <div class="card__header"><h2 id="dept-heading">Departments</h2><a href="{% url 'dashboard:departments' %}">View all</a></div>
       <div class="card__body card--flush">

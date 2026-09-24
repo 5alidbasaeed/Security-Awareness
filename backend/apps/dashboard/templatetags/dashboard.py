@@ -96,3 +96,60 @@ def sort_state(context, field):
     if current == f"-{field}":
         return "descending"
     return "none"
+
+
+@register.filter
+def duration(seconds):
+    """Seconds -> the unit a person would say out loud (45 s, 12 min, 3.5 h, 2.1 days)."""
+    if seconds is None:
+        return "—"
+    seconds = float(seconds)
+    if seconds < 60:
+        return f"{seconds:.0f} s"
+    if seconds < 3600:
+        return f"{seconds / 60:.0f} min"
+    if seconds < 86400:
+        return f"{seconds / 3600:.1f} h"
+    return f"{seconds / 86400:.1f} days"
+
+
+@register.filter
+def ratio(value):
+    return "—" if value is None else f"{value:g}"
+
+
+@register.filter
+def points(value):
+    """Percentage-point gap, signed: +2.5 pts."""
+    if value is None:
+        return ""
+    return f"+{value:g} pts" if value > 0 else f"{value:g} pts"
+
+
+GRADE_LABELS = {"met": "Meets target", "missed": "Below target", "no_data": "No data"}
+GRADE_BADGES = {"met": "badge--low", "missed": "badge--high", "no_data": ""}
+
+
+@register.filter
+def grade_label(status):
+    return GRADE_LABELS.get(status, "")
+
+
+@register.filter
+def grade_badge(status):
+    return GRADE_BADGES.get(status, "")
+
+
+OUTCOME_LABELS = {"submitted": "Submitted data", "clicked": "Clicked the link", "reported": "Reported",
+                  "no_action": "No action"}
+OUTCOME_BADGES = {"submitted": "badge--high", "clicked": "badge--medium", "reported": "badge--low", "no_action": ""}
+
+
+@register.filter
+def outcome_label(outcome):
+    return OUTCOME_LABELS.get(outcome, "")
+
+
+@register.filter
+def outcome_badge(outcome):
+    return OUTCOME_BADGES.get(outcome, "")

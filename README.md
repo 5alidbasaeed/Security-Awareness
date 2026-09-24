@@ -125,6 +125,8 @@ Every scoring-relevant event (click, data submission, report) queues `risk_scori
 
 `setup_groups` creates five groups: **Security Admin** (everything, incl. approving campaigns), **Campaign Manager** (create/edit/submit campaigns, cannot approve), **Training Manager** (training models), **Report Viewer** (view-only), **Department Manager** (change access scoped to departments listed in `Department.managers`; assign a user there *and* to the group). Campaign lifecycle: `Draft → Submit for approval → Approve (Security Admin only) → Launch` (manually, or automatically at `scheduled_at` via Celery Beat every 5 min). Launch syncs the target department's non-exempt employees into a Gophish group first, and is capped by `CAMPAIGN_LAUNCH_RATE_LIMIT` per 24h. Each campaign row has a **Preview** link that renders the landing page HTML fetched from Gophish.
 
+**Governance pages** (Manage sidebar, under *Governance*): Program & controls, Training assignments (extend/waive with a reason), Exemptions (reason + end date required), Users & access (roles, access review) and Audit log. After upgrading, run `docker compose run --rm django python manage.py setup_groups` so Security Admin receives the new `manage_user_access` permission.
+
 ## Phase 6 — Adoption and program maturity
 
 ### Management UI (`/manage/`)

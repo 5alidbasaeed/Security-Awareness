@@ -30,11 +30,12 @@
     {% else %}<p class="cell-meta">Your role can't grant any API scopes.</p>{% endif %}
   </div></section>
 
-  <section class="card"><div class="card__header"><h2>Your keys</h2></div>
+  <section class="card"><div class="card__header"><h2>{% if oversight %}All keys{% else %}Your keys{% endif %}</h2></div>
     <ul class="list">
       {% for k in keys %}
       <li class="list__item">
-        <span>{{ k.name }} <span class="cell-meta">{{ k.prefix }}… · {{ k.scopes|join:", " }}{% if k.revoked_at %} · revoked{% elif k.expires_at %} · expires {{ k.expires_at|date:"Y-m-d" }}{% endif %}</span></span>
+        <span>{{ k.name }} <span class="cell-meta">{{ k.prefix }}… · {{ k.scopes|join:", " }}{% if k.revoked_at %} · revoked{% elif k.expires_at %} · expires {{ k.expires_at|date:"Y-m-d" }}{% endif %}</span>
+          <span class="cell-meta">{% if oversight %}Owner {{ k.owner.get_username }} · {% endif %}Created {{ k.created_at|date:"d M Y" }} · {% if k.last_used_at %}last used {{ k.last_used_at|date:"d M Y" }}{% else %}never used{% endif %}{% if not k.revoked_at and not k.expires_at %} · no expiry{% endif %}</span></span>
         {% if not k.revoked_at %}<form class="inline-form" method="post" action="{% url 'manage:api-key-revoke' k.pk %}">{% csrf_token %}<button class="button button--quiet" type="submit">Revoke</button></form>{% endif %}
       </li>
       {% empty %}<li class="list__item"><span class="cell-meta">No keys yet.</span></li>{% endfor %}

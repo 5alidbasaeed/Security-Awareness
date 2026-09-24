@@ -1,0 +1,9 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Page not found{% endblock %}
+{% block content %}
+<div class="card empty">
+  <strong>We can’t find that page</strong>
+  The link may be old, or the item may have been removed.
+  <p><a class="button" href="{% url 'dashboard:overview' %}">Back to the dashboard</a></p>
+</div>
+{% endblock %}

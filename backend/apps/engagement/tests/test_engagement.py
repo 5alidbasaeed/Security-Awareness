@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from apps.employees.tests.factories import EmployeeFactory
 from apps.engagement.deliverability import check_domain
-from apps.engagement.points import leaderboard, points_for
+from apps.engagement.points import leaderboard
 from apps.engagement.retention import anonymize_stale_employees
 from apps.engagement.tasks import export_event_to_siem, send_coaching_email
 from apps.events.models import Event
@@ -92,8 +92,10 @@ def test_points_reward_reporting_and_training_not_failure():
     EventFactory(employee=e, event_type="credential_attempt")  # failing costs no points
     TrainingAssignmentFactory(employee=e, completed_at=timezone.now())
 
-    p = points_for(e)
-    assert p == {"reports": 1, "training_completed": 1, "points": 15}
+    from apps.employees.models import Employee
+
+    (row,) = leaderboard(Employee.objects.filter(pk=e.pk))
+    assert (row["reports"], row["training_completed"], row["points"]) == (1, 1, 15)
 
 
 def test_leaderboard_ranks_reporters_and_hides_zero_scores():

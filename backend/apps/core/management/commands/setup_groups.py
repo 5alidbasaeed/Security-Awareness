@@ -70,7 +70,9 @@ class Command(BaseCommand):
         # Security Admin: everything, including the custom approve_campaign permission.
         security_admin_perms = list(_perms_for(MANAGED_MODELS)) + list(
             Permission.objects.filter(
-                codename__in=["approve_campaign", "generate_report", "export_employee_level", "export_employee_data"]
+                codename__in=[
+                    "approve_campaign", "generate_report", "export_employee_level", "export_employee_data", "manage_user_access",
+                ]
             )
         )
         security_admin.permissions.set(security_admin_perms)

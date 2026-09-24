@@ -10,6 +10,7 @@ from datetime import timedelta
 from django.db.models import Count
 from django.utils import timezone
 
+from apps.employees.exemptions import not_exempt_q
 from apps.employees.models import Employee
 from apps.events.models import Event
 from apps.risk_scoring.analytics import HIGH_RISK_THRESHOLD
@@ -19,7 +20,7 @@ from .models import SmartGroup
 
 
 def _base(department):
-    qs = Employee.objects.filter(is_exempt=False, is_active=True)
+    qs = Employee.objects.filter(not_exempt_q(), is_active=True)
     return qs.filter(department=department) if department is not None else qs
 
 

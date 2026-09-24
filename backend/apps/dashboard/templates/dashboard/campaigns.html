@@ -4,21 +4,32 @@
 <header class="page-header">
   <div>
     <h1>Campaigns</h1>
-    <p class="page-header__sub">Results for every simulated phishing campaign.</p>
+    <p class="page-header__sub">Results for every simulated phishing campaign, with the totals for whatever you filter to.</p>
   </div>
 </header>
 
-<form class="toolbar" method="get" action="{% url 'dashboard:campaigns' %}" hx-target="#campaign-results" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#campaign-indicator">
+<form class="toolbar" method="get" action="{% url 'dashboard:campaigns' %}" role="search" hx-target="#campaign-results" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#campaign-indicator">
+  <label class="visually-hidden" for="q">Search campaigns</label>
+  <input class="field" id="q" name="q" type="search" value="{{ q }}" placeholder="Search by name" autocomplete="off"
+         hx-get="{% url 'dashboard:campaigns' %}" hx-trigger="input changed delay:250ms, search" hx-include="closest form">
   <label class="visually-hidden" for="status">Status</label>
-  <select class="select" id="status" name="status" hx-get="{% url 'dashboard:campaigns' %}" hx-trigger="change">
+  <select class="select" id="status" name="status" hx-get="{% url 'dashboard:campaigns' %}" hx-trigger="change" hx-include="closest form">
     <option value="">All statuses</option>
     {% for value, label in statuses %}<option value="{{ value }}"{% if value == status %} selected{% endif %}>{{ label }}</option>{% endfor %}
+  </select>
+  <label class="visually-hidden" for="department">Department</label>
+  <select class="select" id="department" name="department" hx-get="{% url 'dashboard:campaigns' %}" hx-trigger="change" hx-include="closest form">
+    <option value="">All departments</option>
+    {% for d in departments %}<option value="{{ d.pk }}"{% if department == d.pk|stringformat:"s" %} selected{% endif %}>{{ d.name }}</option>{% endfor %}
+  </select>
+  <label class="visually-hidden" for="period">Launched</label>
+  <select class="select" id="period" name="period" hx-get="{% url 'dashboard:campaigns' %}" hx-trigger="change" hx-include="closest form">
+    <option value="">Any time</option>
+    {% for key, label, days in periods %}<option value="{{ key }}"{% if period_chosen and period.key == key %} selected{% endif %}>{{ label }}</option>{% endfor %}
   </select>
   <noscript><button class="button" type="submit">Filter</button></noscript>
   <span id="campaign-indicator" class="htmx-indicator" role="status">Loading…</span>
 </form>
 
-<div class="card">
-  {% include "dashboard/_campaign_table.html" %}
-</div>
+{% include "dashboard/_campaign_table.html" %}
 {% endblock %}

@@ -10,7 +10,7 @@
   <link rel="stylesheet" href="{% static 'dashboard/app.css' %}">
 </head>
 <body class="{% block body_class %}{% endblock %}">
-  <header class="nav"><div class="container nav__inner">
+  <header class="nav nav--narrow"><div class="container nav__inner">
     <span class="nav__brand">Security Awareness Training</span>
     {% if request.session.portal_employee_id %}
     <div class="nav__user">

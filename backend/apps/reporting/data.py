@@ -107,11 +107,25 @@ class ReportData:
 
     # -- training (as of the report date) -----------------------------------
 
+    def _due_as_of(self, assignment):
+        """The due date that applied at the report date: extensions made later do not rewrite the past."""
+        due = assignment.due_at
+        extensions = list(assignment.extensions.all())  # prefetched, oldest first
+        if extensions:
+            due = extensions[0].previous_due_at
+            for extension in extensions:
+                if extension.extended_at <= self.as_of:
+                    due = extension.new_due_at
+        return due
+
     def _assignment_status(self, assignment) -> str:
+        if assignment.waived_at is not None and assignment.waived_at <= self.as_of:
+            return "Waived"
         completed = assignment.completed_at is not None and assignment.completed_at <= self.as_of
         if completed:
             return "Completed"
-        if assignment.due_at is not None and assignment.due_at < self.as_of:
+        due = self._due_as_of(assignment)
+        if due is not None and due < self.as_of:
             return "Overdue"
         if assignment.started_at is not None and assignment.started_at <= self.as_of:
             return "In progress"
@@ -122,10 +136,12 @@ class ReportData:
         assignments = (
             self.scope.assignments.filter(assigned_at__lte=self.as_of)
             .select_related("employee", "employee__department", "module")
+            .prefetch_related("extensions")
             .order_by("assigned_at")
         )
         rows = []
         for a in assignments:
+            due = self._due_as_of(a)
             rows.append(
                 {
                     "employee": a.employee.full_name,
@@ -133,7 +149,7 @@ class ReportData:
                     "department": a.employee.department.name if a.employee.department else "",
                     "module": a.module.title,
                     "assigned": a.assigned_at.date().isoformat(),
-                    "due": a.due_at.date().isoformat() if a.due_at else "",
+                    "due": due.date().isoformat() if due else "",
                     "completed": a.completed_at.date().isoformat() if a.completed_at and a.completed_at <= self.as_of else "",
                     "status": self._assignment_status(a),
                     "department_id": a.employee.department_id,
@@ -143,10 +159,12 @@ class ReportData:
 
     @staticmethod
     def _training_totals(rows) -> dict:
-        assigned = len(rows)
+        waived = sum(1 for r in rows if r["status"] == "Waived")
+        assigned = len(rows) - waived  # a documented exception is neither owed nor done
         completed = sum(1 for r in rows if r["status"] == "Completed")
         overdue = sum(1 for r in rows if r["status"] == "Overdue")
         return {
+            "waived": waived,
             "assigned": assigned,
             "completed": completed,
             "overdue": overdue,

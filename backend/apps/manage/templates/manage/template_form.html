@@ -17,6 +17,8 @@
   <section class="card builder__preview">
     <div class="card__header"><h2>Preview</h2><span class="card__note">What the recipient sees</span></div>
     <div class="card__body">
+      {% if cloned_from %}<p class="cell-meta">Copied from {{ cloned_from }}</p>
+      <form method="post" class="form-actions">{% csrf_token %}<input type="hidden" name="action" value="reclone"><button class="button button--quiet" type="submit">Fetch it again</button></form>{% endif %}
       {% if preview_url %}<iframe class="preview-frame" src="{{ preview_url }}" title="Preview"></iframe>
       {% else %}<p class="cell-meta">Save once and the preview appears here.</p>{% endif %}
     </div>

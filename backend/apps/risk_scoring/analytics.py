@@ -77,10 +77,13 @@ def campaign_summary(campaign, until=None) -> dict:
 
 def training_compliance(assignments) -> dict:
     now = timezone.now()
+    # A waived assignment is a documented exception: it is neither owed nor done, so it leaves the
+    # denominator (and is reported separately) instead of flattering or hurting the completion rate.
     totals = assignments.aggregate(
-        assigned=Count("id"),
-        completed=Count("id", filter=Q(completed_at__isnull=False)),
-        overdue=Count("id", filter=Q(completed_at__isnull=True, due_at__lt=now)),
+        assigned=Count("id", filter=Q(waived_at__isnull=True)),
+        completed=Count("id", filter=Q(completed_at__isnull=False, waived_at__isnull=True)),
+        overdue=Count("id", filter=Q(completed_at__isnull=True, waived_at__isnull=True, due_at__lt=now)),
+        waived=Count("id", filter=Q(waived_at__isnull=False)),
     )
     return {
         **totals,

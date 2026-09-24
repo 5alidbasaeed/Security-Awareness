@@ -156,6 +156,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "apps.engagement.retention.anonymize_stale_employees",
         "schedule": 86400.0,
     },
+    "lapse-expired-exemptions": {
+        "task": "apps.employees.tasks.lapse_expired_exemptions",
+        "schedule": 3600.0,  # hourly: an expired exemption is also ignored at launch, this just tidies and audits it
+    },
     "launch-scheduled-campaigns": {
         "task": "apps.campaigns.tasks.launch_scheduled_campaigns",
         "schedule": 300.0,  # every 5 minutes
@@ -188,6 +192,14 @@ PORTAL_LINK_WINDOW_SECONDS = env.int("PORTAL_LINK_WINDOW_SECONDS", default=3600)
 # Only set when a proxy in front overwrites this header (e.g. HTTP_X_REAL_IP). Empty = use the socket address.
 PORTAL_CLIENT_IP_HEADER = env("PORTAL_CLIENT_IP_HEADER", default="")
 
+# --- Test sends of a composed email, and landing-page cloning ---
+# A test send can only go to the sender's own address or one of these domains (comma-separated) —
+# never to arbitrary outside addresses, even though it goes through the real relay.
+TEST_EMAIL_ALLOWED_DOMAINS = env.list("TEST_EMAIL_ALLOWED_DOMAINS", default=[])
+TEST_EMAIL_LIMIT_PER_HOUR = env.int("TEST_EMAIL_LIMIT_PER_HOUR", default=10)
+# Development only: let the landing-page cloner fetch private/internal addresses (SSRF risk — never on in production).
+LANDING_CLONE_ALLOW_PRIVATE_HOSTS = env.bool("LANDING_CLONE_ALLOW_PRIVATE_HOSTS", default=False)
+
 # --- Email (training reminders) ---
 # Console backend by default — real SMTP via env override on a real
 # deployment, same pattern as DJANGO_SETTINGS_MODULE per-environment.
@@ -212,6 +224,11 @@ SIEM_WEBHOOK_URL = env("SIEM_WEBHOOK_URL", default="")
 SIEM_WEBHOOK_TIMEOUT = env.int("SIEM_WEBHOOK_TIMEOUT", default=5)
 # Smallest department size that may be shown in aggregate analytics/reports (privacy — Phase 6.4).
 MIN_REPORTING_COHORT = env.int("MIN_REPORTING_COHORT", default=1)
+# Program targets the dashboard grades against (a policy decision — set them to what your risk appetite says).
+TARGET_MAX_FAILURE_RATE = env.int("TARGET_MAX_FAILURE_RATE", default=10)  # % of tested employees who click or submit
+TARGET_MIN_REPORT_RATE = env.int("TARGET_MIN_REPORT_RATE", default=20)  # % of tested employees who report the email
+TARGET_MIN_TRAINING_COMPLETION = env.int("TARGET_MIN_TRAINING_COMPLETION", default=95)  # % of assigned training done
+TARGET_MIN_COVERAGE = env.int("TARGET_MIN_COVERAGE", default=90)  # % of eligible employees tested in the period
 # Anonymise a deactivated employee's PII after this many days (event log stays; invariant #3). 0 = never.
 PII_RETENTION_DAYS = env.int("PII_RETENTION_DAYS", default=0)
 

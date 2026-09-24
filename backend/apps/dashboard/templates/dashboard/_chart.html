@@ -5,7 +5,7 @@
 {{ chart|json_script:chart_id }}
 {% else %}
 <div class="empty">
-  <strong>No score history yet</strong>
-  Scores appear here once campaign results start arriving.
+  <strong>{{ empty_title|default:"No score history yet" }}</strong>
+  {{ empty_text|default:"Scores appear here once campaign results start arriving." }}
 </div>
 {% endif %}

@@ -5,16 +5,76 @@
 <header class="page-header">
   <div>
     <h1>Training</h1>
-    <p class="page-header__sub">Assignments created after failed simulations. Completion is tracked separately from risk scores.</p>
+    <p class="page-header__sub">Assignments created after failed simulations and by policy. Completion is tracked separately from risk scores.</p>
   </div>
 </header>
 
 <div class="stack">
   <section class="stats" aria-label="Key figures">
     <div class="card stat"><div class="stat__label">Assigned</div><div class="stat__value">{{ compliance.assigned }}</div><div class="stat__note">All time</div></div>
-    <div class="card stat"><div class="stat__label">Completed</div><div class="stat__value">{{ compliance.completed }}</div><div class="stat__note">{{ compliance.completion_rate_percent|percent }} completion</div></div>
+    <div class="card stat"><div class="stat__label">Completed</div><div class="stat__value">{{ compliance.completed }}</div><div class="stat__note">{{ compliance.completion_rate_percent|percent }} completion · target {{ target }}%</div></div>
     <div class="card stat"><div class="stat__label">Outstanding</div><div class="stat__value">{{ compliance.outstanding }}</div><div class="stat__note">Not yet completed</div></div>
     <div class="card stat"><div class="stat__label">Overdue</div><div class="stat__value">{{ compliance.overdue }}</div><div class="stat__note">Past their due date</div></div>
+    <div class="card stat"><div class="stat__label">Completed on time</div><div class="stat__value">{{ breakdown.on_time_rate_percent|percent }}</div><div class="stat__note">{{ breakdown.completed_on_time }} on time · {{ breakdown.completed_late }} late</div></div>
+    <div class="card stat"><div class="stat__label">Median time to complete</div><div class="stat__value">{% if breakdown.median_days_to_complete is None %}—{% else %}{{ breakdown.median_days_to_complete|floatformat:1 }} days{% endif %}</div><div class="stat__note">From assignment to completion</div></div>
+  </section>
+
+  <div class="grid-2">
+    <section class="card" aria-labelledby="aging-heading">
+      <div class="card__header"><h2 id="aging-heading">Overdue ageing</h2><span class="card__note">Days past the due date</span></div>
+      <div class="card__body card--flush">
+        <ul class="list">
+          {% for bucket, count in breakdown.aging.items %}
+          <li class="list__item"><span>{{ bucket }}</span><strong{% if count and bucket == "31+ days" %} class="overdue"{% endif %}>{{ count }}</strong></li>
+          {% endfor %}
+        </ul>
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="bydept-heading">
+      <div class="card__header"><h2 id="bydept-heading">Completion by department</h2><span class="card__note">Lowest first</span></div>
+      <div class="card__body card--flush">
+        {% if breakdown.departments %}
+        <ul class="list">
+          {% for d in breakdown.departments %}
+          <li class="list__item"><span>{% if d.id %}<a href="{% url 'dashboard:department-detail' d.id %}">{{ d.name }}</a>{% else %}{{ d.name }}{% endif %}<span class="cell-meta">{{ d.completed }} of {{ d.assigned }} done{% if d.overdue %} · <span class="overdue">{{ d.overdue }} overdue</span>{% endif %}</span></span><strong>{{ d.completion_rate_percent|percent }}</strong></li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="empty"><strong>Nothing assigned</strong>Departments appear once training is assigned.</div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
+
+  <section class="card" aria-labelledby="modules-heading">
+    <div class="card__header"><h2 id="modules-heading">Modules</h2><span class="card__note">Quiz figures count every attempt</span></div>
+    <div class="card__body card--flush">
+      {% if breakdown.modules %}
+      <div class="table-wrap">
+        <table class="table">
+          <caption class="visually-hidden">Completion, quiz results and speed for each training module</caption>
+          <thead><tr><th scope="col">Module</th><th scope="col" class="num">Assigned</th><th scope="col" class="num">Completed</th><th scope="col" class="num">Completion</th><th scope="col" class="num">Overdue</th><th scope="col" class="num">Average quiz score</th><th scope="col" class="num">Quiz pass rate</th><th scope="col" class="num">Median days</th></tr></thead>
+          <tbody>
+            {% for m in breakdown.modules %}
+            <tr>
+              <td>{{ m.module__title }}</td>
+              <td class="num">{{ m.assigned }}</td>
+              <td class="num">{{ m.completed }}</td>
+              <td class="num">{{ m.completion_rate_percent|percent }}</td>
+              <td class="num">{% if m.overdue %}<span class="overdue">{{ m.overdue }}</span>{% else %}0{% endif %}</td>
+              <td class="num">{% if m.avg_score is None %}—{% else %}{{ m.avg_score|floatformat:0 }}%{% endif %}</td>
+              <td class="num">{{ m.pass_rate|percent }}</td>
+              <td class="num">{% if m.median_days is None %}—{% else %}{{ m.median_days }}{% endif %}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty"><strong>No training assigned</strong>Nothing matches this filter.</div>
+      {% endif %}
+    </div>
   </section>
 
   <form method="get" action="{% url 'dashboard:training' %}" role="search" hx-target="#training-results" hx-swap="outerHTML" hx-push-url="true" hx-indicator="#training-indicator">
@@ -28,6 +88,16 @@
         <option value="overdue"{% if status == "overdue" %} selected{% endif %}>Overdue</option>
         <option value="completed"{% if status == "completed" %} selected{% endif %}>Completed</option>
         <option value="all"{% if status == "all" %} selected{% endif %}>All</option>
+      </select>
+      <label class="visually-hidden" for="department">Department</label>
+      <select class="select" id="department" name="department" hx-get="{% url 'dashboard:training' %}" hx-trigger="change" hx-include="closest form">
+        <option value="">All departments</option>
+        {% for d in departments %}<option value="{{ d.pk }}"{% if department == d.pk|stringformat:"s" %} selected{% endif %}>{{ d.name }}</option>{% endfor %}
+      </select>
+      <label class="visually-hidden" for="module">Module</label>
+      <select class="select" id="module" name="module" hx-get="{% url 'dashboard:training' %}" hx-trigger="change" hx-include="closest form">
+        <option value="">All modules</option>
+        {% for m in modules %}<option value="{{ m.pk }}"{% if module == m.pk|stringformat:"s" %} selected{% endif %}>{{ m.title }}</option>{% endfor %}
       </select>
       <noscript><button class="button" type="submit">Filter</button></noscript>
       <span id="training-indicator" class="htmx-indicator" role="status">Loading…</span>

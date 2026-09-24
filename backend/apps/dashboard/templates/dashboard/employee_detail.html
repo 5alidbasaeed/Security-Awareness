@@ -10,6 +10,8 @@
       {{ employee.email }} ·
       {% if employee.department %}<a href="{% url 'dashboard:department-detail' employee.department.pk %}">{{ employee.department }}</a>{% else %}No department{% endif %}
       {% if employee.is_exempt %}· <span class="badge">Exempt from simulations</span>{% endif %}
+      {% if not employee.is_active %}· <span class="badge">Inactive</span>{% endif %}
+      {% if is_repeat %}· <span class="badge badge--high">Repeat failure</span>{% endif %}
     </p>
   </div>
 </header>
@@ -38,6 +40,41 @@
     </div>
   </section>
 
+  <section class="stats" aria-label="Test history">
+    <div class="card stat"><div class="stat__label">Simulations received</div><div class="stat__value">{{ tests|length }}</div><div class="stat__note">Last tested {{ last_tested|date:"M j, Y"|default:"never" }}</div></div>
+    <div class="card stat"><div class="stat__label">Reported in simulations</div><div class="stat__value">{{ tests_reported }}</div><div class="stat__note">of {{ tests|length }} received</div></div>
+    <div class="card stat"><div class="stat__label">Fastest click</div><div class="stat__value">{{ fastest_fail_seconds|duration }}</div><div class="stat__note">After the email arrived</div></div>
+    <div class="card stat"><div class="stat__label">Real emails reported</div><div class="stat__value">{{ real_reports }}</div><div class="stat__note">Suspicious mail sent to security</div></div>
+  </section>
+
+  <section class="card" aria-labelledby="tests-heading">
+    <div class="card__header"><h2 id="tests-heading">Simulation history</h2><span class="card__note">One row per campaign, newest first</span></div>
+    <div class="card__body card--flush">
+      {% if tests %}
+      <div class="table-wrap">
+        <table class="table">
+          <caption class="visually-hidden">Every simulation this employee received and what they did</caption>
+          <thead><tr><th scope="col">Campaign</th><th scope="col">Sent</th><th scope="col">Outcome</th><th scope="col">Time to click</th><th scope="col">Time to report</th><th scope="col">Follow-up training</th></tr></thead>
+          <tbody>
+            {% for t in tests %}
+            <tr>
+              <td><a href="{% url 'dashboard:campaign-detail' t.campaign.pk %}">{{ t.campaign.name }}</a></td>
+              <td>{{ t.sent_at|date:"M j, Y"|default:"—" }}</td>
+              <td><span class="badge {{ t.outcome|outcome_badge }}">{{ t.outcome|outcome_label }}</span>{% if t.also_reported %} <span class="badge badge--low">Then reported</span>{% endif %}</td>
+              <td>{{ t.seconds_to_fail|duration }}</td>
+              <td>{{ t.seconds_to_report|duration }}</td>
+              <td>{% if t.assignment %}{% if t.assignment.completed_at %}<span class="badge badge--low">Completed</span>{% elif t.assignment.due_at and t.assignment.due_at < now %}<span class="badge badge--high">Overdue</span>{% else %}<span class="badge badge--accent">Assigned</span>{% endif %}{% else %}<span class="muted">—</span>{% endif %}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty"><strong>Not tested yet</strong>Simulations this person receives are listed here.</div>
+      {% endif %}
+    </div>
+  </section>
+
   <section class="card" aria-labelledby="history-heading">
     <div class="card__header"><h2 id="history-heading">Score history</h2><span class="card__note">Every recomputed snapshot</span></div>
     <div class="card__body">
@@ -53,7 +90,7 @@
         <ul class="list">
           {% for a in assignments %}
           <li class="list__item">
-            <span>{{ a.module.title }}<span class="cell-meta">Assigned {{ a.assigned_at|date:"M j, Y" }}{% if a.due_at %} · Due {{ a.due_at|date:"M j, Y" }}{% endif %}</span></span>
+            <span>{{ a.module.title }}<span class="cell-meta">Assigned {{ a.assigned_at|date:"M j, Y" }}{% if a.due_at %} · Due {{ a.due_at|date:"M j, Y" }}{% endif %}{% if a.completed_at %} · Completed {{ a.completed_at|date:"M j, Y" }}{% endif %}{% if a.attempts %} · Best quiz score {{ a.best_score }}% ({{ a.attempts }} attempt{{ a.attempts|pluralize }}){% endif %}</span></span>
             {% if a.completed_at %}<span class="badge badge--low">Completed</span>
             {% elif a.due_at and a.due_at < now %}<span class="badge badge--high">Overdue</span>
             {% elif a.started_at %}<span class="badge badge--accent">In progress</span>

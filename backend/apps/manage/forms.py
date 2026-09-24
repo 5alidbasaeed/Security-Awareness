@@ -17,7 +17,6 @@ from apps.training.models import Quiz, TrainingModule, TrainingSlide
 
 _TEXT = {"class": "field"}
 _AREA = {"class": "field", "rows": 4}
-_SELECT = {"class": "select"}
 
 
 def _style(form):
@@ -188,24 +187,43 @@ class QuizForm(forms.ModelForm):
 class EmployeeForm(ScopedModelForm):
     class Meta:
         model = Employee
-        fields = ["full_name", "email", "department", "is_exempt"]
+        fields = ["full_name", "email", "department", "is_exempt", "exempt_reason", "exempt_until"]
+        widgets = {"exempt_until": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         # Match the admin: a Department Manager can't exempt their own people or move them out of scope.
         if self.user is not None and managed_departments(self.user) is not None:
-            self.fields["is_exempt"].disabled = True
+            for name in ("is_exempt", "exempt_reason", "exempt_until"):
+                self.fields[name].disabled = True
+            self.instance._exemption_locked = True
             self.fields["department"].required = True
+
+    def save(self, commit=True):
+        employee = super().save(commit=False)
+        # Whoever changes the justification owns it: the register shows who set each exemption.
+        if employee.is_exempt and self.user is not None and any(
+            f in self.changed_data for f in ("is_exempt", "exempt_reason", "exempt_until")
+        ):
+            employee.exempt_set_by = self.user
+        if commit:
+            employee.save()
+        return employee
 
 
 class DepartmentForm(forms.ModelForm):
     class Meta:
         model = Department
-        fields = ["name"]
+        fields = ["name", "manager"]
+        labels = {"manager": "Department head"}
+        help_texts = {"manager": "The employee who leads it. They are told when their people are overdue on training. "
+                                 "(Console sign-in access is set under Users & access.)"}
 
     def __init__(self, *args, **kwargs):
         kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
+        self.fields["manager"].queryset = Employee.objects.filter(is_active=True).order_by("full_name")
+        self.fields["manager"].required = False
         _style(self)
 
 
@@ -264,8 +282,45 @@ class LandingDraftForm(forms.ModelForm):
         _style(self)
 
 
-class ImageUploadForm(forms.Form):
-    files = forms.FileField(widget=forms.ClearableFileInput(attrs={"class": "field"}), label="Images")
+class CloneLandingForm(forms.Form):
+    """The URL for a page to clone — see apps.campaigns.clone for what happens to it."""
+
+    name = forms.CharField(max_length=200, label="Name", widget=forms.TextInput(attrs={"class": "field"}),
+                           help_text="Only used in this app to tell your pages apart.")
+    url = forms.CharField(max_length=1000, label="Web address of the page to clone",
+                          widget=forms.URLInput(attrs={"class": "field", "placeholder": "https://..."}),
+                          help_text="The sign-in page of a public website. It is fetched by the phishing engine, "
+                                    "not by this server, and rebuilt with no scripts before it is saved.")
+
+    def clean_name(self):
+        name = self.cleaned_data["name"].strip()
+        if "/" in name or "\\" in name:
+            raise forms.ValidationError("Names can't contain / or \\.")
+        if LandingDraft.objects.filter(name=name).exists():
+            raise forms.ValidationError("A landing page with that name already exists.")
+        return name
+
+    def clean_url(self):
+        from apps.campaigns.clone import CloneError, validate_clone_url
+
+        try:
+            return validate_clone_url(self.cleaned_data["url"])
+        except CloneError as exc:
+            raise forms.ValidationError(str(exc)) from None
+
+
+class ClonedLandingForm(forms.ModelForm):
+    """What can still be changed on a cloned page: it isn't rebuilt from fields like the others, so
+    only where people go afterwards is editable here — everything else needs a fresh clone."""
+
+    class Meta:
+        model = LandingDraft
+        fields = ["name", "redirect_url"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        _lock_name(self)
+        _style(self)
 
 
 class LandingPageForm(forms.Form):

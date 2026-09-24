@@ -14,34 +14,46 @@
     <option value="">All statuses</option>
     {% for value, label in statuses %}<option value="{{ value }}"{% if value == status %} selected{% endif %}>{{ label }}</option>{% endfor %}
   </select>
+  <label class="visually-hidden" for="q">Search</label><input class="field" id="q" type="search" name="q" value="{{ q }}" placeholder="Search by name">
+  <label class="visually-hidden" for="department">Department</label>
+  <select class="select" id="department" name="department"><option value="">All departments</option>{% for d in departments %}<option value="{{ d.pk }}"{% if department == d.pk|stringformat:"s" %} selected{% endif %}>{{ d.name }}</option>{% endfor %}</select>
   <button class="button" type="submit">Filter</button>
+  {% if status or q or department %}<a class="button button--quiet" href="{% url 'manage:campaigns' %}">Clear</a>{% endif %}
 </form>
 
 <div class="card">
   <div class="table-wrap"><table class="table">
-    <thead><tr><th>Campaign</th><th>Status</th><th>Department</th><th>Schedule</th><th class="num">Actions</th></tr></thead>
+    <thead><tr><th>Campaign</th><th>Status</th><th>Audience</th><th>Schedule</th><th>Approval</th><th class="num">Actions</th></tr></thead>
     <tbody>
       {% for c in page %}
       <tr>
-        <td>{{ c.name }}{% if c.training_module %}<span class="cell-meta">Training: {{ c.training_module }}</span>{% endif %}</td>
+        <td class="col-name">{{ c.name }}{% if c.training_module %}<span class="cell-meta">Training: {{ c.training_module }}</span>{% endif %}</td>
         <td><span class="badge {{ c.status|status_badge }}">{{ c.get_status_display }}</span></td>
-        <td>{{ c.target_department|default:"—" }}</td>
+        <td>{{ c.target_department|default:"—" }}{% if c.recipient_count is not None %}<span class="cell-meta">{{ c.recipient_count }} recipient{{ c.recipient_count|pluralize }} (exempt and inactive excluded)</span>{% endif %}</td>
         <td>{{ c.scheduled_at|default:"—" }}</td>
+        <td>{% if c.submitted_by %}<span class="cell-meta">Submitted by {{ c.submitted_by.get_username }}</span>{% endif %}{% if c.approved_by %}<span class="cell-meta">Approved by {{ c.approved_by.get_username }}{% if c.approved_at %}, {{ c.approved_at|date:"d M" }}{% endif %}</span>{% elif not c.submitted_by %}—{% endif %}</td>
         <td class="num actions">
+          {% if c.status == "launched" %}<a href="{% url 'dashboard:campaign-detail' c.pk %}">Results</a>{% endif %}
           {% if c.status != "launched" and perms.campaigns.change_campaign %}<a href="{% url 'manage:campaign-edit' c.pk %}">Edit</a>{% endif %}
           {% if c.status == "draft" and perms.campaigns.change_campaign %}
             <form class="inline-form" method="post" action="{% url 'manage:campaign-submit' c.pk %}">{% csrf_token %}<button class="button button--quiet" type="submit">Submit</button></form>
           {% endif %}
           {% if c.status == "pending_approval" and can_approve %}
             <form class="inline-form" method="post" action="{% url 'manage:campaign-approve' c.pk %}">{% csrf_token %}<button class="button button--quiet" type="submit">Approve</button></form>
-            <form class="inline-form" method="post" action="{% url 'manage:campaign-reject' c.pk %}">{% csrf_token %}<button class="button button--quiet" type="submit">Reject</button></form>
+            <form class="inline-form" method="post" action="{% url 'manage:campaign-reject' c.pk %}">{% csrf_token %}<label class="visually-hidden" for="reason{{ c.pk }}">Reason</label><input class="field" id="reason{{ c.pk }}" name="reason" placeholder="Reason for sending back" required maxlength="300"><button class="button button--quiet" type="submit">Reject</button></form>
+          {% endif %}
+          {% if perms.campaigns.add_campaign %}
+            <form class="inline-form" method="post" action="{% url 'manage:campaign-duplicate' c.pk %}">{% csrf_token %}<button class="button button--quiet" type="submit">Duplicate</button></form>
+          {% endif %}
+          {% if c.status != "launched" and perms.campaigns.delete_campaign %}
+            <form class="inline-form" method="post" hx-boost="true" hx-confirm="Delete “{{ c.name }}”? This can't be undone." action="{% url 'manage:campaign-delete' c.pk %}">{% csrf_token %}<button class="button button--quiet" type="submit">Delete</button></form>
           {% endif %}
           {% if c.status == "approved" and perms.campaigns.change_campaign %}
-            <form class="inline-form" method="post" action="{% url 'manage:campaign-launch' c.pk %}">{% csrf_token %}<button class="button" type="submit">Launch</button></form>
+            <form class="inline-form" method="post" hx-boost="true" hx-confirm="Launch “{{ c.name }}”? Simulated phishing emails will be sent to the whole audience now." action="{% url 'manage:campaign-launch' c.pk %}">{% csrf_token %}<button class="button" type="submit">Launch</button></form>
           {% endif %}
         </td>
       </tr>
-      {% empty %}<tr><td colspan="5"><div class="empty"><strong>No campaigns yet</strong>Create one to get started.</div></td></tr>
+      {% empty %}<tr><td colspan="6"><div class="empty"><strong>{% if status or q or department %}No campaigns match{% else %}No campaigns yet{% endif %}</strong>{% if status or q or department %}Clear the filters to see everything.{% else %}Create one to get started.{% endif %}</div></td></tr>
       {% endfor %}
     </tbody>
   </table></div>

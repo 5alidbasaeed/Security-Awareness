@@ -1,4 +1,13 @@
-{% load dashboard %}<div id="campaign-results" class="results">
+{% load dashboard %}<div id="campaign-results" class="results stack" hx-target="#campaign-results" hx-swap="outerHTML" hx-push-url="true">
+  {% if rows %}
+  <section class="stats" aria-label="Totals for the campaigns shown by the current filters">
+    <div class="card stat"><div class="stat__label">Campaigns</div><div class="stat__value">{{ page.paginator.count }}</div><div class="stat__note">{{ totals.tested }} test{{ totals.tested|pluralize }} in total</div></div>
+    <div class="card stat"><div class="stat__label">Failure rate</div><div class="stat__value">{{ totals.failure_rate|percent }}</div><div class="stat__note">{{ totals.failed }} clicked or submitted</div></div>
+    <div class="card stat"><div class="stat__label">Report rate</div><div class="stat__value">{{ totals.report_rate|percent }}</div><div class="stat__note">{{ totals.reported }} reported</div></div>
+    <div class="card stat"><div class="stat__label">Median time to click</div><div class="stat__value">{{ totals.median_seconds_to_fail|duration }}</div><div class="stat__note">Report: {{ totals.median_seconds_to_report|duration }}</div></div>
+  </section>
+  {% endif %}
+  <div class="card">
   {% if rows %}
   <div class="table-wrap">
     <table class="table">
@@ -8,18 +17,20 @@
           <th scope="col">Campaign</th><th scope="col">Status</th>
           <th scope="col" class="num">Targeted</th><th scope="col" class="num">Failed</th>
           <th scope="col" class="num">Submitted data</th><th scope="col" class="num">Reported</th>
+          <th scope="col" class="num">Reports per failure</th>
           <th scope="col">Launched</th>
         </tr>
       </thead>
       <tbody>
         {% for row in rows %}
         <tr>
-          <td><a href="{% url 'dashboard:campaign-detail' row.campaign.pk %}">{{ row.campaign.name }}</a><span class="cell-meta">{{ row.campaign.target_department|default:"No department" }}</span></td>
+          <td><a href="{% url 'dashboard:campaign-detail' row.campaign.pk %}">{{ row.campaign.name }}</a><span class="cell-meta">{{ row.campaign.target_department|default:"No department" }}{% if row.difficulty %} · {{ row.difficulty }} difficulty{% endif %}</span></td>
           <td><span class="badge{% if row.campaign.status == "launched" %} badge--accent{% endif %}">{{ row.campaign.get_status_display }}</span></td>
           <td class="num">{{ row.summary.targeted }}</td>
           <td class="num">{{ row.summary.failure_rate_percent|percent }}</td>
           <td class="num">{{ row.summary.submit_rate_percent|percent }}</td>
           <td class="num">{{ row.summary.report_rate_percent|percent }}</td>
+          <td class="num">{{ row.resilience|ratio }}</td>
           <td>{{ row.campaign.launched_at|date:"M j, Y"|default:"—" }}</td>
         </tr>
         {% endfor %}
@@ -30,4 +41,5 @@
   {% else %}
   <div class="empty"><strong>No campaigns match</strong>Create and approve a campaign in Manage to see results here.</div>
   {% endif %}
+  </div>
 </div>

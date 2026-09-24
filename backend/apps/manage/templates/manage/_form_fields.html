@@ -1,8 +1,9 @@
+{% load manage_extras %}
 {% for field in form %}
 <div class="form-row">
-  <label class="label" for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} <span class="req" aria-hidden="true">*</span>{% endif %}</label>
+  <label class="label" for="{{ field.id_for_label }}">{{ field.label|field_label }}{% if field.field.required %} <span class="req" aria-hidden="true">*</span>{% endif %}</label>
   {{ field }}
-  {% if field.help_text %}<p class="cell-meta">{{ field.help_text }}</p>{% endif %}
+  {% if field.help_text %}<p class="cell-meta">{{ field.help_text|field_help }}</p>{% endif %}
   {% for error in field.errors %}<p class="form-error" role="alert">{{ error }}</p>{% endfor %}
 </div>
 {% endfor %}

@@ -12,15 +12,27 @@
       {% if campaign.launched_at %}· Launched {{ campaign.launched_at|date:"M j, Y" }}{% endif %}
       {% if campaign.training_module %}· Training: {{ campaign.training_module }}{% endif %}
     </p>
+    <p class="page-header__sub">
+      Email: {{ campaign.template_name }}{% if template_info %} ({{ template_info.get_difficulty_display }} difficulty{% if template_info.category %}, {{ template_info.category }}{% endif %}){% endif %}
+      · Landing page: {{ campaign.landing_page_name|default:"—" }}
+    </p>
   </div>
 </header>
 
 <div class="stack">
   <section class="stats" aria-label="Key figures">
     <div class="card stat"><div class="stat__label">Targeted</div><div class="stat__value">{{ summary.targeted }}</div><div class="stat__note">Employees sent the email</div></div>
-    <div class="card stat"><div class="stat__label">Failure rate</div><div class="stat__value">{{ summary.failure_rate_percent|percent }}</div><div class="stat__note">{{ summary.failed }} clicked or submitted</div></div>
+    <div class="card stat"><div class="stat__label">Failure rate</div><div class="stat__value">{{ summary.failure_rate_percent|percent }}</div><div class="stat__note">{{ summary.failed }} clicked or submitted{% if failure_vs is not None %} · {{ failure_vs|points }} vs all campaigns{% endif %}</div></div>
     <div class="card stat"><div class="stat__label">Submitted data</div><div class="stat__value">{{ summary.submit_rate_percent|percent }}</div><div class="stat__note">{{ summary.submitted_data }} employee{{ summary.submitted_data|pluralize }}</div></div>
-    <div class="card stat"><div class="stat__label">Reported</div><div class="stat__value">{{ summary.report_rate_percent|percent }}</div><div class="stat__note">{{ summary.reported }} employee{{ summary.reported|pluralize }}</div></div>
+    <div class="card stat"><div class="stat__label">Reported</div><div class="stat__value">{{ summary.report_rate_percent|percent }}</div><div class="stat__note">{{ summary.reported }} employee{{ summary.reported|pluralize }}{% if report_vs is not None %} · {{ report_vs|points }} vs all campaigns{% endif %}</div></div>
+  </section>
+
+  <section class="stats" aria-label="Response figures">
+    <div class="card stat"><div class="stat__label">Median time to click</div><div class="stat__value">{{ unit.median_seconds_to_fail|duration }}</div><div class="stat__note">All campaigns: {{ benchmark.median_seconds_to_fail|duration }}</div></div>
+    <div class="card stat"><div class="stat__label">Median time to report</div><div class="stat__value">{{ unit.median_seconds_to_report|duration }}</div><div class="stat__note">All campaigns: {{ benchmark.median_seconds_to_report|duration }}</div></div>
+    <div class="card stat"><div class="stat__label">Reports per failure</div><div class="stat__value">{{ unit.resilience_ratio|ratio }}</div><div class="stat__note">All campaigns: {{ benchmark.resilience_ratio|ratio }}</div></div>
+    <div class="card stat"><div class="stat__label">Did nothing</div><div class="stat__value">{{ unit.no_action }}</div><div class="stat__note">Neither failed nor reported</div></div>
+    <div class="card stat"><div class="stat__label">Repeat failures</div><div class="stat__value">{{ repeat_failures }}</div><div class="stat__note">Failed here and on an earlier campaign</div></div>
   </section>
 
   <section class="card" aria-labelledby="funnel-heading">
@@ -42,6 +54,73 @@
       {% endif %}
     </div>
   </section>
+
+  <section class="card" aria-labelledby="speed-heading">
+    <div class="card__header"><h2 id="speed-heading">How quickly people responded</h2><span class="card__note">Cumulative share of employees, measured from when the email was sent</span></div>
+    <div class="card__body">
+      {% include "dashboard/_chart.html" with chart=timeline_chart chart_id="campaign-speed" label="Cumulative share of employees who failed or reported, by time since the email was sent" empty_title="No response timing yet" empty_text="Timing appears once people click or report." %}
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="depts-heading">
+    <div class="card__header"><h2 id="depts-heading">By department</h2><span class="card__note">Where this campaign landed hardest</span></div>
+    <div class="card__body card--flush">
+      {% if departments %}
+      <div class="table-wrap">
+        <table class="table">
+          <caption class="visually-hidden">Campaign results for each department</caption>
+          <thead><tr><th scope="col">Department</th><th scope="col" class="num">Tested</th><th scope="col" class="num">Failure rate</th><th scope="col" class="num">Submitted data</th><th scope="col" class="num">Report rate</th><th scope="col" class="num">Did nothing</th></tr></thead>
+          <tbody>
+            {% for d in departments %}
+            <tr>
+              <td>{{ d.name }}</td>
+              <td class="num">{{ d.tested }}</td>
+              <td class="num">{{ d.failure_rate|percent }}</td>
+              <td class="num">{{ d.submit_rate|percent }}</td>
+              <td class="num">{{ d.report_rate|percent }}</td>
+              <td class="num">{{ d.no_action }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <div class="empty"><strong>No results yet</strong>Departments appear once emails are sent.</div>
+      {% endif %}
+    </div>
+  </section>
+
+  <div class="grid-2">
+    <section class="card" aria-labelledby="followup-heading">
+      <div class="card__header"><h2 id="followup-heading">Follow-up training</h2><span class="card__note">Assigned because of this campaign</span></div>
+      <div class="card__body card--flush">
+        {% if follow_up.assigned %}
+        <ul class="list">
+          <li class="list__item"><span>Assigned</span><strong>{{ follow_up.assigned }}</strong></li>
+          <li class="list__item"><span>Completed</span><strong>{{ follow_up.completed }} · {{ follow_up.completion_rate_percent|percent }}</strong></li>
+          <li class="list__item"><span>Overdue</span><strong{% if follow_up.overdue %} class="overdue"{% endif %}>{{ follow_up.overdue }}</strong></li>
+        </ul>
+        {% else %}
+        <div class="empty"><strong>No training triggered</strong>{% if not campaign.training_module %}This campaign has no training module attached.{% elif summary.failed %}None of the failures here has a linked assignment.{% else %}Nobody has failed yet.{% endif %}</div>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="card" aria-labelledby="reporters-heading">
+      <div class="card__header"><h2 id="reporters-heading">Who reported it</h2><span class="card__note">Fastest first</span></div>
+      <div class="card__body card--flush">
+        {% if reporters %}
+        <ul class="list">
+          {% for employee, at, seconds in reporters %}
+          <li class="list__item"><span><a href="{% url 'dashboard:employee-detail' employee.pk %}">{{ employee.full_name }}</a><span class="cell-meta">{{ employee.department|default:"No department" }}</span></span><span class="muted">{{ seconds|duration }}</span></li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <div class="empty"><strong>Nobody has reported it yet</strong>Reporters are recognised here.</div>
+        {% endif %}
+      </div>
+    </section>
+  </div>
 
   <section class="card" aria-labelledby="failures-heading">
     <div class="card__header"><h2 id="failures-heading">Employees who failed</h2><span class="card__note">Clicked the link or submitted data</span></div>

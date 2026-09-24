@@ -222,6 +222,7 @@ class LandingDraft(models.Model):
         SIGN_IN = "signin", "Sign-in card"
         DOCUMENT = "document", "Document viewer"
         VERIFY = "verify", "Account verification (split screen)"
+        CLONED = "cloned", "Cloned from a website"
 
     name = models.CharField(max_length=200, unique=True, validators=[NAME_NO_SLASH], help_text="Also the landing-page name in the phishing engine.")
     layout = models.CharField(max_length=20, choices=Layout.choices, default=Layout.SIGN_IN)
@@ -239,6 +240,8 @@ class LandingDraft(models.Model):
     button_label = models.CharField(max_length=60, default="Sign in")
     footer_note = models.CharField(max_length=300, blank=True)
     redirect_url = models.URLField(blank=True, help_text="Where to send people after they submit. Blank = the teachable-moment page.")
+    source_url = models.URLField(max_length=1000, blank=True, help_text="For a cloned page: the address it was copied from.")
+    custom_html = models.TextField(blank=True, help_text="For a cloned page: the sanitised page itself.")
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -257,6 +260,8 @@ class LandingDraft(models.Model):
         return self.redirect_url or learn_url()
 
     def render_html(self) -> str:
+        if self.layout == self.Layout.CLONED:
+            return self.custom_html
         from .landing_render import render_landing
 
         return render_landing(
