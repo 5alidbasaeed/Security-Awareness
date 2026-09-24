@@ -1,0 +1,13 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Departments · Manage{% endblock %}
+{% block content %}
+{% include "manage/_subnav.html" with manage_section="departments" %}
+<header class="page-header"><div><h1>Departments</h1></div>
+{% if perms.employees.add_department %}<a class="button" href="{% url 'manage:department-new' %}">New department</a>{% endif %}</header>
+<div class="card"><ul class="list">
+  {% for d in departments %}
+  <li class="list__item"><span>{{ d.name }} <span class="cell-meta">{{ d.employees.count }} employee{{ d.employees.count|pluralize }}</span></span>
+    {% if can_edit %}<a href="{% url 'manage:department-edit' d.pk %}">Edit</a>{% endif %}</li>
+  {% empty %}<li class="list__item"><span class="cell-meta">No departments.</span></li>{% endfor %}
+</ul></div>
+{% endblock %}

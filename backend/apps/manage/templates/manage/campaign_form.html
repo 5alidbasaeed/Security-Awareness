@@ -1,0 +1,19 @@
+{% extends "dashboard/base.html" %}
+{% block title %}{{ title }} · Manage{% endblock %}
+{% block content %}
+{% include "manage/_subnav.html" with manage_section="campaigns" %}
+<header class="page-header"><div><h1>{{ title }}</h1>
+<p class="page-header__sub">Campaigns are created as drafts. Nothing is sent until a person approves and launches it.</p></div></header>
+<div class="card"><div class="card__body">
+  <form class="form-stack" method="post" novalidate>
+    {% csrf_token %}
+    {% if form.non_field_errors %}<p class="form-error" role="alert">{{ form.non_field_errors.0 }}</p>{% endif %}
+    {% include "manage/_form_fields.html" %}
+    <div class="form-actions">
+      <button class="button" type="submit">Save draft</button>
+      <a class="button button--quiet" href="{% url 'manage:campaigns' %}">Cancel</a>
+    </div>
+  </form>
+</div></div>
+{% if campaign %}<p class="footnote">Status: {{ campaign.get_status_display }}. Editing approved content resets it to Draft.</p>{% endif %}
+{% endblock %}

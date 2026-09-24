@@ -113,7 +113,7 @@ def launch_campaign(campaign: Campaign, *, actor, client) -> Campaign:
             # Exemption enforcement lives here, not in Gophish — is_exempt=False is
             # the only filter standing between "in this department" and "gets
             # targeted." See CLAUDE.md Phase 3 notes on why this didn't exist before.
-            employees = Employee.objects.filter(department=campaign.target_department, is_exempt=False)
+            employees = Employee.objects.filter(department=campaign.target_department, is_exempt=False, is_active=True)
             contacts = [_contact_from_employee(e) for e in employees]
             if not contacts:
                 raise CampaignLaunchError(

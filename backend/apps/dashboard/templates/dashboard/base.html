@@ -27,7 +27,7 @@
         {% if perms.reporting.generate_report %}<li><a class="nav__link" href="{% url 'reporting:index' %}"{% if active == "reports" %} aria-current="page"{% endif %}>Reports</a></li>{% endif %}
       </ul>
       <div class="nav__user">
-        <a href="{% url 'admin:index' %}">Manage</a>
+        {% if perms.campaigns.change_campaign or perms.training.change_trainingmodule or perms.employees.change_employee or user.is_staff %}<a href="{% url 'manage:index' %}"{% if active == "manage" %} aria-current="page"{% endif %}>Manage</a>{% endif %}
         <span>{{ request.user.get_username }}</span>
         <form class="inline-form" method="post" action="{% url 'dashboard:logout' %}">
           {% csrf_token %}

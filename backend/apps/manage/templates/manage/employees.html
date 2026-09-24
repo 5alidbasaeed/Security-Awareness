@@ -1,0 +1,21 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Employees · Manage{% endblock %}
+{% block content %}
+{% include "manage/_subnav.html" with manage_section="employees" %}
+<header class="page-header"><div><h1>Employees</h1></div>
+<div class="header-actions">
+  {% if perms.employees.add_employee %}<a class="button" href="{% url 'manage:employee-new' %}">New employee</a>{% endif %}
+  {% if perms.employees.add_employee %}<a class="button button--quiet" href="{% url 'manage:employee-import' %}">Import CSV</a>{% endif %}
+</div></header>
+<form class="toolbar" method="get"><input class="field" type="search" name="q" value="{{ q }}" placeholder="Search name or email"><button class="button" type="submit">Search</button></form>
+<div class="card"><div class="table-wrap"><table class="table">
+  <thead><tr><th>Name</th><th>Email</th><th>Department</th><th>Exempt</th><th class="num">Actions</th></tr></thead>
+  <tbody>
+    {% for e in page %}
+    <tr><td>{{ e.full_name }}</td><td>{{ e.email }}</td><td>{{ e.department|default:"—" }}</td>
+      <td>{% if e.is_exempt %}Yes{% else %}No{% endif %}</td>
+      <td class="num">{% if perms.employees.change_employee %}<a href="{% url 'manage:employee-edit' e.pk %}">Edit</a>{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="5"><div class="empty"><strong>No employees</strong></div></td></tr>{% endfor %}
+  </tbody>
+</table></div>{% include "dashboard/_pagination.html" %}</div>
+{% endblock %}

@@ -41,6 +41,10 @@ class Employee(models.Model):
         default=False,
         help_text="Excluded from phishing simulation campaigns (e.g. legal hold, leave).",
     )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Offboarded employees are deactivated, never deleted — their event history is immutable.",
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

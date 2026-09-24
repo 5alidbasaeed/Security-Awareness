@@ -1,0 +1,17 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Training · Manage{% endblock %}
+{% block content %}
+{% include "manage/_subnav.html" with manage_section="training" %}
+<header class="page-header"><div><h1>Training modules</h1></div>
+{% if perms.training.change_trainingmodule %}<a class="button" href="{% url 'manage:module-new' %}">New module</a>{% endif %}</header>
+<div class="card"><div class="table-wrap"><table class="table">
+  <thead><tr><th>Title</th><th>Minutes</th><th>Quiz</th><th>Active</th><th class="num">Actions</th></tr></thead>
+  <tbody>
+    {% for m in page %}
+    <tr><td>{{ m.title }}</td><td>{{ m.duration_minutes }}</td><td>{% if m.quiz %}Yes{% else %}—{% endif %}</td>
+      <td>{% if m.is_active %}Yes{% else %}No{% endif %}</td>
+      <td class="num">{% if perms.training.change_trainingmodule %}<a href="{% url 'manage:module-edit' m.pk %}">Edit</a>{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="5"><div class="empty"><strong>No modules yet</strong></div></td></tr>{% endfor %}
+  </tbody>
+</table></div>{% include "dashboard/_pagination.html" %}</div>
+{% endblock %}

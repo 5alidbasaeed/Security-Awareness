@@ -35,6 +35,7 @@ INSTALLED_APPS = [
     "apps.dashboard",
     "apps.reporting",
     "apps.api",
+    "apps.manage",
 ]
 
 MIDDLEWARE = [

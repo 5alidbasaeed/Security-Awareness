@@ -1,0 +1,25 @@
+{% extends "dashboard/base.html" %}
+{% block title %}{{ title }} · Manage{% endblock %}
+{% block content %}
+{% include "manage/_subnav.html" with manage_section="training" %}
+<header class="page-header"><div><h1>{{ title }}</h1></div></header>
+<div class="card"><div class="card__body">
+  <form class="form-stack" method="post" novalidate>
+    {% csrf_token %}
+    {% include "manage/_form_fields.html" %}
+    <fieldset class="fieldset">
+      <legend>Quiz (optional)</legend>
+      <label class="checkbox-row"><input type="checkbox" name="has_quiz" value="1"{% if has_quiz %} checked{% endif %}> This module has a quiz</label>
+      <div class="form-row">
+        <label class="label" for="{{ quiz_form.passing_score_percent.id_for_label }}">Passing score %</label>
+        {{ quiz_form.passing_score_percent }}
+      </div>
+      {% if questions %}<p class="cell-meta">Questions ({{ questions|length }}) are edited in Advanced (Django admin) for now — this form saves the module and quiz threshold.</p>{% endif %}
+    </fieldset>
+    <div class="form-actions">
+      <button class="button" type="submit">Save</button>
+      <a class="button button--quiet" href="{% url 'manage:training' %}">Cancel</a>
+    </div>
+  </form>
+</div></div>
+{% endblock %}

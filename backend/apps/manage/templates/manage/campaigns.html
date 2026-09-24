@@ -1,0 +1,50 @@
+{% extends "dashboard/base.html" %}
+{% load manage_extras %}
+{% block title %}Campaigns · Manage{% endblock %}
+{% block content %}
+{% include "manage/_subnav.html" with manage_section="campaigns" %}
+<header class="page-header">
+  <div><h1>Campaigns</h1><p class="page-header__sub">Draft, submit, approve and launch simulations.</p></div>
+  {% if perms.campaigns.add_campaign %}<a class="button" href="{% url 'manage:campaign-new' %}">New campaign</a>{% endif %}
+</header>
+
+<form class="toolbar" method="get" action="{% url 'manage:campaigns' %}">
+  <label class="visually-hidden" for="status">Status</label>
+  <select class="select" id="status" name="status">
+    <option value="">All statuses</option>
+    {% for value, label in statuses %}<option value="{{ value }}"{% if value == status %} selected{% endif %}>{{ label }}</option>{% endfor %}
+  </select>
+  <button class="button" type="submit">Filter</button>
+</form>
+
+<div class="card">
+  <div class="table-wrap"><table class="table">
+    <thead><tr><th>Campaign</th><th>Status</th><th>Department</th><th>Schedule</th><th class="num">Actions</th></tr></thead>
+    <tbody>
+      {% for c in page %}
+      <tr>
+        <td>{{ c.name }}{% if c.training_module %}<span class="cell-meta">Training: {{ c.training_module }}</span>{% endif %}</td>
+        <td><span class="badge {{ c.status|status_badge }}">{{ c.get_status_display }}</span></td>
+        <td>{{ c.target_department|default:"—" }}</td>
+        <td>{{ c.scheduled_at|default:"—" }}</td>
+        <td class="num actions">
+          {% if c.status != "launched" and perms.campaigns.change_campaign %}<a href="{% url 'manage:campaign-edit' c.pk %}">Edit</a>{% endif %}
+          {% if c.status == "draft" and perms.campaigns.change_campaign %}
+            <form class="inline-form" method="post" action="{% url 'manage:campaign-submit' c.pk %}">{% csrf_token %}<button class="button button--quiet" type="submit">Submit</button></form>
+          {% endif %}
+          {% if c.status == "pending_approval" and can_approve %}
+            <form class="inline-form" method="post" action="{% url 'manage:campaign-approve' c.pk %}">{% csrf_token %}<button class="button button--quiet" type="submit">Approve</button></form>
+            <form class="inline-form" method="post" action="{% url 'manage:campaign-reject' c.pk %}">{% csrf_token %}<button class="button button--quiet" type="submit">Reject</button></form>
+          {% endif %}
+          {% if c.status == "approved" and perms.campaigns.change_campaign %}
+            <form class="inline-form" method="post" action="{% url 'manage:campaign-launch' c.pk %}">{% csrf_token %}<button class="button" type="submit">Launch</button></form>
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}<tr><td colspan="5"><div class="empty"><strong>No campaigns yet</strong>Create one to get started.</div></td></tr>
+      {% endfor %}
+    </tbody>
+  </table></div>
+  {% include "dashboard/_pagination.html" %}
+</div>
+{% endblock %}

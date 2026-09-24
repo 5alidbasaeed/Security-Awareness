@@ -1,0 +1,24 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Manage{% endblock %}
+{% block content %}
+{% include "manage/_subnav.html" with manage_section="home" %}
+<header class="page-header">
+  <div>
+    <h1>Manage</h1>
+    <p class="page-header__sub">Create and change campaigns, content, training and people. Reporting stays on the dashboard.</p>
+  </div>
+</header>
+{% if pending_approvals %}
+<p class="flash" role="status">{{ pending_approvals }} campaign{{ pending_approvals|pluralize }} waiting for approval — see Campaigns.</p>
+{% endif %}
+<div class="manage-cards">
+  {% for label, url, desc, allowed in cards %}
+  {% if allowed %}
+  <a class="manage-card" href="{% url url %}">
+    <strong>{{ label }}</strong>
+    <span class="cell-meta">{{ desc }}</span>
+  </a>
+  {% endif %}
+  {% endfor %}
+</div>
+{% endblock %}

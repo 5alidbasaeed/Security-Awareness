@@ -1,0 +1,17 @@
+{% extends "dashboard/base.html" %}
+{% block title %}{{ title }} · Manage{% endblock %}
+{% block content %}
+{% include "manage/_subnav.html" with manage_section="content" %}
+<header class="page-header"><div><h1>{{ title }}</h1>
+<p class="page-header__sub">Content is drafted in the phishing engine. It sends nothing on its own — a campaign has to reference it and be launched.</p></div></header>
+<div class="card"><div class="card__body">
+  <form class="form-stack" method="post" novalidate>
+    {% csrf_token %}
+    {% include "manage/_form_fields.html" %}
+    <div class="form-actions">
+      <button class="button" type="submit">Save</button>
+      <a class="button button--quiet" href="{% url 'manage:content' %}">Cancel</a>
+    </div>
+  </form>
+</div></div>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Import employees · Manage{% endblock %}
+{% block content %}
+{% include "manage/_subnav.html" with manage_section="employees" %}
+<header class="page-header"><div><h1>Import employees</h1>
+<p class="page-header__sub">Upload a UTF-8 CSV with columns <span class="hash">email, full_name</span> and optionally <span class="hash">department, is_exempt</span>. Matching is by email, so re-importing updates people rather than duplicating them.</p></div></header>
+<div class="card"><div class="card__body">
+  <form class="form-stack" method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    <div class="form-row"><label class="label" for="file">CSV file</label><input class="field" id="file" name="file" type="file" accept=".csv,text/csv" required></div>
+    <label class="checkbox-row"><input type="checkbox" name="deactivate_missing" value="1"> Deactivate anyone not in this file (offboarding — never deletes)</label>
+    <div class="form-actions"><button class="button" type="submit">Import</button><a class="button button--quiet" href="{% url 'manage:employees' %}">Back</a></div>
+  </form>
+  {% if result %}
+  <ul class="list result-summary">
+    <li class="list__item"><span>Created</span><strong>{{ result.created }}</strong></li>
+    <li class="list__item"><span>Updated</span><strong>{{ result.updated }}</strong></li>
+    <li class="list__item"><span>Reactivated</span><strong>{{ result.reactivated }}</strong></li>
+    <li class="list__item"><span>Deactivated</span><strong>{{ result.deactivated }}</strong></li>
+  </ul>
+  {% if result.errors %}<div class="empty"><strong>Row errors</strong>{% for row, msg in result.errors %}<p class="cell-meta">Row {{ row }}: {{ msg }}</p>{% endfor %}</div>{% endif %}
+  {% endif %}
+</div></div>
+{% endblock %}

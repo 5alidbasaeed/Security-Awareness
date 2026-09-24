@@ -285,3 +285,27 @@ progress.progress--low::-moz-progress-bar { background: var(--risk-low); }
 @media (prefers-reduced-motion: reduce) {
   * { transition: none !important; animation: none !important; }
 }
+
+/* ---- Management UI ----------------------------------------------------- */
+.subnav { display: flex; gap: var(--s1); flex-wrap: wrap; margin-bottom: var(--s5); border-bottom: 1px solid var(--border); padding-bottom: var(--s2); }
+.subnav a { font-size: var(--text-sm); color: var(--text-secondary); padding: var(--s1) var(--s3); border-radius: var(--radius-sm); }
+.subnav a:hover { color: var(--text-primary); text-decoration: none; }
+.subnav a[aria-current="page"] { color: var(--text-primary); background: var(--border); font-weight: 500; }
+.manage-cards { display: grid; gap: var(--s4); grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
+.manage-card { display: block; padding: var(--s5); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
+.manage-card:hover { text-decoration: none; border-color: var(--accent); }
+.manage-card strong { display: block; margin-bottom: var(--s1); color: var(--text-primary); }
+.header-actions { display: flex; gap: var(--s2); align-items: center; }
+.form-stack { display: block; max-width: 44rem; }
+.form-stack .form-row + .form-row, .form-stack fieldset, .form-actions { margin-top: var(--s4); }
+.form-stack textarea.field, .form-stack input.field, .form-stack select.select { width: 100%; max-width: none; }
+.form-actions { display: flex; gap: var(--s3); align-items: center; }
+.fieldset { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--s4); }
+.fieldset legend { font-size: var(--text-sm); font-weight: 500; padding: 0 var(--s2); }
+.checkbox-row { display: flex; align-items: center; gap: var(--s2); font-size: var(--text-sm); margin-top: var(--s2); }
+.req { color: var(--risk-high-text); }
+.actions { display: flex; gap: var(--s3); justify-content: flex-end; align-items: center; flex-wrap: wrap; }
+.actions form { display: inline; }
+.key-reveal { border-color: var(--accent); }
+.key-value { font-size: var(--text-sm); color: var(--text-primary); word-break: break-all; margin-top: var(--s2); user-select: all; }
+.result-summary { margin-top: var(--s5); border-top: 1px solid var(--border); }

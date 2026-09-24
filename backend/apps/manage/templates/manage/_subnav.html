@@ -1,0 +1,10 @@
+{% load manage_extras %}
+<nav class="subnav" aria-label="Management sections">
+  <a href="{% url 'manage:index' %}"{% if manage_section == "home" %} aria-current="page"{% endif %}>Overview</a>
+  {% if perms.campaigns.view_campaign %}<a href="{% url 'manage:campaigns' %}"{% if manage_section == "campaigns" %} aria-current="page"{% endif %}>Campaigns</a>{% endif %}
+  {% if perms.campaigns.change_campaign %}<a href="{% url 'manage:content' %}"{% if manage_section == "content" %} aria-current="page"{% endif %}>Content</a>{% endif %}
+  {% if perms.training.view_trainingmodule %}<a href="{% url 'manage:training' %}"{% if manage_section == "training" %} aria-current="page"{% endif %}>Training</a>{% endif %}
+  {% if perms.employees.view_employee %}<a href="{% url 'manage:employees' %}"{% if manage_section == "employees" %} aria-current="page"{% endif %}>Employees</a>{% endif %}
+  {% if perms.employees.view_department %}<a href="{% url 'manage:departments' %}"{% if manage_section == "departments" %} aria-current="page"{% endif %}>Departments</a>{% endif %}
+  <a href="{% url 'manage:api-keys' %}"{% if manage_section == "api-keys" %} aria-current="page"{% endif %}>API keys</a>
+</nav>
