@@ -119,3 +119,14 @@ def test_department_trend_carries_each_employees_last_score_forward():
     assert series[0]["average_score"] is None  # nobody scored yet 3 weeks ago
     assert series[-1]["average_score"] == 60.0  # both scored; a's 80 carried forward
     assert series[-1]["employees_scored"] == 2
+
+
+@pytest.mark.parametrize(
+    "delta, expected",
+    [(None, "insufficient_data"), (-0.3, "stagnant"), (4.9, "stagnant"), (-5, "improving"), (5, "worsening")],
+)
+def test_change_direction_ignores_movement_below_the_trend_threshold(delta, expected):
+    # One rule for the dashboard delta, the employee trend and the PDF headline.
+    from apps.risk_scoring.analytics import change_direction
+
+    assert change_direction(delta) == expected

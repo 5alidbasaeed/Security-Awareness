@@ -50,7 +50,9 @@
             borderColor: accent,
             backgroundColor: accent,
             borderWidth: 2,
-            tension: 0.3,
+            // monotone: smooth, but never overshoots the real points (a plain tension spline
+            // draws peaks and dips that no snapshot ever had).
+            cubicInterpolationMode: "monotone",
             pointRadius: data.values.length > 30 ? 0 : 3,
             pointHoverRadius: 5,
             spanGaps: true,

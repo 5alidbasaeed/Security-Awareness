@@ -217,7 +217,7 @@ class ReportData:
             "average_score_start": opening,
             "average_score_end": closing,
             "score_change": change,
-            "direction": None if change is None else ("improving" if change <= -analytics.TREND_DELTA else "worsening" if change >= analytics.TREND_DELTA else "stagnant"),
+            "direction": None if change is None else analytics.change_direction(change),
             "high_risk_employees": sum(1 for r in self.risk_rows if r["level"] == "high"),
             "medium_risk_employees": sum(1 for r in self.risk_rows if r["level"] == "medium"),
             "campaigns_run": len(campaigns),

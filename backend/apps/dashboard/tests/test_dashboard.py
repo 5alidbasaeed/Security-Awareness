@@ -280,3 +280,15 @@ def test_sort_links_do_not_inherit_the_search_forms_include(client, django_user_
     form_tag = form_tag[: form_tag.index(">") + 1]
     assert "hx-include" not in form_tag
     assert body.count('hx-include="closest form"') == 2  # only the search box and the department select
+
+
+@pytest.mark.parametrize("delta, text", [(-0.3, "vs last week · stagnant"), (-6.0, "vs last week · improving"), (7.5, "vs last week · worsening")])
+def test_delta_label_uses_the_shared_trend_threshold(delta, text):
+    # A -0.3 wobble used to be labelled "improving", contradicting the reports and the employee trend.
+    from django.template.loader import render_to_string
+
+    from apps.risk_scoring.analytics import change_direction
+
+    html = render_to_string("dashboard/_delta.html", {"delta": delta, "delta_direction": change_direction(delta)})
+
+    assert text in html

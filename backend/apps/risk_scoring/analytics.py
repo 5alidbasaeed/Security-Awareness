@@ -118,6 +118,17 @@ def score_history(employee) -> list[dict]:
     ]
 
 
+def change_direction(delta) -> str:
+    """Lower score is better; movement smaller than TREND_DELTA is noise, not a trend."""
+    if delta is None:
+        return "insufficient_data"
+    if delta <= -TREND_DELTA:
+        return "improving"
+    if delta >= TREND_DELTA:
+        return "worsening"
+    return "stagnant"
+
+
 def trend_direction(history: list[dict], now=None) -> str:
     """Lower score is better. Compares the latest snapshot to one from ~30 days earlier."""
     now = now or timezone.now()
@@ -127,12 +138,7 @@ def trend_direction(history: list[dict], now=None) -> str:
     baseline = [h for h in history if h["computed_at"] <= baseline_cutoff]
     if not baseline:
         return "insufficient_data"
-    delta = history[-1]["score"] - baseline[-1]["score"]
-    if delta <= -TREND_DELTA:
-        return "improving"
-    if delta >= TREND_DELTA:
-        return "worsening"
-    return "stagnant"
+    return change_direction(history[-1]["score"] - baseline[-1]["score"])
 
 
 def trend_series(snapshots, weeks: int = 12, now=None) -> list[dict]:

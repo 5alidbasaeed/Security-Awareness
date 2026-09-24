@@ -91,14 +91,14 @@
     <div class="card__header"><h2 id="why-heading">What drives this score</h2><span class="card__note">Algorithm {{ algorithm_version }}</span></div>
     <div class="card__body">
       <p class="muted">The worst outcome on each campaign counts once (submitting data outweighs a click). Reporting the email earns credit, repeat failures add a penalty, and older results fade over time.</p>
-      <ul class="list">
+    </div>
+    <ul class="list">
         <li class="list__item"><span>Campaigns failed</span><strong>{{ metrics.campaigns_failed }}</strong></li>
         <li class="list__item"><span>…where data was submitted</span><strong>{{ metrics.credential_attempt_campaigns }}</strong></li>
         <li class="list__item"><span>…where the link was only clicked</span><strong>{{ metrics.click_only_campaigns }}</strong></li>
         <li class="list__item"><span>Campaigns reported</span><strong>{{ metrics.campaigns_reported }}</strong></li>
         <li class="list__item"><span>Repeat failures</span><strong>{{ metrics.repeat_failures }}</strong></li>
-      </ul>
-    </div>
+    </ul>
   </section>
   {% endif %}
 </div>
