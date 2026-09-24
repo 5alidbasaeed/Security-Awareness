@@ -140,6 +140,7 @@ main.container { padding-top: var(--s6); padding-bottom: var(--s8); }
 
 /* ---- Cards ------------------------------------------------------------- */
 .card {
+  position: relative;
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius); box-shadow: var(--shadow);
   overflow: hidden; /* a striped last table row must not paint over the rounded corners */
@@ -171,7 +172,7 @@ main.container { padding-top: var(--s6); padding-bottom: var(--s8); }
 .score { font-weight: 600; margin-right: var(--s2); }
 
 /* ---- Tables ------------------------------------------------------------ */
-.table-wrap { overflow-x: auto; }
+.table-wrap { overflow-x: auto; position: relative; } /* anchors .visually-hidden children so they stay inside the scroll box */
 .table { width: 100%; border-collapse: collapse; font-size: var(--text-sm); }
 .table caption { text-align: left; }
 .table th, .table td { padding: var(--s3) var(--s5); text-align: left; vertical-align: middle; }
@@ -328,3 +329,5 @@ progress.progress--low::-moz-progress-bar { background: var(--risk-low); }
 .report-item > span .cell-meta { margin-top: var(--s1); }
 .triage-form { display: flex; gap: var(--s2); flex-wrap: wrap; align-items: center; }
 .triage-form .field { min-width: 10rem; }
+/* Long unbroken strings (URLs in error messages, hashes, email addresses) must wrap, never widen the page. */
+.flash, .cell-meta, .hash, .footnote, .form-error { overflow-wrap: anywhere; }
