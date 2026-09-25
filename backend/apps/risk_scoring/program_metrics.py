@@ -335,6 +335,7 @@ def follow_up_training(campaign, employees) -> dict:
 
 def _compliance(assignments, now=None) -> dict:
     now = now or timezone.now()
+    assignments = assignments.filter(waived_at__isnull=True)  # a waiver is neither owed nor done (analytics.training_compliance)
     totals = assignments.aggregate(
         assigned=Count("id"),
         completed=Count("id", filter=Q(completed_at__isnull=False)),
@@ -403,7 +404,7 @@ def annotate_activity(employees):
     """Per-person columns for the employee list — all subqueries, so no GROUP BY and paginating stays cheap."""
     latest_score = RiskScoreSnapshot.objects.filter(employee=OuterRef("pk")).order_by("-computed_at", "-id")
     now = timezone.now()
-    assignments = TrainingAssignment.objects.filter(employee=OuterRef("pk"))
+    assignments = TrainingAssignment.objects.filter(employee=OuterRef("pk"), waived_at__isnull=True)
     return employees.select_related("department").annotate(
         current_score=Subquery(latest_score.values("score")[:1]),
         tests=_distinct_campaigns([SENT]),
@@ -454,7 +455,8 @@ def attention_counts(employees) -> dict:
 
 
 def risk_distribution(employees) -> dict:
-    """People per risk level, from each person's latest snapshot. Unscored = no snapshot yet."""
+    """People per risk level, from each person's latest snapshot. Unscored = no snapshot yet. Current staff only."""
+    employees = employees.filter(is_active=True)
     scores = list(
         RiskScoreSnapshot.objects.filter(employee__in=employees)
         .order_by("employee_id", "-computed_at", "-id").distinct("employee_id").values_list("score", flat=True)
@@ -463,6 +465,8 @@ def risk_distribution(employees) -> dict:
     medium = sum(1 for s in scores if MEDIUM_RISK_THRESHOLD <= s < HIGH_RISK_THRESHOLD)
     low = len(scores) - high - medium
     total = employees.count()
+    if not meets_min_cohort(total):
+        return {"high": 0, "medium": 0, "low": 0, "unscored": 0, "total": total, "suppressed": True}
     return {"high": high, "medium": medium, "low": low, "unscored": max(total - len(scores), 0), "total": total}
 
 
@@ -472,6 +476,7 @@ def risk_distribution(employees) -> dict:
 def training_breakdown(assignments, now=None) -> dict:
     """Module-by-module, department-by-department and overdue-aging views of a set of assignments."""
     now = now or timezone.now()
+    assignments = assignments.filter(waived_at__isnull=True)  # same denominator as analytics.training_compliance
     module_rows: dict = {}
     for row in assignments.values("module_id", "module__title").annotate(
         assigned=Count("id"),

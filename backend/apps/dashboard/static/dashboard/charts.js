@@ -21,12 +21,28 @@
   // solid and dashed so the chart still reads without colour.
   function drawLines(canvas, data, grid, muted) {
     var unit = data.unit || "";
+    var bar = data.style === "bar";
+    var surface = token("--surface");
     charts.push(new Chart(canvas, {
-      type: "line",
+      type: bar ? "bar" : "line",
       data: {
         labels: data.labels,
         datasets: data.datasets.map(function (series) {
           var color = token(series.color);
+          if (bar) {
+            // The second series is an outlined bar, so the pair still reads in greyscale.
+            return {
+              label: series.label,
+              data: series.values,
+              backgroundColor: series.dashed ? surface : color,
+              borderColor: color,
+              borderWidth: series.dashed ? 2 : 0,
+              borderRadius: 3,
+              maxBarThickness: 28,
+              categoryPercentage: 0.6,
+              barPercentage: 0.9,
+            };
+          }
           return {
             label: series.label,
             data: series.values,
@@ -37,7 +53,8 @@
             pointStyle: series.dashed ? "triangle" : "circle",
             pointRadius: 3,
             pointHoverRadius: 5,
-            cubicInterpolationMode: "monotone",
+            // Cumulative shares only change at a sample, so they step; never a curve between samples.
+            stepped: data.style === "step" ? "after" : false,
             spanGaps: true,
           };
         }),
@@ -53,7 +70,7 @@
           x: { ticks: { color: muted, maxTicksLimit: 8, maxRotation: 0 }, grid: { display: false }, border: { color: grid } },
         },
         plugins: {
-          legend: { position: "bottom", labels: { color: muted, usePointStyle: true, boxWidth: 8, boxHeight: 8 } },
+          legend: { position: "bottom", labels: { color: muted, usePointStyle: !bar, boxWidth: bar ? 12 : 8, boxHeight: 8 } },
           tooltip: { callbacks: { label: function (item) { return item.dataset.label + ": " + (item.parsed.y === null ? "no data" : item.parsed.y + unit); } } },
         },
       },
@@ -83,6 +100,12 @@
       };
     };
 
+    // Scale the axis to the data, keeping the medium threshold (and the high one once anyone is
+    // near it) in view: a fixed 0-100 axis flattens a typical 0-25 range against the floor.
+    var peak = Math.max.apply(null, data.values.filter(function (v) { return v !== null; }).concat([0]));
+    var ceiling = peak >= data.medium ? data.high : data.medium;
+    var yMax = Math.min(100, Math.ceil(Math.max(peak, ceiling) / 10) * 10 + 10);
+
     var chart = new Chart(canvas, {
       type: "line",
       data: {
@@ -94,9 +117,9 @@
             borderColor: accent,
             backgroundColor: accent,
             borderWidth: 2,
-            // monotone: smooth, but never overshoots the real points (a plain tension spline
-            // draws peaks and dips that no snapshot ever had).
-            cubicInterpolationMode: "monotone",
+            // Straight segments: scores are snapshots, and any curve between them shows values no
+            // snapshot ever had.
+            tension: 0,
             pointRadius: data.values.length > 30 ? 0 : 3,
             pointHoverRadius: 5,
             spanGaps: true,
@@ -113,7 +136,7 @@
         animations: { x: { duration: 0 } },
         interaction: { mode: "index", intersect: false },
         scales: {
-          y: { min: 0, max: 100, ticks: { color: muted, stepSize: 25 }, grid: { color: grid }, border: { display: false } },
+          y: { min: 0, max: yMax, ticks: { color: muted, maxTicksLimit: 6 }, grid: { color: grid }, border: { display: false } },
           x: { ticks: { color: muted, maxTicksLimit: 8, maxRotation: 0 }, grid: { display: false }, border: { color: grid } },
         },
         plugins: {

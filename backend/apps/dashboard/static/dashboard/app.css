@@ -12,6 +12,7 @@
 
   --text-primary: #1a1a1a;
   --text-secondary: #6b7280;
+  --text-badge: #4b5563;      /* neutral badge text: 6.5:1 on --border (the secondary grey is only 3.9:1) */
   --border: #e5e7eb;
   --surface: #ffffff;
   --surface-muted: #f9fafb;
@@ -54,6 +55,7 @@
   :root {
     --text-primary: #f5f5f7;
     --text-secondary: #a1a1aa;
+    --text-badge: #d4d4d8;
     --border: #2a2a2e;
     --surface: #17171a;
     --surface-muted: #0c0c0e;
@@ -111,7 +113,7 @@ a:hover { text-decoration: underline; text-underline-offset: 2px; }
 .container { max-width: 70rem; margin: 0 auto; padding: 0 var(--s5); }
 main.container { padding-top: var(--s6); padding-bottom: var(--s8); }
 .stack > * + * { margin-top: var(--s5); }
-.grid-2 { display: grid; gap: var(--s5); grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); align-items: start; }
+.grid-2 { display: grid; gap: var(--s5); grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr)); align-items: stretch; }
 
 /* ---- Navigation -------------------------------------------------------- */
 .nav {
@@ -135,7 +137,7 @@ main.container { padding-top: var(--s6); padding-bottom: var(--s8); }
 
 /* ---- Page header ------------------------------------------------------- */
 .page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--s4); margin-bottom: var(--s5); flex-wrap: wrap; }
-.page-header__sub { color: var(--text-secondary); font-size: var(--text-sm); margin-top: var(--s1); }
+.page-header__sub { color: var(--text-secondary); font-size: var(--text-sm); margin-top: var(--s1); max-width: 75ch; }
 .breadcrumb { font-size: var(--text-sm); color: var(--text-secondary); margin-bottom: var(--s2); }
 
 /* ---- Cards ------------------------------------------------------------- */
@@ -153,6 +155,10 @@ main.container { padding-top: var(--s6); padding-bottom: var(--s8); }
 /* ---- Stat tiles -------------------------------------------------------- */
 .stats { display: grid; gap: var(--s4); grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); }
 .stat { padding: var(--s4) var(--s5) var(--s5); }
+@media (min-width: 60rem) {
+  .stats:has(> :nth-child(3):last-child), .stats:has(> :nth-child(6):last-child), .stats:has(> :nth-child(9):last-child) { grid-template-columns: repeat(3, 1fr); }
+  .stats:has(> :nth-child(5):last-child) { grid-template-columns: repeat(5, 1fr); }
+}
 .stat__label { font-size: var(--text-sm); color: var(--text-secondary); }
 .stat__value { font-size: var(--text-2xl); font-weight: 600; letter-spacing: -0.02em; line-height: 1.2; margin-top: var(--s1); }
 .stat__note { font-size: var(--text-sm); color: var(--text-secondary); margin-top: var(--s1); min-height: 1.5em; }
@@ -163,13 +169,14 @@ main.container { padding-top: var(--s6); padding-bottom: var(--s8); }
 .badge {
   display: inline-flex; align-items: center; gap: var(--s1);
   padding: 0 var(--s2); border-radius: 62.5rem; font-size: var(--text-xs); font-weight: 500; line-height: 1.5rem;
-  background: var(--border); color: var(--text-secondary); white-space: nowrap;
+  background: var(--border); color: var(--text-badge); white-space: nowrap;
 }
 .badge--low { background: color-mix(in srgb, var(--risk-low) 12%, transparent); color: var(--risk-low-text); }
 .badge--medium { background: color-mix(in srgb, var(--risk-medium) 14%, transparent); color: var(--risk-medium-text); }
 .badge--high { background: color-mix(in srgb, var(--risk-high) 12%, transparent); color: var(--risk-high-text); }
 .badge--accent { background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
 .score { font-weight: 600; margin-right: var(--s2); }
+.risk { display: inline-flex; align-items: center; white-space: nowrap; }
 
 /* ---- Tables ------------------------------------------------------------ */
 .table-wrap { overflow-x: auto; position: relative; } /* anchors .visually-hidden children so they stay inside the scroll box */
@@ -185,7 +192,12 @@ main.container { padding-top: var(--s6); padding-bottom: var(--s8); }
 .table th[aria-sort="descending"] a::after { content: " ▼"; font-size: var(--text-xs); }
 .table th[aria-sort="ascending"], .table th[aria-sort="descending"] { color: var(--text-primary); }
 .table tfoot th, .table tfoot td { border-top: 2px solid var(--border); font-weight: 600; }
-.table tfoot th { color: var(--text-primary); font-size: var(--text-sm); }
+.table tfoot th { color: var(--text-primary); font-size: var(--text-sm); border-bottom: 0; text-transform: none; letter-spacing: 0; }
+/* Wide comparison tables: tighter cells and wrapping headers so they fit a 13-inch laptop without scrolling. */
+.table--dense th, .table--dense td { padding-left: var(--s3); padding-right: var(--s3); }
+.table--dense th:first-child, .table--dense td:first-child { padding-left: var(--s5); }
+.table--dense th:last-child, .table--dense td:last-child { padding-right: var(--s5); }
+.table--dense th { white-space: normal; vertical-align: bottom; }
 .cell-meta { display: block; font-size: var(--text-xs); color: var(--text-secondary); }
 .overdue { color: var(--risk-high-text); font-weight: 500; }
 
@@ -200,15 +212,23 @@ main.container { padding-top: var(--s6); padding-bottom: var(--s8); }
 .field::placeholder { color: var(--text-secondary); }
 .label { display: block; font-size: var(--text-sm); font-weight: 500; margin-bottom: var(--s1); }
 .button {
+  /* inline-flex, not inline: an <a class="button"> must take up its own padding and min-height, or it
+     paints over the line of text above it. */
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--s2); text-decoration: none;
   font: inherit; font-size: var(--text-sm); font-weight: 500; cursor: pointer;
   background: var(--accent); color: var(--accent-contrast); border: 0; border-radius: var(--radius-sm);
-  padding: var(--s2) var(--s4); min-height: 2.25rem;
+  padding: var(--s2) var(--s4); min-height: 2.25rem; white-space: nowrap;
 }
 .button:hover { filter: brightness(1.08); }
 .button--quiet { background: transparent; color: var(--text-secondary); padding: var(--s1) var(--s2); }
 .button--quiet:hover { color: var(--text-primary); filter: none; }
+.button--secondary { background: var(--surface); color: var(--text-primary); box-shadow: inset 0 0 0 1px var(--border); }
+.button--secondary:hover { filter: none; background: var(--surface-muted); }
+.button--danger { background: transparent; color: var(--risk-high-text); padding: var(--s1) var(--s2); }
+.button--danger:hover { filter: none; text-decoration: underline; text-underline-offset: 2px; }
 .button--block { width: 100%; }
 .inline-form { display: inline; margin: 0; }
+p + .button, p + .inline-form, p + form { margin-top: var(--s3); }
 
 /* HTMX loading state — every request that can take >200ms shows one. */
 .htmx-indicator { opacity: 0; transition: opacity 150ms ease-in; font-size: var(--text-sm); color: var(--text-secondary); }
@@ -235,6 +255,43 @@ progress.progress--medium::-webkit-progress-value { background: var(--risk-mediu
 progress.progress--medium::-moz-progress-bar { background: var(--risk-medium); }
 progress.progress--low::-webkit-progress-value { background: var(--risk-low); }
 progress.progress--low::-moz-progress-bar { background: var(--risk-low); }
+/* "Not scored" is an absence, not a category: neutral grey, never the link blue. */
+progress.progress--none::-webkit-progress-value { background: var(--text-secondary); }
+progress.progress--none::-moz-progress-bar { background: var(--text-secondary); }
+.nowrap { white-space: nowrap; }
+.text-sm { font-size: var(--text-sm); }
+/* A hash shown short but copied whole: the full value is in the element, the ellipsis is only visual. */
+.hash--short { display: inline-block; max-width: 8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; overflow-wrap: normal; user-select: all; }
+/* Inputs, selects and the submit button in a form row share one height, so their edges line up. */
+.form-grid .field, .form-grid .select, .form-grid .button { height: 2.5rem; min-height: 2.5rem; }
+/* Manage pages: every block in the content column gets the same gap, so cards never touch. */
+.admin-main > * + * { margin-top: var(--s5); }
+.table--fixed { table-layout: fixed; }
+.table .col-40 { width: 40%; }
+.table .col-20 { width: 20%; }
+.table .table__group th { background: var(--surface-muted); color: var(--text-secondary); font-size: var(--text-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding-top: var(--s3); padding-bottom: var(--s2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.table tbody tr.table__group + tr td { border-top: 0; }
+.js-autosubmit .toolbar__submit { display: none; }
+/* Row actions in two fixed columns (next step | more), so buttons line up from row to row. */
+.actions--steps { display: grid; grid-template-columns: minmax(0, max-content) 6.5rem; justify-content: end; align-items: start; gap: var(--s2); white-space: normal; }
+.actions--steps .actions__main { display: flex; justify-content: flex-end; }
+.actions--steps .actions__more { text-align: left; }
+/* List row actions in fixed columns, so a row with fewer actions doesn't shift the others. */
+.row-actions { display: grid; grid-template-columns: 4.5rem 2.5rem 5rem; align-items: center; font-size: var(--text-sm); flex-shrink: 0; }
+.link-button { font: inherit; font-size: var(--text-sm); color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; }
+.link-button:hover { text-decoration: underline; text-underline-offset: 2px; }
+input[type="file"]::file-selector-button { font: inherit; font-size: var(--text-sm); font-weight: 500; margin-right: var(--s3); padding: var(--s1) var(--s3); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text-primary); cursor: pointer; }
+/* Show a field only when it applies (pure CSS, so it still posts its value either way). */
+.fieldset:has(input[name="has_quiz"]:not(:checked)) .quiz-only { display: none; }
+.form-stack:has(#id_is_exempt:not(:checked)) .form-row:is(:has(#id_exempt_reason), :has(#id_exempt_until)) { display: none; }
+.form-stack:has(#id_rule) .form-row:has(#id_new_hire_days) { display: none; }
+.form-stack:has(#id_rule option[value="new_hires"]:checked) .form-row:has(#id_new_hire_days) { display: block; }
+.icon-button { min-width: 2rem; min-height: 2rem; padding: 0; font-size: var(--text-base); }
+.icon-button:disabled { opacity: 0.3; cursor: default; }
+.answer-list { list-style: none; margin: var(--s1) 0 0; padding: 0; font-size: var(--text-xs); color: var(--text-secondary); display: grid; gap: var(--s1); }
+.answer-list li { display: flex; align-items: center; gap: var(--s2); }
+.row-actions--2 { grid-template-columns: 2.5rem 4rem; }
+.section-title { font-size: var(--text-lg); margin: 0 0 var(--s3); }
 
 /* ---- Chart ------------------------------------------------------------- */
 .chart { position: relative; height: 16rem; }
@@ -251,11 +308,15 @@ progress.progress--low::-moz-progress-bar { background: var(--risk-low); }
 .empty strong { display: block; color: var(--text-primary); font-size: var(--text-base); margin-bottom: var(--s1); }
 .muted { color: var(--text-secondary); }
 .footnote { font-size: var(--text-xs); color: var(--text-secondary); margin-top: var(--s4); }
+.footnote, .card__body.footnote { max-width: 110ch; }
 
 /* ---- Sign-in ----------------------------------------------------------- */
 .auth { display: grid; place-items: center; min-height: 100vh; padding: var(--s5); }
 .auth__card { width: 100%; max-width: 24rem; padding: var(--s6); }
+.auth__logo { display: block; margin-bottom: var(--s4); }
 .auth__title { font-size: var(--text-xl); margin-bottom: var(--s1); }
+.auth__help { font-size: var(--text-sm); color: var(--text-secondary); margin-top: var(--s4); }
+.auth__help + .auth__help { margin-top: var(--s2); }
 .auth__sub { color: var(--text-secondary); font-size: var(--text-sm); margin-bottom: var(--s5); }
 .auth .field { max-width: none; width: 100%; }
 .form-row + .form-row { margin-top: var(--s4); }
@@ -297,10 +358,13 @@ progress.progress--low::-moz-progress-bar { background: var(--risk-low); }
 .subnav a { font-size: var(--text-sm); color: var(--text-secondary); padding: var(--s1) var(--s3); border-radius: var(--radius-sm); }
 .subnav a:hover { color: var(--text-primary); text-decoration: none; }
 .subnav a[aria-current="page"] { color: var(--text-primary); background: var(--border); font-weight: 500; }
-.manage-cards { display: grid; gap: var(--s4); grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
+/* auto-fill, not auto-fit: every group uses the same card width, whatever its card count. */
+.manage-cards { display: grid; gap: var(--s4); grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr)); }
 .manage-card { display: block; padding: var(--s5); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); }
 .manage-card:hover { text-decoration: none; border-color: var(--accent); }
 .manage-card strong { display: block; margin-bottom: var(--s1); color: var(--text-primary); }
+.manage-card strong::after { content: " 92"; color: var(--text-secondary); }
+.manage-card:hover strong::after { color: var(--accent); }
 .header-actions { display: flex; gap: var(--s2); align-items: center; }
 .form-stack { display: block; max-width: 44rem; }
 .form-stack .form-row + .form-row, .form-stack fieldset, .form-actions { margin-top: var(--s4); }
@@ -308,6 +372,7 @@ progress.progress--low::-moz-progress-bar { background: var(--risk-low); }
 .form-actions { display: flex; gap: var(--s3); align-items: center; }
 .fieldset { border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--s4); }
 .fieldset legend { font-size: var(--text-sm); font-weight: 500; padding: 0 var(--s2); }
+input[type="checkbox"], input[type="radio"] { width: 1rem; height: 1rem; min-width: 0; min-height: 0; margin: 0; flex: none; accent-color: var(--accent); }
 .checkbox-row { display: flex; align-items: center; gap: var(--s2); font-size: var(--text-sm); margin-top: var(--s2); }
 .req { color: var(--risk-high-text); }
 .actions { display: flex; gap: var(--s3); justify-content: flex-end; align-items: center; flex-wrap: nowrap; white-space: nowrap; flex-shrink: 0; }
@@ -327,11 +392,17 @@ progress.progress--low::-moz-progress-bar { background: var(--risk-low); }
 .quiz-question .checkbox-row:has(input:checked) { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); }
 .certificate { max-width: 40rem; margin: 0 auto; text-align: center; padding: var(--s6) var(--s5); }
 .certificate h1 { margin: var(--s3) 0 var(--s4); }
-@media print { .nav, .footnote { display: none; } .certificate { border: 2px solid var(--text-primary); box-shadow: none; } }
+.certificate { border-top: 4px solid var(--accent); }
+.certificate__brand { font-size: var(--text-sm); font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase; color: var(--accent); margin-bottom: var(--s2); }
+.certificate .hash { margin-top: var(--s4); }
+.certificate__actions { max-width: 40rem; margin: var(--s4) auto 0; display: flex; justify-content: space-between; align-items: center; }
+.attempt-list { margin: var(--s1) 0 0; padding-left: var(--s4); }
+.portal .auth { min-height: 0; place-items: start center; padding-top: var(--s7); }
+@media print { .nav, .footnote, .certificate__actions { display: none; } .certificate { border: 2px solid var(--text-primary); box-shadow: none; } }
 .questions-card { margin-top: var(--s5); }
 .answer-row { display: flex; align-items: center; gap: var(--s3); margin-top: var(--s2); }
 .answer-row .field { flex: 1; }
-.learn { max-width: 44rem; margin: 0 auto; }
+.learn { max-width: none; }
 .learn h1 { margin: var(--s3) 0; }
 .learn h2 { font-size: var(--text-lg); margin-top: var(--s5); }
 .learn-list { padding-left: var(--s5); }
@@ -345,7 +416,7 @@ progress.progress--low::-moz-progress-bar { background: var(--risk-low); }
 
 /* ---- Course slides ----------------------------------------------------- */
 .slide-wrap { max-width: 46rem; margin: 0 auto; }
-.slide { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--s6) var(--s6) var(--s5); min-height: 27rem; }
+.slide { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--s6) var(--s6) var(--s5); min-height: 20rem; }
 .slide__count { font-size: var(--text-sm); color: var(--text-secondary); margin: 0 0 var(--s3); }
 .slide__title { font-size: 1.875rem; line-height: 1.25; margin: 0 0 var(--s4); }
 .slide__body { font-size: 1.125rem; line-height: 1.6; }
@@ -401,6 +472,8 @@ progress.progress--low::-moz-progress-bar { background: var(--risk-low); }
 .compose__row > label { width: 5.5rem; flex: none; font-size: var(--text-sm); color: var(--text-secondary); }
 .compose__row input, .compose__row select { flex: 1; border: 0; background: transparent; padding: var(--s2) 0; font: inherit; color: var(--text-primary); min-width: 0; }
 .compose__row input:focus, .compose__row select:focus { outline: none; }
+.compose__row:focus-within { box-shadow: inset 3px 0 0 var(--accent); background: color-mix(in srgb, var(--accent) 4%, var(--surface)); }
+.compose__row select { font-size: var(--text-sm); }
 .compose__toolbar { display: flex; flex-wrap: wrap; gap: var(--s1); align-items: center; padding: var(--s2) var(--s3); border-bottom: 1px solid var(--border); background: var(--surface-muted); }
 .compose__toolbar button, .compose__toolbar select { font: inherit; font-size: var(--text-sm); padding: var(--s1) var(--s3); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text-primary); cursor: pointer; }
 .compose__toolbar button:hover, .compose__toolbar select:hover { background: var(--border); }
@@ -428,3 +501,95 @@ progress.progress--low::-moz-progress-bar { background: var(--risk-low); }
 /* ---- Builder side column (preview + checks + test-send stacked) --------- */
 .builder__side { display: flex; flex-direction: column; gap: var(--s4); min-width: 0; }
 .builder__side .builder__preview { position: static; }
+
+/* ---- Guided pages (campaigns, content, training) ------------------------- */
+.tabs { display: flex; gap: var(--s1); flex-wrap: wrap; border-bottom: 1px solid var(--border); margin-bottom: var(--s4); }
+.tab { padding: var(--s2) var(--s4); font-size: var(--text-sm); color: var(--text-secondary); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.tab:hover { color: var(--text-primary); text-decoration: none; }
+.tab[aria-current="page"] { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+.tab__count { display: inline-block; min-width: 1.4rem; padding: 0 var(--s1); border-radius: 62.5rem; background: var(--surface-muted); color: var(--text-secondary); font-size: var(--text-xs); text-align: center; font-weight: 500; }
+
+/* "More" menus: <details>, expanded in the flow (a popover would be clipped inside scrolling tables). No script. */
+.more { display: inline-block; text-align: left; }
+.more > summary { list-style: none; cursor: pointer; }
+.more > summary::-webkit-details-marker { display: none; }
+.more > summary::after { content: " \25BE"; }
+.more[open] > summary::after { content: " \25B4"; }
+.more__menu { display: flex; flex-direction: column; gap: var(--s1); margin-top: var(--s2); padding: var(--s2); min-width: 12rem; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+.more__menu a, .more__menu button { display: block; width: 100%; padding: var(--s2) var(--s3); border: 0; background: none; text-align: left; font: inherit; font-size: var(--text-sm); color: var(--text-primary); border-radius: var(--radius-sm); cursor: pointer; }
+.more__menu a:hover, .more__menu button:hover { background: var(--surface-muted); text-decoration: none; }
+.more__menu .more__danger { color: var(--risk-high-text); }
+.more__reason { display: flex; flex-direction: column; gap: var(--s1); padding: var(--s2) var(--s3); }
+.more__reason label { font-size: var(--text-xs); color: var(--text-secondary); }
+.actions:has(.more[open]) { flex-wrap: wrap; white-space: normal; justify-content: flex-end; }
+
+.split { display: grid; grid-template-columns: minmax(0, 1fr) 22rem; gap: var(--s5); align-items: start; }
+.split__side { position: sticky; top: var(--s4); }
+@media (max-width: 60rem) { .split { grid-template-columns: 1fr; } .split__side { position: static; } }
+.form-section h2 { display: flex; align-items: center; gap: var(--s2); margin: 0 0 var(--s3); font-size: var(--text-base); }
+.form-section + .form-section { margin-top: var(--s4); }
+.step { display: inline-flex; align-items: center; justify-content: center; width: 1.5rem; height: 1.5rem; border-radius: 50%; background: var(--accent); color: var(--accent-contrast); font-size: var(--text-xs); font-weight: 600; }
+.split__main .form-actions { margin-top: var(--s4); }
+.split__main input.field, .split__main select.select, .split__main textarea.field { width: 100%; max-width: none; }
+.summary-panel h2 { margin: 0 0 var(--s3); font-size: var(--text-base); }
+.facts { margin: 0 0 var(--s4); }
+.facts dt { margin-top: var(--s3); font-size: var(--text-xs); text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-secondary); }
+.facts dd { margin: var(--s1) 0 0; font-size: var(--text-sm); }
+.summary-panel .button--block { margin-top: var(--s2); }
+.form-row--check .checkbox-row { margin-top: 0; font-weight: 500; }
+.form-row--check .cell-meta { margin-left: calc(1rem + var(--s2)); }
+.facts dd a { display: block; font-size: var(--text-sm); }
+.callout { padding: var(--s3) var(--s4); border-radius: var(--radius-sm); font-size: var(--text-sm); margin-bottom: var(--s4); background: var(--surface-muted); }
+.callout ul { margin: var(--s1) 0 0; padding-left: var(--s5); }
+.callout--warning { background: color-mix(in srgb, var(--risk-medium) 14%, transparent); color: var(--risk-medium-text); }
+.callout--ok { background: color-mix(in srgb, var(--risk-low) 12%, transparent); color: var(--risk-low-text); }
+
+.manage-group + .manage-group { margin-top: var(--s6); }
+.manage-group__title { margin: 0 0 var(--s3); font-size: var(--text-sm); font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-secondary); }
+.toolbar__label { font-size: var(--text-sm); color: var(--text-secondary); }
+.toolbar input[type="date"] { min-width: 0; flex: 0 0 auto; }
+.toolbar__group { display: inline-flex; align-items: center; gap: var(--s2); white-space: nowrap; }
+.toolbar select.select { max-width: 16rem; }
+.actions--wrap { flex-wrap: wrap; white-space: normal; }
+.col-name { min-width: 12rem; }
+
+/* Lists with long names and metadata read better full width than squeezed side by side. */
+.grid-2--stack { grid-template-columns: 1fr; }
+.nowrap { white-space: nowrap; }
+.text-sm { font-size: var(--text-sm); }
+/* A hash shown short but copied whole: the full value is in the element, the ellipsis is only visual. */
+.hash--short { display: inline-block; max-width: 8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; overflow-wrap: normal; user-select: all; }
+/* Inputs, selects and the submit button in a form row share one height, so their edges line up. */
+.form-grid .field, .form-grid .select, .form-grid .button { height: 2.5rem; min-height: 2.5rem; }
+/* Manage pages: every block in the content column gets the same gap, so cards never touch. */
+.admin-main > * + * { margin-top: var(--s5); }
+.table--fixed { table-layout: fixed; }
+.table .col-40 { width: 40%; }
+.table .col-20 { width: 20%; }
+.table .table__group th { background: var(--surface-muted); color: var(--text-secondary); font-size: var(--text-xs); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; padding-top: var(--s3); padding-bottom: var(--s2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+.table tbody tr.table__group + tr td { border-top: 0; }
+.js-autosubmit .toolbar__submit { display: none; }
+/* Row actions in two fixed columns (next step | more), so buttons line up from row to row. */
+.actions--steps { display: grid; grid-template-columns: minmax(0, max-content) 6.5rem; justify-content: end; align-items: start; gap: var(--s2); white-space: normal; }
+.actions--steps .actions__main { display: flex; justify-content: flex-end; }
+.actions--steps .actions__more { text-align: left; }
+/* List row actions in fixed columns, so a row with fewer actions doesn't shift the others. */
+.row-actions { display: grid; grid-template-columns: 4.5rem 2.5rem 5rem; align-items: center; font-size: var(--text-sm); flex-shrink: 0; }
+.link-button { font: inherit; font-size: var(--text-sm); color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; }
+.link-button:hover { text-decoration: underline; text-underline-offset: 2px; }
+input[type="file"]::file-selector-button { font: inherit; font-size: var(--text-sm); font-weight: 500; margin-right: var(--s3); padding: var(--s1) var(--s3); border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text-primary); cursor: pointer; }
+/* Show a field only when it applies (pure CSS, so it still posts its value either way). */
+.fieldset:has(input[name="has_quiz"]:not(:checked)) .quiz-only { display: none; }
+.form-stack:has(#id_is_exempt:not(:checked)) .form-row:is(:has(#id_exempt_reason), :has(#id_exempt_until)) { display: none; }
+.form-stack:has(#id_rule) .form-row:has(#id_new_hire_days) { display: none; }
+.form-stack:has(#id_rule option[value="new_hires"]:checked) .form-row:has(#id_new_hire_days) { display: block; }
+.icon-button { min-width: 2rem; min-height: 2rem; padding: 0; font-size: var(--text-base); }
+.icon-button:disabled { opacity: 0.3; cursor: default; }
+.answer-list { list-style: none; margin: var(--s1) 0 0; padding: 0; font-size: var(--text-xs); color: var(--text-secondary); display: grid; gap: var(--s1); }
+.answer-list li { display: flex; align-items: center; gap: var(--s2); }
+.row-actions--2 { grid-template-columns: 2.5rem 4rem; }
+.section-title { font-size: var(--text-lg); margin: 0 0 var(--s3); }
+.nowrap .cell-meta { white-space: nowrap; overflow-wrap: normal; }
+.grid-2--stack .card__header { flex-wrap: wrap; gap: var(--s2); }
+.grid-2--stack .card__header h2 { display: flex; align-items: center; gap: var(--s2); }
+.admin-main .table td.actions { flex-wrap: wrap; white-space: normal; justify-content: flex-end; row-gap: var(--s1); }

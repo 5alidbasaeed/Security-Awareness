@@ -9,15 +9,16 @@
       <tbody>
         {% for a in page.object_list %}
         <tr>
-          <td><a href="{% url 'dashboard:employee-detail' a.employee.pk %}">{{ a.employee.full_name }}</a><span class="cell-meta">{{ a.employee.department|default:"No department" }}</span></td>
+          <td>{% if perms.risk_scoring.view_riskscoresnapshot %}<a href="{% url 'dashboard:employee-detail' a.employee.pk %}">{{ a.employee.full_name }}</a>{% else %}{{ a.employee.full_name }}{% endif %}<span class="cell-meta">{{ a.employee.department|default:"No department" }}</span></td>
           <td>{{ a.module.title }}</td>
           <td>{{ a.assigned_at|date:"M j, Y" }}</td>
           <td>{{ a.due_at|date:"M j, Y"|default:"—" }}</td>
           <td>
-            {% if a.completed_at %}<span class="badge badge--low">Completed</span>
+            {% if a.waived_at %}<span class="badge">Waived</span>
+            {% elif a.completed_at %}<span class="badge badge--low">Completed</span>
             {% elif a.due_at and a.due_at < now %}<span class="badge badge--high">Overdue</span>
             {% elif a.started_at %}<span class="badge badge--accent">In progress</span>
-            {% else %}<span class="badge">Assigned</span>{% endif %}
+            {% else %}<span class="badge">Not started</span>{% endif %}
           </td>
         </tr>
         {% endfor %}

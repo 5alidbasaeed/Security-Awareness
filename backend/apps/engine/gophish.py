@@ -3,6 +3,7 @@ Concrete PhishingEngineClient backed by Gophish's REST API. Nothing outside
 this module should know these details — get an instance via factory.py.
 """
 
+import hashlib
 from datetime import datetime, timezone
 
 import requests
@@ -35,6 +36,9 @@ GOPHISH_MESSAGE_TO_EVENT_TYPE = {
 }
 
 
+EXTERNAL_ID_MAX = 255  # Event.external_id max_length
+
+
 def build_gophish_external_id(*, campaign_id, email, message, time) -> str:
     """
     Shared by the webhook view (real-time) and get_campaign_results
@@ -44,7 +48,13 @@ def build_gophish_external_id(*, campaign_id, email, message, time) -> str:
     matter which path an event arrives through first. Gophish's timeline
     entries have no single stable ID field, hence the composite key.
     """
-    return f"{campaign_id}:{email}:{message}:{time}"
+    external_id = f"{campaign_id}:{email}:{message}:{time}"
+    if len(external_id) > EXTERNAL_ID_MAX:
+        # A very long address would overflow Event.external_id and 500 the webhook (Gophish then redelivers
+        # forever). Hash instead: still deterministic, so both ingestion paths still produce the same key.
+        # Short keys are unchanged, so events already stored keep deduplicating.
+        external_id = f"{campaign_id}:sha256:{hashlib.sha256(external_id.encode()).hexdigest()}"
+    return external_id
 
 
 class GophishClient(PhishingEngineClient):

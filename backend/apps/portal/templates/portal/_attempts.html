@@ -1,0 +1,2 @@
+{% if attempts %}<div class="footnote"><strong>Your previous attempt{{ attempts|length|pluralize }}</strong>
+  <ul class="attempt-list">{% for a in attempts %}<li>{{ a.completed_at|date:"M j, Y" }} · {{ a.score_percent }}% · {% if a.passed %}passed{% else %}not passed yet{% endif %}</li>{% endfor %}</ul></div>{% endif %}

@@ -1,0 +1,1 @@
+{% if tabs %}<nav class="tabs" aria-label="In this section">{% for t in tabs %}<a class="tab" href="{% url t.url %}"{% if t.current %} aria-current="page"{% endif %}>{{ t.label }}</a>{% endfor %}</nav>{% endif %}

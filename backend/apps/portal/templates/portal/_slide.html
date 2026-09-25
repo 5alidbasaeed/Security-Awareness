@@ -1,7 +1,7 @@
 {% load course_extras %}
 <article class="slide" aria-labelledby="slide-title">
   <p class="slide__count">Slide {{ number }} of {{ total }}</p>
-  <h2 id="slide-title" class="slide__title">{{ slide.title }}</h2>
+  <h1 id="slide-title" class="slide__title">{{ slide.title }}</h1>
   <div class="slide__body">{{ slide.body|slide_body }}</div>
   {% if slide.callout %}<p class="slide__callout"><strong>Remember</strong> {{ slide.callout }}</p>{% endif %}
 </article>

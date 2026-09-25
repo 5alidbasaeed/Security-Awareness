@@ -1,10 +1,9 @@
 {% extends "manage/base.html" %}
 {% block title %}Mandatory training · Manage{% endblock %}
 {% block content %}
-{% include "manage/_subnav.html" with manage_section="training" %}
 <header class="page-header"><div><h1>Mandatory training</h1>
 <p class="page-header__sub">Training everyone (or a department) must take on a schedule — not only after failing a simulation. Enrolment runs daily; managers are emailed about people more than a week overdue.</p></div>
-{% if perms.training.change_trainingpolicy %}<a class="button" href="{% url 'manage:policy-new' %}">New policy</a>{% endif %}</header>
+{% if perms.training.change_trainingpolicy %}<div class="header-actions"><a class="button" href="{% url 'manage:policy-new' %}">New policy</a></div>{% endif %}</header>
 <div class="card"><div class="table-wrap"><table class="table">
   <thead><tr><th>Policy</th><th>Module</th><th>Who</th><th>Every</th><th>Due within</th><th>Active</th><th class="num"></th></tr></thead>
   <tbody>{% for p in policies %}

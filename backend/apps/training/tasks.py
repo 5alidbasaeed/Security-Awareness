@@ -11,6 +11,7 @@ from datetime import timedelta
 from celery import shared_task
 from django.conf import settings
 from django.core.mail import send_mail
+from django.db.models import Q
 from django.utils import timezone
 
 from .models import TrainingAssignment
@@ -28,6 +29,14 @@ REMINDER_AFTER = timedelta(days=2)  # remind once an assignment has been outstan
 REMINDER_COOLDOWN = timedelta(hours=24)  # ...and don't remind again more often than this
 
 
+def _due_line(assignment, now) -> str:
+    if assignment.due_at is None:
+        return "Please complete it at your earliest convenience."
+    due = timezone.localtime(assignment.due_at)
+    when = f"{due:%B} {due.day}, {due.year}"
+    return f"It was due on {when} and is now overdue." if assignment.due_at < now else f"Please complete it by {when}."
+
+
 @shared_task
 def send_training_reminders():
     now = timezone.now()
@@ -37,6 +46,10 @@ def send_training_reminders():
             assigned_at__lte=now - REMINDER_AFTER
         )
         .exclude(last_reminded_at__gte=now - REMINDER_COOLDOWN)
+        # A module with nothing to take (no slides, no link, no quiz questions) can't be completed in the
+        # portal, so chasing people about it is noise.
+        .filter(Q(module__slides__isnull=False) | ~Q(module__content_url="") | Q(module__quiz__questions__isnull=False))
+        .distinct()
         .select_related("employee", "module")
     )
 
@@ -48,7 +61,7 @@ def send_training_reminders():
                 message=(
                     f"Hi {assignment.employee.full_name},\n\n"
                     f'You have an outstanding security awareness training assignment: "{assignment.module.title}". '
-                    "Please complete it at your earliest convenience.\n\n"
+                    f"{_due_line(assignment, now)}\n\n"
                     f"Open your training (no password needed): {magic_link(assignment.employee)}"
                 ),
                 from_email=settings.DEFAULT_FROM_EMAIL,
@@ -82,12 +95,14 @@ def enforce_training_policies():
         recent_cutoff = now - timedelta(days=policy.repeat_every_days)
         already = TrainingAssignment.objects.filter(module=policy.module, assigned_at__gte=recent_cutoff).values("employee_id")
         open_ = TrainingAssignment.objects.filter(module=policy.module, completed_at__isnull=True, waived_at__isnull=True).values("employee_id")
+        added = 0  # per policy: the audit entry must say what *this* policy did, not the running total
         for employee in people.exclude(pk__in=already).exclude(pk__in=open_):
             TrainingAssignment.objects.create(employee=employee, module=policy.module,
                                               due_at=now + timedelta(days=policy.due_days))
-            enrolled += 1
-        if enrolled:
-            log_action(actor=None, action="training_policy_enforced", target_description=policy.name, enrolled=enrolled)
+            added += 1
+        if added:
+            log_action(actor=None, action="training_policy_enforced", target_description=policy.name, enrolled=added)
+        enrolled += added
     logger.info("enforce_training_policies: enrolled %d", enrolled)
     return enrolled
 
@@ -113,6 +128,7 @@ def escalate_overdue_training():
         overdue = (
             TrainingAssignment.objects.filter(
                 employee__department=department, employee__is_active=True, completed_at__isnull=True, waived_at__isnull=True,
+                module__is_active=True,  # same rule as send_training_reminders: a retired module isn't chased
                 due_at__lt=now - ESCALATE_AFTER_OVERDUE,
             ).select_related("employee", "module").order_by("due_at")
         )

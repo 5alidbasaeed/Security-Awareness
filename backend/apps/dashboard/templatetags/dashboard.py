@@ -38,7 +38,7 @@ def score_fmt(value):
 
 TREND_LABELS = {
     "improving": "Improving",
-    "stagnant": "Stagnant",
+    "stagnant": "No clear change",
     "worsening": "Worsening",
     "insufficient_data": "Not enough history",
 }
@@ -55,15 +55,38 @@ def percent(value):
 
 
 @register.filter
+def range_dash(value):
+    """'1-7 days' -> '1–7 days': a range takes an en dash."""
+    return str(value).replace("-", "–")
+
+
+@register.filter
 def event_label(event_type):
     return EVENT_LABELS.get(event_type, str(event_type).replace("_", " ").capitalize())
+
+
+MINUS = "−"  # a real minus sign; a hyphen reads as a dash and misaligns in tabular figures
+
+
+def _num(value) -> str:
+    return f"{value:g}".replace("-", MINUS)
 
 
 @register.filter
 def signed(value):
     if value is None:
         return ""
-    return f"+{value:g}" if value > 0 else f"{value:g}"
+    return f"+{_num(value)}" if value > 0 else _num(value)
+
+
+TREND_ARROWS = {"improving": "▼", "worsening": "▲"}
+
+
+@register.filter
+def trend_arrow(direction):
+    """Arrow for a movement that counts as a trend; a wobble below TREND_DELTA gets none, so the
+    arrow can never contradict the words next to it."""
+    return TREND_ARROWS.get(direction, "")
 
 
 @register.simple_tag(takes_context=True)
@@ -115,7 +138,8 @@ def duration(seconds):
 
 @register.filter
 def ratio(value):
-    return "—" if value is None else f"{value:g}"
+    """Always two decimals, so a column of ratios lines up (1.00 next to 0.25, not 1 next to 0.25)."""
+    return "—" if value is None else f"{value:.2f}"
 
 
 @register.filter
@@ -123,10 +147,11 @@ def points(value):
     """Percentage-point gap, signed: +2.5 pts."""
     if value is None:
         return ""
-    return f"+{value:g} pts" if value > 0 else f"{value:g} pts"
+    return f"+{_num(value)} pts" if value > 0 else f"{_num(value)} pts"
 
 
-GRADE_LABELS = {"met": "Meets target", "missed": "Below target", "no_data": "No data"}
+# "Off target", not "Below target": a failure rate that misses its target is *above* it.
+GRADE_LABELS = {"met": "Meets target", "missed": "Off target", "no_data": "No data"}
 GRADE_BADGES = {"met": "badge--low", "missed": "badge--high", "no_data": ""}
 
 

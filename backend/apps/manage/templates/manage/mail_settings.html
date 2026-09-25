@@ -1,8 +1,8 @@
 {% extends "manage/base.html" %}
-{% block title %}Mail settings · Manage{% endblock %}
+{% block title %}Mail server · Manage{% endblock %}
 {% block content %}
-<header class="page-header"><div><h1>Mail settings</h1>
-<p class="page-header__sub">The SMTP relay the simulation emails are sent through. Saving sends nothing.</p></div></header>
+<header class="page-header"><div><h1>Mail server</h1>
+<p class="page-header__sub">The mail server the simulation emails are sent through (an SMTP relay). Saving sends nothing.</p></div></header>
 {% if engine_error %}<p class="flash flash--error" role="alert">Can't reach the phishing engine: {{ engine_error }}</p>{% endif %}
 <div class="card"><div class="card__body">
   <form class="form-stack" method="post" novalidate>
@@ -26,8 +26,8 @@
   </form>
 </div></div>
 
-<section class="card questions-card">
-  <div class="card__header"><h2>Test</h2><span class="card__note">Sends one real message</span></div>
+<section class="card">
+  <div class="card__header"><h2>Send a test message</h2><span class="card__note">Sends one real message</span></div>
   <div class="card__body">
     <form class="form-stack" method="post" novalidate>
       {% csrf_token %}
@@ -35,7 +35,7 @@
       <div class="form-row"><label class="label" for="{{ test_form.to.id_for_label }}">{{ test_form.to.label }}</label>{{ test_form.to }}
         {% for error in test_form.to.errors %}<p class="form-error" role="alert">{{ error }}</p>{% endfor %}
         <p class="cell-meta">Save first. This sends a single plain message, not a simulation, using the settings above.</p></div>
-      <div class="form-actions"><button class="button button--quiet" type="submit"{% if not current %} disabled{% endif %}>Send test message</button></div>
+      <div class="form-actions"><button class="button button--secondary" type="submit"{% if not current %} disabled{% endif %}>Send test message</button></div>
     </form>
   </div>
 </section>

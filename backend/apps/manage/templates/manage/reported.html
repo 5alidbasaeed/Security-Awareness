@@ -1,16 +1,15 @@
 {% extends "manage/base.html" %}
 {% block title %}Reported emails · Manage{% endblock %}
 {% block content %}
-{% include "manage/_subnav.html" with manage_section="reported" %}
 <header class="page-header"><div><h1>Reported emails</h1>
 <p class="page-header__sub">Suspicious emails employees flagged. Reports of our own simulations are counted automatically; this queue is for everything else.</p></div></header>
 <form class="toolbar" method="get">
+  <label class="visually-hidden" for="q">Search</label><input class="field" id="q" type="search" name="q" value="{{ q }}" placeholder="Search subject, sender or reporter">
   <label class="visually-hidden" for="verdict">Verdict</label>
-  <select class="select" id="verdict" name="verdict"><option value="">All</option>
+  <select class="select" id="verdict" name="verdict"><option value="">All verdicts</option>
     {% for value, label in verdicts %}<option value="{{ value }}"{% if value == verdict %} selected{% endif %}>{{ label }}</option>{% endfor %}
   </select>
-  <label class="visually-hidden" for="q">Search</label><input class="field" id="q" type="search" name="q" value="{{ q }}" placeholder="Search subject, sender or reporter">
-  <button class="button" type="submit">Filter</button>
+  <button class="button button--secondary toolbar__submit" type="submit">Filter</button>
 </form>
 <div class="card"><ul class="list">
   {% for r in page %}
@@ -23,7 +22,7 @@
     {% if can_triage and r.verdict == "new" %}
     <form class="triage-form" method="post" action="{% url 'manage:reported-triage' r.pk %}">{% csrf_token %}
       <label class="visually-hidden" for="v{{ r.pk }}">Verdict</label>
-      <select class="select" id="v{{ r.pk }}" name="verdict">{% for value, label in verdicts %}{% if value != "new" %}<option value="{{ value }}">{{ label }}</option>{% endif %}{% endfor %}</select>
+      <select class="select" id="v{{ r.pk }}" name="verdict" required><option value="" selected disabled>Choose a verdict…</option>{% for value, label in verdicts %}{% if value != "new" %}<option value="{{ value }}">{{ label }}</option>{% endif %}{% endfor %}</select>
       <label class="visually-hidden" for="n{{ r.pk }}">Notes</label>
       <input class="field" id="n{{ r.pk }}" name="triage_notes" placeholder="Notes (optional)">
       <button class="button" type="submit">Save</button>

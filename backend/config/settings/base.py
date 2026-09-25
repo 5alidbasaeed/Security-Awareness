@@ -215,6 +215,8 @@ TRAINING_DUE_DAYS = env.int("TRAINING_DUE_DAYS", default=14)
 # Absolute base URL employees reach the portal on (used in emailed sign-in links).
 PORTAL_BASE_URL = env("PORTAL_BASE_URL", default="http://localhost:8000")
 PORTAL_LINK_MAX_AGE_SECONDS = env.int("PORTAL_LINK_MAX_AGE_SECONDS", default=72 * 3600)
+# CSV import with "deactivate anyone not in the file" is refused if it would switch off more than this share of active staff.
+IMPORT_MAX_DEACTIVATE_PERCENT = env.int("IMPORT_MAX_DEACTIVATE_PERCENT", default=10)
 
 # --- Engagement & integrations (Phase 6.3) ---
 # Coaching emails employees the moment they fail a simulation (defaults off — turn on once real SMTP works).
@@ -241,6 +243,9 @@ LOGOUT_REDIRECT_URL = "dashboard:login"
 # Applies to both the admin "Launch" action and the scheduler — see
 # apps/campaigns/services.py::launch_campaign(), the one shared launch path.
 CAMPAIGN_LAUNCH_RATE_LIMIT = env.int("CAMPAIGN_LAUNCH_RATE_LIMIT", default=5)
+# Segregation of duties: the person who submitted a campaign cannot approve it. Set false only as a documented
+# break-glass for a single-admin deployment (shown on the governance page).
+REQUIRE_SEPARATE_APPROVER = env.bool("REQUIRE_SEPARATE_APPROVER", default=True)
 
 # --- Gophish adapter config (consumed by apps.engine.GophishClient, Phase 1) ---
 GOPHISH_API_URL = env("GOPHISH_API_URL", default="")

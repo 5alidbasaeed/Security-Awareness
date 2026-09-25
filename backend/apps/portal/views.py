@@ -10,6 +10,7 @@ import logging
 from django.conf import settings
 from django.contrib import messages
 from django.core.mail import send_mail
+from django.db.models import F
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -19,7 +20,7 @@ from apps.core.audit import log_action
 from apps.training.models import QuizAttempt
 from apps.training.scoring import score_quiz
 
-from .access import portal_login, portal_logout, portal_required
+from .access import current_employee, portal_login, portal_logout, portal_required
 from .tasks import send_portal_link
 from .throttle import link_request_allowed
 from .tokens import employee_from_token, sign_employee
@@ -53,6 +54,8 @@ def send_link(employee):
 
 @require_http_methods(["GET", "POST"])
 def login(request):
+    if request.method == "GET" and current_employee(request) is not None:
+        return redirect("portal:home")  # already signed in: a sign-in form under a "Sign out" button makes no sense
     if request.method == "POST":
         email = (request.POST.get("email") or "").strip()
         allowed = link_request_allowed(request, email)
@@ -86,7 +89,11 @@ def logout(request):
 
 @portal_required
 def home(request):
-    assignments = request.employee.training_assignments.filter(waived_at__isnull=True).select_related("module").order_by("completed_at", "due_at")
+    # Outstanding first (soonest due first), then completed. Postgres sorts NULL last by default, which put
+    # finished training above the work still to do.
+    assignments = request.employee.training_assignments.filter(waived_at__isnull=True).select_related("module").order_by(
+        F("completed_at").desc(nulls_first=True), F("due_at").asc(nulls_last=True)
+    )
     return render(request, "portal/home.html", {
         "employee": request.employee, "assignments": assignments, "now": timezone.now(),
     })
@@ -103,11 +110,16 @@ def assignment(request, pk):
     item = _own_assignment(request, pk)
     quiz = _quiz(item.module)
 
-    if request.method == "POST" and request.POST.get("action") == "start" and item.started_at is None:
+    if (request.method == "POST" and request.POST.get("action") == "start" and item.started_at is None
+            and not item.module.slides.exists()):  # a slide course is started only by opening it (see course())
         item.started_at = timezone.now()
         item.save(update_fields=["started_at"])
 
     if request.method == "POST" and request.POST.get("action") == "complete" and quiz is None:
+        if _course_not_opened(item):
+            return redirect("portal:course", pk=item.pk)  # self-attesting a course you never opened isn't completion
+        if _has_no_content(item.module):
+            return redirect("portal:assignment", pk=item.pk)  # nothing to complete: a certificate here would be hollow
         _complete(request, item, score=None)
         return redirect("portal:certificate", pk=item.pk)
 
@@ -115,8 +127,17 @@ def assignment(request, pk):
         "item": item, "quiz": quiz,
         "questions": quiz.questions.prefetch_related("choices") if quiz else [],
         "slide_count": item.module.slides.count(),
+        "no_content": _has_no_content(item.module),
         "attempts": item.quiz_attempts.order_by("-completed_at"),
     })
+
+
+def _has_no_content(module) -> bool:
+    return not module.content_url and not module.slides.exists()
+
+
+def _course_not_opened(item) -> bool:
+    return item.started_at is None and item.module.slides.exists()
 
 
 def _slide_number(request, total):
@@ -155,9 +176,9 @@ def submit_quiz(request, pk):
     quiz = _quiz(item.module)
     if quiz is None or item.completed_at is not None:
         return redirect("portal:assignment", pk=item.pk)
+    if _course_not_opened(item):
+        return redirect("portal:course", pk=item.pk)  # take the course first (a direct POST included)
     if request.method == "GET":
-        if item.module.slides.exists() and item.started_at is None:
-            return redirect("portal:course", pk=item.pk)  # take the course first
         return render(request, "portal/quiz.html", {
             "item": item, "quiz": quiz, "questions": quiz.questions.prefetch_related("choices"),
             "attempts": item.quiz_attempts.order_by("-completed_at"),

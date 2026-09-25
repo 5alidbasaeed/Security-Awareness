@@ -32,7 +32,7 @@ def test_slides_render_in_order_with_progress_and_navigation(client):
     item = assignment_with_course(client)
 
     first = client.get(reverse("portal:course", args=[item.pk]))
-    assert b"Slide 1 of 3" in first.content and b"Slide 1</h2>" in first.content and b"Remember this" in first.content
+    assert b"Slide 1 of 3" in first.content and b"Slide 1</h1>" in first.content and b"Remember this" in first.content
     assert b'id="slide-prev"' not in first.content and b'id="slide-next"' in first.content
 
     last = client.get(reverse("portal:course", args=[item.pk]) + "?s=3")

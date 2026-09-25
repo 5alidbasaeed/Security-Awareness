@@ -6,9 +6,9 @@ from apps.employees.tests.factories import EmployeeFactory
 
 pytestmark = pytest.mark.django_db
 
-CSV = """email,full_name,department,is_exempt
-alice@corp.example,Alice Ng,Finance,false
-bob@corp.example,Bob Ray,Finance,true
+CSV = """email,full_name,department,is_exempt,exempt_reason
+alice@corp.example,Alice Ng,Finance,false,
+bob@corp.example,Bob Ray,Finance,true,Works in the SOC
 """
 
 

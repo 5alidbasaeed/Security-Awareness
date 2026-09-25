@@ -31,10 +31,21 @@ def api_keys(request):
         chosen = [s for s in request.POST.getlist("scopes") if s in {g.value for g in grantable}]
         expires_raw = request.POST.get("expires_at") or ""
         expires_at = None
+        bad_expiry = False
         if expires_raw:
-            day = parse_date(expires_raw)
-            expires_at = timezone.make_aware(timezone.datetime.combine(day, timezone.datetime.min.time())) if day else None
-        if not name:
+            # parse_date raises for an impossible date (2026-02-30) and returns None for junk; both must
+            # be refused, never fall through to a key that silently never expires.
+            try:
+                day = parse_date(expires_raw)
+            except ValueError:
+                day = None
+            if day is None or day <= timezone.localdate():
+                bad_expiry = True
+            else:
+                expires_at = timezone.make_aware(timezone.datetime.combine(day, timezone.datetime.min.time()))
+        if bad_expiry:
+            messages.error(request, "Choose a valid expiry date in the future, or leave it empty.")
+        elif not name:
             messages.error(request, "Give the key a name.")
         elif not chosen:
             messages.error(request, "Choose at least one scope you're allowed to grant.")

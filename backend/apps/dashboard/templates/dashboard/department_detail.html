@@ -46,12 +46,13 @@
     <section class="card" aria-labelledby="dist-heading">
       <div class="card__header"><h2 id="dist-heading">Risk distribution</h2><span class="card__note">{{ distribution.total }} employee{{ distribution.total|pluralize }}</span></div>
       <div class="card__body">
+        {% if distribution.suppressed %}<p class="muted">Hidden: fewer people than the minimum reporting cohort.</p>{% else %}
         <ul class="funnel">
           {% include "dashboard/_dist_row.html" with label="High risk" value=distribution.high total=distribution.total cls="progress--high" %}
           {% include "dashboard/_dist_row.html" with label="Medium risk" value=distribution.medium total=distribution.total cls="progress--medium" %}
           {% include "dashboard/_dist_row.html" with label="Low risk" value=distribution.low total=distribution.total cls="progress--low" %}
-          {% include "dashboard/_dist_row.html" with label="Not scored yet" value=distribution.unscored total=distribution.total cls="" %}
-        </ul>
+          {% include "dashboard/_dist_row.html" with label="Not scored yet" value=distribution.unscored total=distribution.total cls="progress--none" %}
+        </ul>{% endif %}
       </div>
     </section>
 

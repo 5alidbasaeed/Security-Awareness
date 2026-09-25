@@ -32,8 +32,8 @@
           <td>{{ e.last_tested|date:"M j, Y"|default:"Never" }}</td>
           <td>
             {% if e.has_overdue %}<span class="badge badge--high">Overdue</span>
-            {% elif e.has_outstanding %}<span class="badge badge--accent">In progress</span>
-            {% elif e.has_completed %}<span class="badge badge--low">Complete</span>
+            {% elif e.has_outstanding %}<span class="badge badge--accent">Outstanding</span>
+            {% elif e.has_completed %}<span class="badge badge--low">Completed</span>
             {% else %}<span class="muted">None assigned</span>{% endif %}
           </td>
         </tr>

@@ -12,18 +12,21 @@
   <script src="{% static 'dashboard/vendor/htmx-2.0.4.min.js' %}" defer></script>
   <script src="{% static 'dashboard/vendor/chart-4.4.7.umd.js' %}" defer></script>
   <script src="{% static 'dashboard/charts.js' %}" defer></script>
+  <script src="{% static 'dashboard/filters.js' %}" defer></script>
 </head>
 <body class="{% block body_class %}{% endblock %}">
   {% block nav %}
   <a class="skip-link" href="#main">Skip to content</a>
   <nav class="nav" aria-label="Primary">
     <div class="container nav__inner">
-      <a class="nav__brand" href="{% url 'dashboard:overview' %}">Security Awareness</a>
+      <a class="nav__brand" href="{% if perms.risk_scoring.view_riskscoresnapshot %}{% url 'dashboard:overview' %}{% else %}{% url 'dashboard:training' %}{% endif %}">Security Awareness</a>
       <ul class="nav__links">
+        {% if perms.risk_scoring.view_riskscoresnapshot %}
         <li><a class="nav__link" href="{% url 'dashboard:overview' %}"{% if active == "overview" %} aria-current="page"{% endif %}>Overview</a></li>
         <li><a class="nav__link" href="{% url 'dashboard:campaigns' %}"{% if active == "campaigns" %} aria-current="page"{% endif %}>Campaigns</a></li>
         <li><a class="nav__link" href="{% url 'dashboard:employees' %}"{% if active == "employees" %} aria-current="page"{% endif %}>Employees</a></li>
         <li><a class="nav__link" href="{% url 'dashboard:departments' %}"{% if active == "departments" %} aria-current="page"{% endif %}>Departments</a></li>
+        {% endif %}
         <li><a class="nav__link" href="{% url 'dashboard:training' %}"{% if active == "training" %} aria-current="page"{% endif %}>Training</a></li>
         {% if perms.reporting.generate_report %}<li><a class="nav__link" href="{% url 'reporting:index' %}"{% if active == "reports" %} aria-current="page"{% endif %}>Reports</a></li>{% endif %}
       </ul>

@@ -25,8 +25,8 @@
     </div>
     <div class="card stat">
       <div class="stat__label">Trend, last 30 days</div>
-      <div class="stat__value">{{ trend|trend_label }}</div>
-      <div class="stat__note">Lower is better</div>
+      <div class="stat__value">{% if trend_delta is None %}—{% else %}<span class="trend--{{ trend }}">{% with arrow=trend|trend_arrow %}{% if arrow %}<span aria-hidden="true">{{ arrow }}</span> {% endif %}{% endwith %}{{ trend_delta|signed }}</span>{% endif %}</div>
+      <div class="stat__note">{% if trend_delta is None %}Not enough history yet{% else %}{{ trend|trend_label }} · lower is better{% endif %}</div>
     </div>
     <div class="card stat">
       <div class="stat__label">Simulations failed</div>
@@ -63,7 +63,7 @@
               <td><span class="badge {{ t.outcome|outcome_badge }}">{{ t.outcome|outcome_label }}</span>{% if t.also_reported %} <span class="badge badge--low">Then reported</span>{% endif %}</td>
               <td>{{ t.seconds_to_fail|duration }}</td>
               <td>{{ t.seconds_to_report|duration }}</td>
-              <td>{% if t.assignment %}{% if t.assignment.completed_at %}<span class="badge badge--low">Completed</span>{% elif t.assignment.due_at and t.assignment.due_at < now %}<span class="badge badge--high">Overdue</span>{% else %}<span class="badge badge--accent">Assigned</span>{% endif %}{% else %}<span class="muted">—</span>{% endif %}</td>
+              <td>{% if t.assignment %}{% if t.assignment.waived_at %}<span class="badge">Waived</span>{% elif t.assignment.completed_at %}<span class="badge badge--low">Completed</span>{% elif t.assignment.due_at and t.assignment.due_at < now %}<span class="badge badge--high">Overdue</span>{% else %}<span class="badge badge--accent">Outstanding</span>{% endif %}{% else %}<span class="muted">—</span>{% endif %}</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -91,10 +91,11 @@
           {% for a in assignments %}
           <li class="list__item">
             <span>{{ a.module.title }}<span class="cell-meta">Assigned {{ a.assigned_at|date:"M j, Y" }}{% if a.due_at %} · Due {{ a.due_at|date:"M j, Y" }}{% endif %}{% if a.completed_at %} · Completed {{ a.completed_at|date:"M j, Y" }}{% endif %}{% if a.attempts %} · Best quiz score {{ a.best_score }}% ({{ a.attempts }} attempt{{ a.attempts|pluralize }}){% endif %}</span></span>
-            {% if a.completed_at %}<span class="badge badge--low">Completed</span>
+            {% if a.waived_at %}<span class="badge">Waived</span>
+            {% elif a.completed_at %}<span class="badge badge--low">Completed</span>
             {% elif a.due_at and a.due_at < now %}<span class="badge badge--high">Overdue</span>
             {% elif a.started_at %}<span class="badge badge--accent">In progress</span>
-            {% else %}<span class="badge">Assigned</span>{% endif %}
+            {% else %}<span class="badge">Not started</span>{% endif %}
           </li>
           {% endfor %}
         </ul>
@@ -127,15 +128,21 @@
   <section class="card" aria-labelledby="why-heading">
     <div class="card__header"><h2 id="why-heading">What drives this score</h2><span class="card__note">Algorithm {{ algorithm_version }}</span></div>
     <div class="card__body">
-      <p class="muted">The worst outcome on each campaign counts once (submitting data outweighs a click). Reporting the email earns credit, repeat failures add a penalty, and older results fade over time.</p>
+      <p class="muted text-sm">The worst outcome on each campaign counts once (submitting data outweighs a click). Reporting the email earns credit, repeat failures add a penalty, and older results fade over time.</p>
     </div>
-    <ul class="list">
-        <li class="list__item"><span>Campaigns failed</span><strong>{{ metrics.campaigns_failed }}</strong></li>
-        <li class="list__item"><span>…where data was submitted</span><strong>{{ metrics.credential_attempt_campaigns }}</strong></li>
-        <li class="list__item"><span>…where the link was only clicked</span><strong>{{ metrics.click_only_campaigns }}</strong></li>
-        <li class="list__item"><span>Campaigns reported</span><strong>{{ metrics.campaigns_reported }}</strong></li>
-        <li class="list__item"><span>Repeat failures</span><strong>{{ metrics.repeat_failures }}</strong></li>
-    </ul>
+    <div class="table-wrap">
+      <table class="table">
+        <caption class="visually-hidden">What contributes to this risk score</caption>
+        <thead><tr><th scope="col">Contribution</th><th scope="col" class="num">Campaigns</th>{% if weights %}<th scope="col" class="num">Points each, before fading</th>{% endif %}</tr></thead>
+        <tbody>
+          <tr><td>Submitted data</td><td class="num">{{ metrics.credential_attempt_campaigns }}</td>{% if weights %}<td class="num">+{{ weights.submitted|floatformat:0 }}</td>{% endif %}</tr>
+          <tr><td>Clicked the link only</td><td class="num">{{ metrics.click_only_campaigns }}</td>{% if weights %}<td class="num">+{{ weights.clicked|floatformat:0 }}</td>{% endif %}</tr>
+          <tr><td>Repeat failures</td><td class="num">{{ metrics.repeat_failures }}</td>{% if weights %}<td class="num">+{{ weights.repeat|floatformat:0 }}</td>{% endif %}</tr>
+          <tr><td>Reported the email</td><td class="num">{{ metrics.campaigns_reported }}</td>{% if weights %}<td class="num trend--improving">&minus;{{ weights.reported|floatformat:0 }}</td>{% endif %}</tr>
+        </tbody>
+      </table>
+    </div>
+    {% if weights %}<p class="footnote card__body">Each result counts half as much after {{ weights.half_life_days|floatformat:0 }} days. {{ metrics.campaigns_failed }} campaign{{ metrics.campaigns_failed|pluralize }} failed in total.</p>{% endif %}
   </section>
   {% endif %}
 </div>

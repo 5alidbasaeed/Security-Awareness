@@ -1,0 +1,23 @@
+<div class="card summary-panel"><div class="card__body">
+  <h2>What this will do</h2>
+  <dl class="facts">
+    <dt>Recipients</dt>
+    <dd>{% if audience %}<strong>{{ audience.recipients }}</strong> {{ audience.label }}
+      {% if audience.exempt or audience.inactive %}<span class="cell-meta">Left out: {% if audience.exempt %}{{ audience.exempt }} exempt{% endif %}{% if audience.exempt and audience.inactive %}, {% endif %}{% if audience.inactive %}{{ audience.inactive }} inactive{% endif %}</span>{% endif %}
+      {% else %}<span class="cell-meta">Not chosen yet</span>{% endif %}</dd>
+    <dt>Email</dt>
+    <dd>{% if email %}{{ email.name }}<span class="cell-meta">Subject: {{ email.subject }}</span><a href="{{ email_preview }}" target="_blank" rel="noopener">Preview the email</a>{% else %}<span class="cell-meta">Not chosen yet</span>{% endif %}</dd>
+    <dt>Landing page</dt>
+    <dd>{% if page %}{{ page.name }}<a href="{{ page_preview }}" target="_blank" rel="noopener">Preview the page</a>{% else %}<span class="cell-meta">Not chosen yet</span>{% endif %}</dd>
+    <dt>If someone falls for it</dt>
+    <dd>{% if module %}They are assigned “{{ module.title }}”.{% else %}<span class="cell-meta">No training is assigned.</span>{% endif %}</dd>
+  </dl>
+  {% if problems %}
+  <div class="callout callout--warning" role="status"><strong>Before you submit</strong>
+    <ul>{% for p in problems %}<li>{{ p }}</li>{% endfor %}</ul></div>
+  {% else %}
+  <div class="callout callout--ok" role="status"><strong>Ready to save.</strong> After saving, submit it for approval from the campaigns list.</div>
+  {% endif %}
+  {# Saves the main form from here too, so it is reachable without scrolling past every step. #}
+  <button class="button button--block" type="submit" form="campaign-form">Save draft</button>
+</div></div>

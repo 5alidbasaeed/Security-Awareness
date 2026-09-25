@@ -2,9 +2,8 @@
 {% load static %}
 {% block title %}{{ title }} · Manage{% endblock %}
 {% block content %}
-<header class="page-header"><div><h1>{{ title }}</h1>
-<p class="page-header__sub">Write it the way you would in Outlook. Every link and button in the message goes to the tracked page, so a click is recorded. Nothing is sent from here.</p></div>
-<a class="button button--quiet" href="{% url 'manage:content' %}">Back to emails</a></header>
+<header class="page-header"><div><p class="breadcrumb"><a href="{% url 'manage:content' %}">Emails &amp; pages</a></p><h1>{{ title }}</h1>
+<p class="page-header__sub">Write it the way you would in Outlook. Every link and button in the message goes to the tracked page, so a click is recorded. Nothing is sent from here.</p></div></header>
 <div class="builder">
   <form class="compose" method="post" novalidate id="compose-form" data-upload-url="{% url 'manage:image-upload' %}">
     {% csrf_token %}
@@ -27,17 +26,17 @@
       <button type="button" data-cmd="link" title="Make the selection a link to the tracked page">Link</button>
       <button type="button" data-cmd="button" title="Insert a button that goes to the tracked page">Button</button>
       <select data-insert="merge" aria-label="Insert a name or address">
-        <option value="">Insert...</option>
+        <option value="">Insert…</option>
         <option value="{% verbatim %}{{.FirstName}}{% endverbatim %}">First name</option>
         <option value="{% verbatim %}{{.LastName}}{% endverbatim %}">Last name</option>
         <option value="{% verbatim %}{{.Email}}{% endverbatim %}">Email address</option>
       </select>
       <select data-insert="image" aria-label="Insert a picture">
-        <option value="">Picture...</option>
+        <option value="">Picture…</option>
         {% for image in images %}<option value="{{ image.pk }}" data-url="{% url 'manage:image-file' image.pk %}">{{ image.original_name }}</option>{% endfor %}
-        <option value="upload">Upload new...</option>
+        <option value="upload">Upload new…</option>
       </select>
-      <input type="file" id="compose-upload" accept="image/png,image/jpeg,image/gif" hidden>
+      <input type="file" id="compose-upload" aria-label="Insert a picture from your computer" accept="image/png,image/jpeg,image/gif" hidden>
     </div>
     <div id="compose-editor" class="compose__editor" contenteditable="true" role="textbox" aria-multiline="true" aria-label="Message">{{ editor_html|safe }}</div>
     {% for e in form.body_html.errors %}<p class="form-error" role="alert">{{ e }}</p>{% endfor %}
@@ -56,7 +55,7 @@
     <section class="card">
       <div class="card__header"><h2>Checks</h2><span class="card__note">Advice, not rules</span></div>
       <ul class="list">
-        {% for level, message in checks %}<li class="list__item"><span>{% if level == "warn" %}<span class="badge badge--high">Check</span>{% else %}<span class="badge">Note</span>{% endif %} {{ message }}</span></li>
+        {% for level, message in checks %}<li class="list__item"><span>{% if level == "warn" %}<span class="badge badge--medium">Warning</span>{% else %}<span class="badge">Note</span>{% endif %} {{ message }}</span></li>
         {% empty %}<li class="list__item"><span><span class="badge badge--low">OK</span> Nothing to flag.</span></li>{% endfor %}
       </ul>
     </section>
@@ -68,7 +67,7 @@
           <div class="form-row"><label class="label" for="test-to">Send to</label>
             <input class="field" id="test-to" type="email" name="to" value="{{ test_default }}" required>
             <p class="cell-meta">Your own address, or an approved company domain. The subject is marked [TEST] and its links go to the training page, not a real simulation. Save first so the test matches what you see.</p></div>
-          <div class="form-actions"><button class="button button--quiet" type="submit">Send test</button></div>
+          <div class="form-actions"><button class="button button--secondary" type="submit">Send test</button></div>
         </form>
       </div>
     </section>

@@ -120,10 +120,16 @@ def email_templates(request):
     missing = _require(data, "name", "subject", "html")
     if missing:
         return JsonResponse({"error": missing}, status=400)
+    from apps.campaigns.richtext import sanitize_email_html
+    from apps.campaigns.services import reset_approvals_using
+
+    # Same allow-list as the composer (no script/forms, links become the tracked URL), and an approval
+    # never survives a content change: a key can draft, never alter what a person already approved.
     ref = client.upsert_email_template(
-        name=data["name"], subject=data["subject"], html=data["html"], text=data.get("text", "")
+        name=data["name"], subject=data["subject"], html=sanitize_email_html(str(data["html"])), text=data.get("text", "")
     )
     _audit(request, "email_template_drafted", data["name"])
+    reset_approvals_using(actor=request.user, email_template=data["name"], via="api")
     return JsonResponse({"name": data["name"], "external_id": ref.external_id}, status=201)
 
 
@@ -139,15 +145,24 @@ def landing_pages(request):
     missing = _require(data, "name", "html")
     if missing:
         return JsonResponse({"error": missing}, status=400)
-    # capture_passwords is never accepted — the adapter forces it off regardless (invariant #4).
+    from apps.campaigns.clone import CloneError, sanitize_cloned_html
+    from apps.campaigns.services import reset_approvals_using
+
+    # capture_passwords is never accepted — the adapter forces it off regardless (invariant #4). The HTML
+    # gets the clone allow-list too: no script that could read a password field and post it elsewhere.
+    try:
+        html, warnings = sanitize_cloned_html(str(data["html"]), "")
+    except CloneError as exc:
+        return JsonResponse({"error": str(exc)}, status=400)
     ref = client.upsert_landing_page(
-        name=data["name"], html=data["html"],
+        name=data["name"], html=html,
         capture_credentials=bool(data.get("capture_credentials", True)),
         redirect_url=data.get("redirect_url", ""),
     )
     _audit(request, "landing_page_drafted", data["name"])
+    reset_approvals_using(actor=request.user, landing_page=data["name"], via="api")
     return JsonResponse(
-        {"name": data["name"], "external_id": ref.external_id, "capture_passwords": False}, status=201
+        {"name": data["name"], "external_id": ref.external_id, "capture_passwords": False, "warnings": warnings}, status=201
     )
 
 

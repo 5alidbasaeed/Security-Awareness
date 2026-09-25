@@ -1,0 +1,11 @@
+{% load manage_extras %}
+<div class="form-row{% if field.widget_type == 'checkbox' %} form-row--check{% endif %}">
+  {% if field.widget_type == 'checkbox' %}
+  <label class="checkbox-row" for="{{ field.id_for_label }}">{{ field }} {{ field.label|field_label }}</label>
+  {% else %}
+  <label class="label" for="{{ field.id_for_label }}">{{ field.label|field_label }}{% if field.field.required %} <span class="req" aria-hidden="true">*</span>{% endif %}</label>
+  {{ field }}
+  {% endif %}
+  {% if field.help_text %}<p class="cell-meta">{{ field.help_text|field_help }}</p>{% endif %}
+  {% for error in field.errors %}<p class="form-error" role="alert">{{ error }}</p>{% endfor %}
+</div>

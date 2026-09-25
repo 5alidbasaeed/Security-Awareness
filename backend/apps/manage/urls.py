@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views, views_actions, views_apikeys, views_governance
+from . import views, views_actions, views_apikeys, views_governance, views_ux, views_approval
 
 app_name = "manage"
 
@@ -9,8 +9,10 @@ urlpatterns = [
 
     path("campaigns/", views.campaigns, name="campaigns"),
     path("campaigns/new/", views.campaign_new, name="campaign-new"),
+    path("campaigns/summary/", views_ux.campaign_summary, name="campaign-summary"),
     path("campaigns/<int:pk>/edit/", views.campaign_edit, name="campaign-edit"),
     path("campaigns/<int:pk>/submit/", views.campaign_submit, name="campaign-submit"),
+    path("campaigns/<int:pk>/review/", views_approval.campaign_review, name="campaign-review"),
     path("campaigns/<int:pk>/approve/", views.campaign_approve, name="campaign-approve"),
     path("campaigns/<int:pk>/reject/", views.campaign_reject, name="campaign-reject"),
     path("campaigns/<int:pk>/duplicate/", views.campaign_duplicate, name="campaign-duplicate"),
@@ -32,12 +34,16 @@ urlpatterns = [
     path("content/pages/clone/", views.landing_clone, name="landing-clone"),
     path("content/pages/design/new/", views.landing_edit, name="landing-new"),
     path("content/pages/design/<int:pk>/edit/", views.landing_edit, name="landing-edit"),
+    path("content/templates/<int:pk>/duplicate/", views_ux.email_duplicate, name="template-duplicate"),
+    path("content/pages/design/<int:pk>/duplicate/", views_ux.landing_duplicate, name="landing-duplicate"),
     path("content/templates/new/", views.template_edit, name="template-new"),
     path("content/templates/<int:pk>/edit/", views.template_edit, name="template-edit"),
     path("content/pages/new/", views.page_new, name="page-new"),
     path("content/pages/<str:name>/preview/", views.page_preview, name="page-preview"),
 
     path("training/", views.training, name="training"),
+    path("training/<int:pk>/duplicate/", views_ux.module_duplicate, name="module-duplicate"),
+    path("training/<int:pk>/toggle/", views_ux.module_toggle, name="module-toggle"),
     path("training/new/", views.module_edit, name="module-new"),
     path("training/<int:pk>/edit/", views.module_edit, name="module-edit"),
     path("training/<int:pk>/questions/add/", views.question_add, name="question-add"),

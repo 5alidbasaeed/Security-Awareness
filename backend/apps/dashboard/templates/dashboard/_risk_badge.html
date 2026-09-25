@@ -1,1 +1,1 @@
-{% load dashboard %}{% with level=value|risk_level %}<span class="score">{{ value|score_fmt }}</span><span class="badge badge--{{ level }}">{{ level|level_label }}</span>{% endwith %}
+{% load dashboard %}{% with level=value|risk_level %}<span class="risk">{% if value is not None %}<span class="score">{{ value|score_fmt }}</span>{% endif %}<span class="badge badge--{{ level }}">{{ level|level_label }}</span></span>{% endwith %}

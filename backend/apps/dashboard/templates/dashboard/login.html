@@ -1,11 +1,13 @@
 {% extends "dashboard/base.html" %}
+{% load static %}
 {% block title %}Sign in{% endblock %}
 {% block body_class %}auth{% endblock %}
 {% block nav %}{% endblock %}
 {% block main %}
 <main id="main" class="card auth__card">
+  <img class="auth__logo" src="{% static 'dashboard/favicon.svg' %}" alt="" width="40" height="40">
   <h1 class="auth__title">Security Awareness</h1>
-  <p class="auth__sub">Sign in to view campaign results and risk trends.</p>
+  <p class="auth__sub">Staff sign-in for campaign results, risk trends and the admin console.</p>
   <form method="post" action="{% url 'dashboard:login' %}">
     {% csrf_token %}
     {% if form.errors %}<p class="form-error" role="alert">That username and password didn’t match. Try again.</p>{% endif %}
@@ -22,5 +24,7 @@
     </div>
     <input type="hidden" name="next" value="{{ next }}">
   </form>
+  <p class="auth__help">Forgot your password? Ask a Security Admin to reset it.</p>
+  <p class="auth__help">Here for your own training? <a href="{% url 'portal:login' %}">Go to the training portal</a>.</p>
 </main>
 {% endblock %}

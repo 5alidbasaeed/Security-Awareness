@@ -459,7 +459,7 @@ def test_governance_page_shows_health_frameworks_and_policy(client, django_user_
     page = client.get(reverse("manage:governance")).content.decode()
     assert "Control health" in page and "ISO/IEC 27001:2022" in page and "Policy settings in force" in page
     assert "No reason recorded" not in page  # that detail lives on the register
-    assert "1 exempt employee(s) have no reason recorded." in page
+    assert "1 exempt employee has no reason recorded." in page
     assert "does not certify compliance" in page
 
 

@@ -1,24 +1,31 @@
 {% extends "manage/base.html" %}
 {% block title %}Manage{% endblock %}
 {% block content %}
-{% include "manage/_subnav.html" with manage_section="home" %}
 <header class="page-header">
   <div>
     <h1>Manage</h1>
-    <p class="page-header__sub">Create and change campaigns, content, training and people. Reporting stays on the dashboard.</p>
+    <p class="page-header__sub">Everything you can change lives here, grouped by what you're trying to do. Results and charts are on the dashboard.</p>
   </div>
 </header>
 {% if pending_approvals %}
-<p class="flash" role="status">{{ pending_approvals }} campaign{{ pending_approvals|pluralize }} waiting for approval — see Campaigns.</p>
+<p class="flash" role="status">{{ pending_approvals }} campaign{{ pending_approvals|pluralize }} waiting for approval. <a href="{% url 'manage:campaigns' %}?status=pending_approval">Review {{ pending_approvals|pluralize:"it,them" }}</a></p>
 {% endif %}
-<div class="manage-cards">
-  {% for label, url, desc, allowed in cards %}
-  {% if allowed %}
-  <a class="manage-card" href="{% url url %}">
-    <strong>{{ label }}</strong>
-    <span class="cell-meta">{{ desc }}</span>
-  </a>
-  {% endif %}
-  {% endfor %}
-</div>
+{% if attention %}
+<section class="card" aria-labelledby="attn-h"><div class="card__header"><h2 id="attn-h">Needs your attention</h2><a href="{% url 'manage:governance' %}">All checks</a></div>
+  <ul class="list">
+    {% for c in attention %}<li class="list__item"><span><span class="check-list__label">{{ c.label }}</span><span class="cell-meta">{{ c.detail }}</span></span>
+      {% if c.link %}<a href="{% url c.link %}">Open</a>{% else %}<span class="cell-meta nowrap">Deployment setting</span>{% endif %}</li>{% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% for heading, cards in sections %}
+<section class="manage-group" aria-labelledby="g{{ forloop.counter }}">
+  <h2 id="g{{ forloop.counter }}" class="manage-group__title">{{ heading }}</h2>
+  <div class="manage-cards">
+    {% for label, url, desc, allowed in cards %}
+    <a class="manage-card" href="{% url url %}"><strong>{{ label }}</strong><span class="cell-meta">{{ desc }}</span></a>
+    {% endfor %}
+  </div>
+</section>
+{% endfor %}
 {% endblock %}

@@ -22,24 +22,16 @@
     <a href="{% url 'manage:index' %}"{% if section == "home" %} aria-current="page"{% endif %}>Overview</a>
     {% if perms.campaigns.view_campaign %}<a href="{% url 'manage:campaigns' %}"{% if section == "campaigns" %} aria-current="page"{% endif %}>Campaigns</a>{% endif %}
     {% if perms.campaigns.change_campaign %}<a href="{% url 'manage:content' %}"{% if section == "content" %} aria-current="page"{% endif %}>Emails &amp; pages</a>{% endif %}
-    {% if perms.training.view_trainingmodule %}<a href="{% url 'manage:training' %}"{% if section == "training" %} aria-current="page"{% endif %}>Training</a>{% endif %}
-    {% if perms.employees.view_employee %}<a href="{% url 'manage:employees' %}"{% if section == "employees" %} aria-current="page"{% endif %}>Employees</a>{% endif %}
-    {% if perms.employees.view_department %}<a href="{% url 'manage:departments' %}"{% if section == "departments" %} aria-current="page"{% endif %}>Departments</a>{% endif %}
+    {% if perms.training.view_trainingmodule or perms.training.view_trainingassignment %}{% landing user "training" as go %}<a href="{% url go %}"{% if section == "training" %} aria-current="page"{% endif %}>Training</a>{% endif %}
+    {% if perms.employees.view_employee or perms.employees.view_department %}{% landing user "people" as go %}<a href="{% url go %}"{% if section == "people" %} aria-current="page"{% endif %}>People</a>{% endif %}
     {% if perms.intake.view_reportedemail %}<a href="{% url 'manage:reported' %}"{% if section == "reported" %} aria-current="page"{% endif %}>Reported emails</a>{% endif %}
     {% if perms.reporting.view_reportschedule %}<a href="{% url 'manage:schedules' %}"{% if section == "schedules" %} aria-current="page"{% endif %}>Scheduled reports</a>{% endif %}
-    {% if perms.campaigns.approve_campaign %}<a href="{% url 'manage:mail-settings' %}"{% if section == "mail" %} aria-current="page"{% endif %}>Mail settings</a>{% endif %}
-    <a href="{% url 'manage:api-keys' %}"{% if section == "api-keys" %} aria-current="page"{% endif %}>API keys</a>
-    {% if perms.core.view_auditlogentry or perms.training.view_trainingassignment or perms.employees.view_employee or perms.core.manage_user_access %}
-    <span class="admin-side__heading">Governance</span>
-    {% if perms.core.view_auditlogentry %}<a href="{% url 'manage:governance' %}"{% if section == "governance" %} aria-current="page"{% endif %}>Program &amp; controls</a>{% endif %}
-    {% if perms.training.view_trainingassignment %}<a href="{% url 'manage:assignments' %}"{% if section == "assignments" %} aria-current="page"{% endif %}>Training assignments</a>{% endif %}
-    {% if perms.employees.view_employee %}<a href="{% url 'manage:exemptions' %}"{% if section == "exemptions" %} aria-current="page"{% endif %}>Exemptions</a>{% endif %}
-    {% if perms.core.manage_user_access %}<a href="{% url 'manage:users' %}"{% if section == "users" %} aria-current="page"{% endif %}>Users &amp; access</a>{% endif %}
-    {% if perms.core.view_auditlogentry %}<a href="{% url 'manage:audit-log' %}"{% if section == "audit" %} aria-current="page"{% endif %}>Audit log</a>{% endif %}
-    {% endif %}
+    {% landing user "settings" as go %}<a href="{% url go %}"{% if section == "settings" %} aria-current="page"{% endif %}>Settings</a>
+    {% if perms.core.view_auditlogentry or perms.core.manage_user_access %}{% landing user "governance" as go %}<a href="{% url go %}"{% if section == "governance" %} aria-current="page"{% endif %}>Governance</a>{% endif %}
   </aside>
   <main id="main" class="admin-main">
     {% if messages %}{% for message in messages %}<p class="flash flash--{{ message.level_tag }}" role="status">{{ message }}</p>{% endfor %}{% endif %}
+    {% section_tabs %}
     {% block content %}{% endblock %}
   </main>
 </div>

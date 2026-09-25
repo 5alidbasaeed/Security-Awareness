@@ -31,10 +31,10 @@ from apps.campaigns.email_checks import check_email
 from apps.campaigns.images import CONTENT_TYPES, STORED_NAME, ImageRejected, image_root, save_upload
 from apps.campaigns.models import Campaign, CampaignTemplate, EmailDraft, EmailImage, LandingDraft, SmartGroup
 from apps.campaigns.richtext import sanitize_email_html, to_editor_html
-from apps.campaigns.services import CampaignLaunchError, create_draft_campaign, launch_campaign
+from apps.campaigns.services import CampaignLaunchError, approval_blocked_reason, create_draft_campaign, launch_campaign
 from apps.core.audit import log_action
-from apps.core.scoping import visible_campaigns, visible_departments, visible_employees
-from apps.employees.imports import import_employees, parse_csv
+from apps.core.scoping import managed_departments, visible_campaigns, visible_departments, visible_employees
+from apps.employees.imports import ImportRefused, import_employees, parse_csv
 from apps.employees.models import Department
 from apps.engagement.deliverability import check_domain
 from apps.engine.factory import get_client
@@ -43,7 +43,9 @@ from apps.reporting.models import ReportSchedule
 from apps.training.models import Quiz, QuizChoice, QuizQuestion, TrainingModule, TrainingPolicy, TrainingSlide
 from apps.training.scoring import score_quiz
 
-from .access import manage_access
+from .access import manage_access, org_wide_content
+from .views_ux import module_readiness
+from .forms import _style  # shared widget classes and empty-choice labels
 from .forms import (
     CampaignForm,
     ClonedLandingForm,
@@ -100,29 +102,50 @@ def _simple_edit(request, form_class, instance, *, action, back, title, success=
 # --- hub --------------------------------------------------------------------------------
 
 
+def _visible_sections(sections):
+    """Keep only the cards this person may use, and drop a heading that would be left empty."""
+    kept = [(heading, [card for card in cards if card[3]]) for heading, cards in sections]
+    return [(heading, cards) for heading, cards in kept if cards]
+
+
 @manage_access(methods=("GET",))
 def index(request):
     can = request.user.has_perm
     pending = visible_campaigns(request.user).filter(status=Campaign.Status.PENDING_APPROVAL).count()
+    attention = []
+    if can("core.view_auditlogentry"):  # org-wide checks: only for roles that may see org-wide data
+        from apps.core.governance import control_health
+
+        attention = [c for c in control_health() if c["status"] == "attention"]
     return render(request, "manage/index.html", {
-        "active": "manage",
+        "active": "manage", "attention": attention,
         "pending_approvals": pending,
-        "cards": [
-            ("Campaigns", "manage:campaigns", "Build, submit, approve and launch simulations.", can("campaigns.change_campaign")),
-            ("Content library", "manage:content", "Email templates and landing pages.", can("campaigns.change_campaign")),
-            ("Training", "manage:training", "Modules and quizzes.", can("training.change_trainingmodule")),
-            ("Employees", "manage:employees", "People and their departments.", can("employees.change_employee")),
-            ("Departments", "manage:departments", "Organizational units.", can("employees.view_department")),
-            ("Reported emails", "manage:reported", "Triage suspicious emails employees reported.", can("intake.view_reportedemail")),
-            ("Scheduled reports", "manage:schedules", "Email reports to leadership on a schedule.", can("reporting.view_reportschedule")),
-            ("Mail settings", "manage:mail-settings", "The SMTP relay simulation emails are sent through.", can("campaigns.approve_campaign")),
-            ("API keys", "manage:api-keys", "Keys for drafting content programmatically.", request.user.is_staff),
-            ("Program & controls", "manage:governance", "Control health, the standards this supports, and the policy settings in force.", can("core.view_auditlogentry")),
-            ("Training assignments", "manage:assignments", "Who owes what. Extend a due date or record a waiver, with a reason.", can("training.view_trainingassignment")),
-            ("Exemptions", "manage:exemptions", "Who is excluded from simulations, why, and until when.", can("employees.view_employee")),
-            ("Users & access", "manage:users", "Roles, dormant accounts and the periodic access review.", can("core.manage_user_access")),
-            ("Audit log", "manage:audit-log", "Every launch, approval, change and export, with who and when.", can("core.view_auditlogentry")),
-        ],
+        "sections": _visible_sections([
+            ("Run simulations", [
+                ("Campaigns", "manage:campaigns", "Create a simulation, get it approved, launch it, see results.", can("campaigns.change_campaign")),
+                ("Emails & pages", "manage:content", "The email people receive and the page they land on.", can("campaigns.change_campaign")),
+            ]),
+            ("Train people", [
+                ("Training", "manage:training", "Courses and quizzes.", can("training.change_trainingmodule")),
+                ("Training assignments", "manage:assignments", "Who owes what. Give more time or record a waiver, with a reason.", can("training.view_trainingassignment")),
+            ]),
+            ("People", [
+                ("Employees", "manage:employees", "Add, import, deactivate people.", can("employees.change_employee")),
+                ("Departments", "manage:departments", "Departments and who leads them.", can("employees.view_department")),
+                ("Exemptions", "manage:exemptions", "Who is left out of simulations, why, and until when.", can("employees.view_employee")),
+                ("Reported emails", "manage:reported", "Suspicious emails employees flagged.", can("intake.view_reportedemail")),
+            ]),
+            ("Reports & settings", [
+                ("Scheduled reports", "manage:schedules", "Email reports to leadership automatically.", can("reporting.view_reportschedule")),
+                ("Mail server", "manage:mail-settings", "The mail server simulation emails are sent through.", can("campaigns.approve_campaign")),
+                ("API keys", "manage:api-keys", "Let another tool draft content for you (it can never send).", request.user.is_staff),
+            ]),
+            ("Governance & audit", [
+                ("Program & controls", "manage:governance", "Is the program healthy, and which standards does it support?", can("core.view_auditlogentry")),
+                ("Users & access", "manage:users", "Who can sign in, their roles, and the periodic access review.", can("core.manage_user_access")),
+                ("Audit log", "manage:audit-log", "Every launch, approval, change and export.", can("core.view_auditlogentry")),
+            ]),
+        ]),
     })
 
 
@@ -134,7 +157,7 @@ def campaigns(request):
     status = request.GET.get("status", "")
     q = request.GET.get("q", "").strip()
     department = request.GET.get("department", "").strip()
-    qs = visible_campaigns(request.user).select_related("target_department", "submitted_by", "approved_by").order_by("-id")
+    qs = visible_campaigns(request.user).select_related("target_department", "target_smart_group", "submitted_by", "approved_by").order_by("-id")
     if status:
         qs = qs.filter(status=status)
     if q:
@@ -142,9 +165,11 @@ def campaigns(request):
     if department.isdigit():
         qs = qs.filter(target_department_id=int(department))
     page = _page(request, qs)
+    counts = dict(visible_campaigns(request.user).values_list("status").annotate(n=Count("id")))
     for c in page:
         # The approver needs to know how many people this will reach before saying yes.
         c.recipient_count = None
+        c.approval_blocked = approval_blocked_reason(c, request.user) if c.status == Campaign.Status.PENDING_APPROVAL else None
         if c.status != Campaign.Status.LAUNCHED:
             try:
                 c.recipient_count = campaign_audience(c)[0].count()
@@ -152,6 +177,7 @@ def campaigns(request):
                 pass
     return render(request, "manage/campaigns.html", {
         "active": "manage", "page": page, "status": status, "q": q, "department": department,
+        "status_tabs": [("", "All", sum(counts.values()))] + [(v, label, counts.get(v, 0)) for v, label in Campaign.Status.choices],
         "departments": visible_departments(request.user).order_by("name"),
         "statuses": Campaign.Status.choices, "can_approve": request.user.has_perm("campaigns.approve_campaign"),
     })
@@ -190,14 +216,16 @@ def campaign_edit(request, pk):
         messages.error(request, "A launched campaign can't be edited.")
         return redirect("manage:campaigns")
     before = (campaign.name, campaign.template_name, campaign.landing_page_name,
-              campaign.target_department_id, campaign.target_smart_group_id, campaign.scheduled_at, campaign.copy_to)
+              campaign.target_department_id, campaign.target_smart_group_id, campaign.scheduled_at, campaign.copy_to,
+              campaign.training_module_id)
     if request.method == "POST":
         form = CampaignForm(request.POST, instance=campaign, user=request.user)
         if form.is_valid():
             saved = form.save(commit=False)
             form.apply_to(saved)
             after = (saved.name, saved.template_name, saved.landing_page_name,
-                     saved.target_department_id, saved.target_smart_group_id, saved.scheduled_at, saved.copy_to)
+                     saved.target_department_id, saved.target_smart_group_id, saved.scheduled_at, saved.copy_to,
+                     saved.training_module_id)
             # Editing approved content resets it to Draft: same rule as the admin.
             if saved.status in (Campaign.Status.PENDING_APPROVAL, Campaign.Status.APPROVED) and before != after:
                 saved.status = Campaign.Status.DRAFT
@@ -266,13 +294,12 @@ def campaign_delete(request, pk):
 @manage_access("campaigns.approve_campaign", methods=("POST",))
 def campaign_approve(request, pk):
     campaign = get_object_or_404(visible_campaigns(request.user), pk=pk)
+    blocked = approval_blocked_reason(campaign, request.user)
     if campaign.status != Campaign.Status.PENDING_APPROVAL:
         messages.error(request, "Only a pending campaign can be approved.")
+    elif blocked:
+        messages.error(request, blocked)
     else:
-        # Separation of duties is enforced by the approve_campaign permission (Campaign Managers,
-        # who submit, don't hold it) — the same control the Django admin uses. We deliberately do
-        # not also block a Security Admin from approving their own submission, so a lone admin can
-        # still run a campaign; changing that is a plan-doc decision, not a silent one here.
         campaign.status = Campaign.Status.APPROVED
         campaign.approved_by, campaign.approved_at = request.user, timezone.now()
         campaign.save()
@@ -328,11 +355,26 @@ def content(request):
     built = {d.name for d in drafts}
     landing_drafts = list(LandingDraft.objects.all())
     built_pages = {d.name for d in landing_drafts}
+    email_use = dict(Campaign.objects.values_list("template_name").annotate(n=Count("id")))
+    page_use = dict(Campaign.objects.values_list("landing_page_name").annotate(n=Count("id")))
+    for d in drafts:
+        d.used_by = email_use.get(d.name, 0)
+    for d in landing_drafts:
+        d.used_by = page_use.get(d.name, 0)
     return render(request, "manage/content.html", {
         "active": "manage", "drafts": drafts, "engine_only": [t for t in engine_templates if t["name"] not in built],
         "landing_drafts": landing_drafts, "pages_engine_only": [p for p in pages if p["name"] not in built_pages],
         "profiles": profiles, "engine_error": error, "image_count": EmailImage.objects.count(),
     })
+
+
+def _reset_approvals(request, **content):
+    from apps.campaigns.services import reset_approvals_using
+
+    count = reset_approvals_using(actor=request.user, **content)
+    if count:
+        messages.warning(request, f"{count} campaign{'s' if count != 1 else ''} using this content went back to Draft "
+                                  "and need approval again, because what was approved has changed.")
 
 
 def _save_with_uploads(request, form):
@@ -360,6 +402,7 @@ def _editor_html(form) -> str:
 
 
 @manage_access("campaigns.change_campaign")
+@org_wide_content
 def template_edit(request, pk=None):
     """The email builder. Saving compiles the fields to email HTML and pushes it to the engine,
     then returns here so the preview beside the form shows exactly what was saved."""
@@ -380,6 +423,7 @@ def template_edit(request, pk=None):
                 log_action(actor=request.user, action="email_template_updated" if pk else "email_template_drafted",
                            target_description=saved.name)
                 messages.success(request, "Email saved.")
+                _reset_approvals(request, email_template=saved.name)
             return redirect("manage:template-edit", pk=saved.pk)
     else:
         form = EmailDraftForm(instance=draft)
@@ -438,6 +482,7 @@ def _send_email_test(request, draft):
 
 
 @manage_access("campaigns.change_campaign", methods=("POST",))
+@org_wide_content
 def image_upload_json(request):
     """Used by the email composer's image button: upload one picture, get back its id and address."""
     uploaded = request.FILES.get("file")
@@ -452,6 +497,7 @@ def image_upload_json(request):
 
 
 @manage_access("campaigns.change_campaign")
+@org_wide_content
 def landing_edit(request, pk=None):
     """The landing-page builder. Saving compiles the page and pushes it to the engine (passwords
     are never captured; the adapter forces that off), then returns here with the preview."""
@@ -473,6 +519,7 @@ def landing_edit(request, pk=None):
                 log_action(actor=request.user, action="landing_page_updated" if pk else "landing_page_drafted",
                            target_description=saved.name)
                 messages.success(request, "Landing page saved. Passwords are never captured.")
+                _reset_approvals(request, landing_page=saved.name)
             return redirect("manage:landing-edit", pk=saved.pk)
     else:
         form = LandingDraftForm(instance=draft)
@@ -508,6 +555,7 @@ def _cloned_landing_edit(request, draft):
             else:
                 log_action(actor=request.user, action="landing_page_updated", target_description=saved.name)
                 messages.success(request, "Saved.")
+                _reset_approvals(request, landing_page=saved.name)
             return redirect("manage:landing-edit", pk=saved.pk)
     else:
         form = ClonedLandingForm(instance=draft)
@@ -519,6 +567,7 @@ def _cloned_landing_edit(request, draft):
 
 
 @manage_access("campaigns.change_campaign")
+@org_wide_content
 def landing_clone(request):
     """Copy a public website's sign-in page into a landing-page draft. The engine fetches it (never
     this server — Django has no route to the internet), the HTML is rebuilt from an allow-list
@@ -554,6 +603,7 @@ def _clone_into(request, draft, url):
     for warning in warnings:
         messages.warning(request, warning)
     messages.success(request, "Page cloned. Check the preview before using it. Passwords are never captured.")
+    _reset_approvals(request, landing_page=draft.name)
     return draft
 
 
@@ -561,6 +611,7 @@ def _clone_into(request, draft, url):
 
 
 @manage_access("campaigns.change_campaign")
+@org_wide_content
 def images(request):
     if request.method == "POST":
         uploaded = request.FILES.getlist("files")
@@ -605,6 +656,7 @@ def _image_in_use(image) -> bool:
 
 
 @manage_access("campaigns.change_campaign", methods=("POST",))
+@org_wide_content
 def image_delete(request, pk):
     image = get_object_or_404(EmailImage, pk=pk)
     if _image_in_use(image):
@@ -619,18 +671,32 @@ def image_delete(request, pk):
 
 
 @manage_access("campaigns.change_campaign")
+@org_wide_content
 def page_new(request):
     if request.method == "POST":
         form = LandingPageForm(request.POST)
         if form.is_valid():
-            get_client().upsert_landing_page(
-                name=form.cleaned_data["name"], html=form.cleaned_data["html"],
-                capture_credentials=form.cleaned_data["capture_credentials"],
-                redirect_url=form.cleaned_data["redirect_url"],
-            )
-            log_action(actor=request.user, action="landing_page_drafted", target_description=form.cleaned_data["name"])
-            messages.success(request, "Landing page saved. Passwords are never captured.")
-            return redirect("manage:content")
+            from apps.campaigns.clone import CloneError, sanitize_cloned_html
+
+            # Pasted HTML gets the same allow-list as a cloned page: no script, every form posts back to the
+            # engine with a native password input, so capture_passwords=False can strip it (invariant #4).
+            # Without this a pasted <script> could read the password field and send it anywhere.
+            try:
+                html, warnings = sanitize_cloned_html(form.cleaned_data["html"], "")
+            except CloneError as exc:
+                form.add_error("html", str(exc))
+            else:
+                get_client().upsert_landing_page(
+                    name=form.cleaned_data["name"], html=html,
+                    capture_credentials=form.cleaned_data["capture_credentials"],
+                    redirect_url=form.cleaned_data["redirect_url"],
+                )
+                log_action(actor=request.user, action="landing_page_drafted", target_description=form.cleaned_data["name"])
+                for warning in warnings:
+                    messages.warning(request, warning)
+                messages.success(request, "Landing page saved. Passwords are never captured.")
+                _reset_approvals(request, landing_page=form.cleaned_data["name"])
+                return redirect("manage:content")
     else:
         form = LandingPageForm()
     return render(request, "manage/content_form.html", {"active": "manage", "form": form, "title": "New landing page"})
@@ -653,13 +719,25 @@ def page_preview(request, name):
 
 @manage_access("training.view_trainingmodule", methods=("GET",))
 def training(request):
-    modules = TrainingModule.objects.annotate(
+    q = request.GET.get("q", "").strip()
+    state = request.GET.get("state", "")
+    modules = TrainingModule.objects.select_related("quiz").annotate(
         slide_count=Count("slides", distinct=True),
+        question_total=Count("quiz__questions", distinct=True),
         assigned_total=Count("assignments", filter=Q(assignments__waived_at__isnull=True), distinct=True),
         completed_total=Count(
             "assignments", filter=Q(assignments__completed_at__isnull=False, assignments__waived_at__isnull=True), distinct=True),
     ).order_by("title")
-    return render(request, "manage/training.html", {"active": "manage", "page": _page(request, modules)})
+    if q:
+        modules = modules.filter(Q(title__icontains=q) | Q(description__icontains=q))
+    if state == "active":
+        modules = modules.filter(is_active=True)
+    elif state == "retired":
+        modules = modules.filter(is_active=False)
+    page = _page(request, modules)
+    for m in page:
+        m.readiness = module_readiness(m, m.slide_count, m.question_total)
+    return render(request, "manage/training.html", {"active": "manage", "page": page, "q": q, "state": state})
 
 
 @manage_access("training.change_trainingmodule")
@@ -686,6 +764,7 @@ def module_edit(request, pk=None):
         quiz_form = QuizForm(instance=quiz)
     return render(request, "manage/training_form.html", {
         "active": "manage", "form": form, "quiz_form": quiz_form, "module": module, "has_quiz": quiz is not None,
+        "readiness": module_readiness(module, module.slides.count(), quiz.questions.count() if quiz else 0) if module else None,
         "slides": module.slides.all() if module else [],
         "questions": quiz.questions.prefetch_related("choices") if quiz else [],
         "title": f"Edit “{module.title}”" if module else "New training module",
@@ -743,7 +822,7 @@ def employee_edit(request, pk=None):
     return _simple_edit(
         request, EmployeeForm, employee, form_kwargs={"user": request.user}, back="manage:employees",
         action=("employee_created", "employee_updated"),
-        title=lambda e: f"Edit {e}" if e else "New employee",
+        title=lambda e: f"Edit {e.full_name}" if e else "New employee",
     )
 
 
@@ -764,7 +843,7 @@ def department_edit(request, pk=None):
     return _simple_edit(
         request, DepartmentForm, department, back="manage:departments",
         action=("department_created", "department_updated"),
-        title=lambda d: f"Edit {d}" if d else "New department",
+        title=lambda d: f"Edit “{d.name}”" if d else "New department",
     )
 
 
@@ -798,15 +877,20 @@ def employee_import(request):
         if errors:
             messages.error(request, errors[0][1])
         else:
-            result = import_employees(rows, deactivate_missing=bool(request.POST.get("deactivate_missing")))
+            try:
+                result = import_employees(rows, deactivate_missing=bool(request.POST.get("deactivate_missing")),
+                                          actor=request.user)
+            except ImportRefused as exc:
+                messages.error(request, str(exc))
+                return render(request, "manage/employee_import.html", {"active": "manage", "result": None, "max_deactivate_percent": settings.IMPORT_MAX_DEACTIVATE_PERCENT})
             log_action(actor=request.user, action="employees_imported",
                        target_description=f"{result.created} created, {result.updated} updated, {result.deactivated} deactivated")
             if result.ok:
                 messages.success(request, f"Imported: {result.created} new, {result.updated} updated, "
                                           f"{result.deactivated} deactivated.")
             else:
-                messages.warning(request, f"Imported with {len(result.errors)} row error(s) — see below.")
-    return render(request, "manage/employee_import.html", {"active": "manage", "result": result})
+                messages.warning(request, f"Imported with {len(result.errors)} row error{'' if len(result.errors) == 1 else 's'} — see below.")
+    return render(request, "manage/employee_import.html", {"active": "manage", "result": result, "max_deactivate_percent": settings.IMPORT_MAX_DEACTIVATE_PERCENT})
 
 
 # --- quiz questions ---------------------------------------------------------------------
@@ -899,7 +983,7 @@ def policy_edit(request, pk=None):
         request, TrainingPolicyForm, policy, back="manage:policies",
         action=("training_policy_created", "training_policy_updated"),
         success="Saved. People in scope are enrolled by the next daily run.",
-        title=lambda p: f"Edit {p}" if p else "New training policy",
+        title=lambda p: f"Edit “{p.name}”" if p else "New training policy",
     )
 
 
@@ -916,7 +1000,7 @@ def schedule_edit(request, pk=None):
     schedule = get_object_or_404(ReportSchedule, pk=pk) if pk else None
     return _simple_edit(
         request, ReportScheduleForm, schedule, back="manage:schedules", action="report_schedule_saved",
-        stamp_creator=True, title=lambda s: f"Edit {s}" if s else "New scheduled report",
+        stamp_creator=True, title=lambda s: f"Edit “{s.name}”" if s else "New scheduled report",
     )
 
 
@@ -929,35 +1013,35 @@ def catalog(request):
         "active": "manage",
         "templates": CampaignTemplate.objects.all(),
         "smart_groups": SmartGroup.objects.select_related("department").all(),
-        "can_edit": request.user.has_perm("campaigns.change_campaigntemplate"),
+        "can_edit": request.user.has_perm("campaigns.change_campaigntemplate") and managed_departments(request.user) is None,
     })
 
 
 @manage_access("campaigns.change_campaigntemplate")
+@org_wide_content
 def catalog_template_edit(request, pk=None):
     obj = get_object_or_404(CampaignTemplate, pk=pk) if pk else None
     form_class = modelform_factory(CampaignTemplate, fields=[
         "name", "category", "difficulty", "template_name", "landing_page_name", "landing_page_url", "is_active"])
     return _simple_edit(
         request, form_class, obj, back="manage:catalog", action="campaign_template_saved", style=True,
-        title=lambda o: f"Edit {o}" if o else "New catalog template",
+        title=lambda o: f"Edit “{o.name}”" if o else "New catalog template",
     )
 
 
 @manage_access("campaigns.change_smartgroup")
+@org_wide_content
 def smart_group_edit(request, pk=None):
     obj = get_object_or_404(SmartGroup, pk=pk) if pk else None
     form_class = modelform_factory(SmartGroup, fields=["name", "rule", "department", "new_hire_days"])
     return _simple_edit(
         request, form_class, obj, back="manage:catalog", action="smart_group_saved", style=True,
-        title=lambda o: f"Edit {o}" if o else "New smart group",
+        title=lambda o: f"Edit “{o.name}”" if o else "New dynamic audience",
     )
 
 
 def _apply_field_classes(form):
-    for field in form.fields.values():
-        widget = field.widget
-        widget.attrs.setdefault("class", "select" if isinstance(widget, forms.Select) else "field")
+    _style(form)
 
 
 # --- deliverability preflight -----------------------------------------------------------
@@ -1000,7 +1084,7 @@ def slide_edit(request, pk, slide_pk=None):
         form = SlideForm(instance=slide)
     return render(request, "manage/simple_form.html", {
         "active": "manage", "form": form, "back": reverse("manage:module-edit", args=[module.pk]),
-        "title": f"Edit slide: {slide.title}" if slide else f"New slide for “{module.title}”",
+        "title": f"Edit slide “{slide.title}”" if slide else f"New slide for “{module.title}”",
     })
 
 

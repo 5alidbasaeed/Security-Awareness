@@ -2,7 +2,7 @@
 {% block title %}{{ verb }} · Manage{% endblock %}
 {% block content %}
 <header class="page-header"><div><h1>{{ verb }}</h1>
-<p class="page-header__sub">{{ assignment.employee.full_name }} · {{ assignment.module.title }}{% if assignment.due_at %} · due {{ assignment.due_at|date:"d M Y" }}{% endif %}</p></div></header>
+<p class="page-header__sub">{{ assignment.employee.full_name }} · {{ assignment.module.title }}{% if assignment.due_at %} · due {{ assignment.due_at|date:"M j, Y" }}{% endif %}</p></div></header>
 <div class="card"><div class="card__body">
   <p>{{ intro }}</p>
   <form class="form-stack" method="post" novalidate>

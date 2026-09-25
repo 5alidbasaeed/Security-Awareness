@@ -2,58 +2,79 @@
 {% load manage_extras %}
 {% block title %}Campaigns · Manage{% endblock %}
 {% block content %}
-{% include "manage/_subnav.html" with manage_section="campaigns" %}
 <header class="page-header">
-  <div><h1>Campaigns</h1><p class="page-header__sub">Draft, submit, approve and launch simulations.</p></div>
+  <div><h1>Campaigns</h1><p class="page-header__sub">Each simulation moves through four steps: draft, submitted for approval, approved, launched. The button on each row is its next step.</p></div>
   {% if perms.campaigns.add_campaign %}<a class="button" href="{% url 'manage:campaign-new' %}">New campaign</a>{% endif %}
 </header>
 
+<nav class="tabs" aria-label="Campaign status">
+  {% for value, label, count in status_tabs %}
+  <a class="tab" href="?{% if value %}status={{ value }}{% endif %}{% if q %}&amp;q={{ q|urlencode }}{% endif %}{% if department %}&amp;department={{ department }}{% endif %}"{% if value == status %} aria-current="page"{% endif %}>{{ label|lower|capfirst }} <span class="tab__count">{{ count }}</span></a>
+  {% endfor %}
+</nav>
+
 <form class="toolbar" method="get" action="{% url 'manage:campaigns' %}">
-  <label class="visually-hidden" for="status">Status</label>
-  <select class="select" id="status" name="status">
-    <option value="">All statuses</option>
-    {% for value, label in statuses %}<option value="{{ value }}"{% if value == status %} selected{% endif %}>{{ label }}</option>{% endfor %}
-  </select>
+  <input type="hidden" name="status" value="{{ status }}">
   <label class="visually-hidden" for="q">Search</label><input class="field" id="q" type="search" name="q" value="{{ q }}" placeholder="Search by name">
   <label class="visually-hidden" for="department">Department</label>
   <select class="select" id="department" name="department"><option value="">All departments</option>{% for d in departments %}<option value="{{ d.pk }}"{% if department == d.pk|stringformat:"s" %} selected{% endif %}>{{ d.name }}</option>{% endfor %}</select>
-  <button class="button" type="submit">Filter</button>
+  <button class="button button--secondary toolbar__submit" type="submit">Search</button>
   {% if status or q or department %}<a class="button button--quiet" href="{% url 'manage:campaigns' %}">Clear</a>{% endif %}
 </form>
 
 <div class="card">
   <div class="table-wrap"><table class="table">
-    <thead><tr><th>Campaign</th><th>Status</th><th>Audience</th><th>Schedule</th><th>Approval</th><th class="num">Actions</th></tr></thead>
+    <thead><tr><th scope="col">Campaign</th><th scope="col">Status</th><th scope="col">Audience</th><th scope="col" class="num">Next step</th></tr></thead>
     <tbody>
       {% for c in page %}
       <tr>
-        <td class="col-name">{{ c.name }}{% if c.training_module %}<span class="cell-meta">Training: {{ c.training_module }}</span>{% endif %}</td>
-        <td><span class="badge {{ c.status|status_badge }}">{{ c.get_status_display }}</span></td>
-        <td>{{ c.target_department|default:"—" }}{% if c.recipient_count is not None %}<span class="cell-meta">{{ c.recipient_count }} recipient{{ c.recipient_count|pluralize }} (exempt and inactive excluded)</span>{% endif %}</td>
-        <td>{{ c.scheduled_at|default:"—" }}</td>
-        <td>{% if c.submitted_by %}<span class="cell-meta">Submitted by {{ c.submitted_by.get_username }}</span>{% endif %}{% if c.approved_by %}<span class="cell-meta">Approved by {{ c.approved_by.get_username }}{% if c.approved_at %}, {{ c.approved_at|date:"d M" }}{% endif %}</span>{% elif not c.submitted_by %}—{% endif %}</td>
-        <td class="num actions">
-          {% if c.status == "launched" %}<a href="{% url 'dashboard:campaign-detail' c.pk %}">Results</a>{% endif %}
-          {% if c.status != "launched" and perms.campaigns.change_campaign %}<a href="{% url 'manage:campaign-edit' c.pk %}">Edit</a>{% endif %}
+        <td class="col-name">{{ c.name }}
+          <span class="cell-meta">{{ c.template_name }} → {{ c.landing_page_name }}</span>
+          {% if c.training_module %}<span class="cell-meta">Then training: {{ c.training_module }}</span>{% endif %}
+          {% if c.scheduled_at %}<span class="cell-meta">Sends {{ c.scheduled_at|date:"M j, Y H:i" }}</span>{% endif %}</td>
+        <td><span class="badge {{ c.status|status_badge }}">{{ c.get_status_display|lower|capfirst }}</span>
+          <span class="cell-meta">{% if c.status == "draft" %}Not sent. Submit it when it's ready.{% elif c.status == "pending_approval" %}Waiting for a Security Admin.{% elif c.status == "approved" %}Approved. Ready to launch.{% else %}Sent {{ c.launched_at|date:"M j, Y" }}{% endif %}</span>
+          {% if c.submitted_by %}<span class="cell-meta">Submitted by {{ c.submitted_by.get_username }}</span>{% endif %}{% if c.approved_by %}<span class="cell-meta">Approved by {{ c.approved_by.get_username }}{% if c.approved_at %}, {{ c.approved_at|date:"M j" }}{% endif %}</span>{% endif %}</td>
+        <td>{% if c.target_smart_group_id and not c.target_department_id %}{{ c.target_smart_group.name|default:"Dynamic audience" }}{% else %}{% if c.target_department %}{{ c.target_department }}{% else %}<span class="muted nowrap">No audience yet</span>{% endif %}{% endif %}
+          {% if c.recipient_count is not None %}<span class="cell-meta">{{ c.recipient_count }} recipient{{ c.recipient_count|pluralize }}</span>{% endif %}</td>
+        <td class="num actions actions--steps">
+          <span class="actions__main">
           {% if c.status == "draft" and perms.campaigns.change_campaign %}
-            <form class="inline-form" method="post" action="{% url 'manage:campaign-submit' c.pk %}">{% csrf_token %}<button class="button button--quiet" type="submit">Submit</button></form>
+            <form class="inline-form" method="post" action="{% url 'manage:campaign-submit' c.pk %}">{% csrf_token %}<button class="button button--secondary" type="submit">Submit for approval</button></form>
+          {% elif c.status == "pending_approval" and can_approve and c.approval_blocked %}
+            <span class="cell-meta">You submitted this, so another approver must approve it.</span>
+          {% elif c.status == "pending_approval" and can_approve %}
+            <a class="button" href="{% url 'manage:campaign-review' c.pk %}">Review and approve</a>
+          {% elif c.status == "approved" and perms.campaigns.change_campaign %}
+            <form class="inline-form" method="post" hx-boost="true" hx-confirm="Launch “{{ c.name }}”? Simulated phishing emails will be sent to {% if c.recipient_count is not None %}{{ c.recipient_count }} people{% else %}the whole audience{% endif %} now." action="{% url 'manage:campaign-launch' c.pk %}">{% csrf_token %}<button class="button" type="submit">Launch now</button></form>
+          {% elif c.status == "launched" %}
+            <a class="button button--secondary" href="{% url 'dashboard:campaign-detail' c.pk %}">View results</a>
+          {% elif c.status == "pending_approval" %}<span class="cell-meta">Awaiting approval</span>{% endif %}
+          </span>
+          <span class="actions__more">
+          {% if c.status == "launched" %}
+          {% if perms.campaigns.add_campaign %}<form class="inline-form" method="post" action="{% url 'manage:campaign-duplicate' c.pk %}">{% csrf_token %}<button class="button button--quiet" type="submit">Duplicate</button></form>{% endif %}
+          {% else %}
+          <details class="more">
+            <summary class="button button--quiet">More</summary>
+            <div class="more__menu">
+              {% if c.status != "launched" and perms.campaigns.change_campaign %}<a href="{% url 'manage:campaign-edit' c.pk %}">Edit{% if c.status != "draft" %} (returns to draft){% endif %}</a>{% endif %}
+              {% if c.status == "pending_approval" and can_approve %}
+              <form class="more__reason" method="post" action="{% url 'manage:campaign-reject' c.pk %}">{% csrf_token %}
+                <label for="reason{{ c.pk }}">Send back to draft</label>
+                <input class="field" id="reason{{ c.pk }}" name="reason" placeholder="Reason (required)" required maxlength="300">
+                <button class="button button--quiet" type="submit">Send back</button>
+              </form>
+              {% endif %}
+              {% if perms.campaigns.add_campaign %}<form method="post" action="{% url 'manage:campaign-duplicate' c.pk %}">{% csrf_token %}<button type="submit">Duplicate</button></form>{% endif %}
+              {% if c.status != "launched" and perms.campaigns.delete_campaign %}<form method="post" hx-boost="true" hx-confirm="Delete “{{ c.name }}”? This can't be undone." action="{% url 'manage:campaign-delete' c.pk %}">{% csrf_token %}<button class="more__danger" type="submit">Delete</button></form>{% endif %}
+            </div>
+          </details>
           {% endif %}
-          {% if c.status == "pending_approval" and can_approve %}
-            <form class="inline-form" method="post" action="{% url 'manage:campaign-approve' c.pk %}">{% csrf_token %}<button class="button button--quiet" type="submit">Approve</button></form>
-            <form class="inline-form" method="post" action="{% url 'manage:campaign-reject' c.pk %}">{% csrf_token %}<label class="visually-hidden" for="reason{{ c.pk }}">Reason</label><input class="field" id="reason{{ c.pk }}" name="reason" placeholder="Reason for sending back" required maxlength="300"><button class="button button--quiet" type="submit">Reject</button></form>
-          {% endif %}
-          {% if perms.campaigns.add_campaign %}
-            <form class="inline-form" method="post" action="{% url 'manage:campaign-duplicate' c.pk %}">{% csrf_token %}<button class="button button--quiet" type="submit">Duplicate</button></form>
-          {% endif %}
-          {% if c.status != "launched" and perms.campaigns.delete_campaign %}
-            <form class="inline-form" method="post" hx-boost="true" hx-confirm="Delete “{{ c.name }}”? This can't be undone." action="{% url 'manage:campaign-delete' c.pk %}">{% csrf_token %}<button class="button button--quiet" type="submit">Delete</button></form>
-          {% endif %}
-          {% if c.status == "approved" and perms.campaigns.change_campaign %}
-            <form class="inline-form" method="post" hx-boost="true" hx-confirm="Launch “{{ c.name }}”? Simulated phishing emails will be sent to the whole audience now." action="{% url 'manage:campaign-launch' c.pk %}">{% csrf_token %}<button class="button" type="submit">Launch</button></form>
-          {% endif %}
+          </span>
         </td>
       </tr>
-      {% empty %}<tr><td colspan="6"><div class="empty"><strong>{% if status or q or department %}No campaigns match{% else %}No campaigns yet{% endif %}</strong>{% if status or q or department %}Clear the filters to see everything.{% else %}Create one to get started.{% endif %}</div></td></tr>
+      {% empty %}<tr><td colspan="4"><div class="empty"><strong>{% if status or q or department %}No campaigns match{% else %}No campaigns yet{% endif %}</strong>{% if status or q or department %}Clear the filters to see everything.{% else %}Choose an email, a landing page and who gets it, and you have a draft.{% endif %}</div></td></tr>
       {% endfor %}
     </tbody>
   </table></div>

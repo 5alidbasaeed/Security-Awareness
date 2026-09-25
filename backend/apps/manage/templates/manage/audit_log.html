@@ -7,7 +7,7 @@
 {% if can_export %}
 <form class="header-actions" method="post" action="{% url 'manage:audit-log-export' %}">{% csrf_token %}
   {% for k, v in f.items %}{% if v %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endif %}{% endfor %}
-  <button class="button button--quiet" type="submit">Export these as CSV</button>
+  <button class="button button--secondary" type="submit">Export these as CSV</button>
 </form>
 {% endif %}</header>
 <form class="toolbar" method="get">
@@ -16,17 +16,17 @@
   <select class="select" id="action" name="action"><option value="">All actions</option>{% for a in actions %}<option value="{{ a }}"{% if f.action == a %} selected{% endif %}>{{ a|action_label }}</option>{% endfor %}</select>
   <label class="visually-hidden" for="actor">Person</label>
   <select class="select" id="actor" name="actor"><option value="">Anyone</option><option value="system"{% if f.actor == "system" %} selected{% endif %}>System (automatic)</option>{% for a in actors %}<option value="{{ a }}"{% if f.actor == a %} selected{% endif %}>{{ a }}</option>{% endfor %}</select>
-  <label class="visually-hidden" for="from">From</label><input class="field" id="from" type="date" name="from" value="{{ f.from }}">
-  <label class="visually-hidden" for="to">To</label><input class="field" id="to" type="date" name="to" value="{{ f.to }}">
-  <button class="button" type="submit">Filter</button>
+  <span class="toolbar__group"><label class="toolbar__label" for="from">From</label><input class="field" id="from" type="date" name="from" value="{{ f.from }}">
+  <label class="toolbar__label" for="to">to</label><input class="field" id="to" type="date" name="to" value="{{ f.to }}"></span>
+  <button class="button button--secondary toolbar__submit" type="submit">Filter</button>
   {% if query %}<a class="button button--quiet" href="{% url 'manage:audit-log' %}">Clear</a>{% endif %}
 </form>
 <div class="card"><div class="table-wrap"><table class="table">
-  <thead><tr><th>When</th><th>Who</th><th>Action</th><th>What</th></tr></thead>
+  <thead><tr><th scope="col">When</th><th scope="col">Who</th><th scope="col">Action</th><th scope="col">What</th></tr></thead>
   <tbody>
     {% for e in page %}
-    <tr><td class="nowrap">{{ e.occurred_at|date:"d M Y H:i" }}</td>
-      <td>{% if e.actor %}{{ e.actor.get_username }}{% else %}<span class="cell-meta">System</span>{% endif %}</td>
+    <tr><td class="nowrap">{{ e.occurred_at|date:"M j, Y H:i" }}</td>
+      <td>{% if e.actor %}{{ e.actor.get_username }}{% else %}<span class="muted">System</span>{% endif %}</td>
       <td>{{ e.action|action_label }}</td>
       <td>{{ e.target_description }}{% with d=e.metadata|audit_details %}{% if d %}<span class="cell-meta">{{ d }}</span>{% endif %}{% endwith %}</td></tr>
     {% empty %}<tr><td colspan="4"><div class="empty"><strong>No entries match</strong>Try a wider date range or clear the filters.</div></td></tr>{% endfor %}

@@ -52,7 +52,7 @@
     <div class="card__body card--flush">
       {% if page.object_list %}
       <div class="table-wrap">
-        <table class="table">
+        <table class="table table--dense">
           <caption class="visually-hidden">Generated reports</caption>
           <thead>
             <tr><th scope="col">Report</th><th scope="col">Period</th><th scope="col">Generated</th><th scope="col" class="num">Size</th><th scope="col">SHA-256</th><th scope="col"><span class="visually-hidden">Download</span></th></tr>
@@ -60,11 +60,11 @@
           <tbody>
             {% for r in page.object_list %}
             <tr>
-              <td>{{ r.filename }}<span class="cell-meta">{{ r.get_kind_display }} · {{ r.scope_label }}</span></td>
-              <td>{{ r.period_start|date:"M j, Y" }} – {{ r.period_end|date:"M j, Y" }}</td>
-              <td>{{ r.generated_at|date:"M j, Y, H:i" }}<span class="cell-meta">{% if r.generated_by %}{{ r.generated_by.get_username }}{% else %}Scheduled{% endif %}</span></td>
+              <td><span class="nowrap">{{ r.filename }}</span><span class="cell-meta">{{ r.get_kind_display }} · {{ r.scope_label }}</span></td>
+              <td><span class="nowrap">{{ r.period_start|date:"M j, Y" }} –</span> <span class="nowrap">{{ r.period_end|date:"M j, Y" }}</span></td>
+              <td class="nowrap">{{ r.generated_at|date:"M j, Y H:i" }}<span class="cell-meta">{% if r.generated_by %}{{ r.generated_by.get_username }}{% else %}Scheduled{% endif %}</span></td>
               <td class="num">{{ r.size_bytes|filesizeformat }}</td>
-              <td><code class="hash" title="{{ r.sha256 }}">{{ r.sha256|slice:":12" }}…</code></td>
+              <td><code class="hash hash--short" title="{{ r.sha256 }}" aria-label="SHA-256 {{ r.sha256 }}">{{ r.sha256 }}</code></td>
               <td><a href="{% url 'reporting:download' r.pk %}">Download</a></td>
             </tr>
             {% endfor %}

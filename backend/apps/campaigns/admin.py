@@ -11,7 +11,7 @@ from apps.core.audit import log_action
 from apps.engine.factory import get_client
 
 from .models import Campaign, CampaignTemplate, SmartGroup
-from .services import CampaignLaunchError, launch_campaign
+from .services import CampaignLaunchError, approval_blocked_reason, launch_campaign
 
 
 @admin.register(Campaign)
@@ -131,6 +131,10 @@ class CampaignAdmin(DepartmentScopedAdminMixin, AuditedAdminMixin, admin.ModelAd
         for campaign in queryset:
             if campaign.status != Campaign.Status.PENDING_APPROVAL:
                 self.message_user(request, f"{campaign} is not pending approval — skipped.", level=messages.WARNING)
+                continue
+            blocked = approval_blocked_reason(campaign, request.user)
+            if blocked:
+                self.message_user(request, f"{campaign}: {blocked}", level=messages.ERROR)
                 continue
             campaign.status = Campaign.Status.APPROVED
             campaign.approved_by = request.user

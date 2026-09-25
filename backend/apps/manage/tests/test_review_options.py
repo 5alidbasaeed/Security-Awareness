@@ -101,7 +101,7 @@ def test_a_department_head_can_be_set_and_is_shown(client, django_user_model):
     assert response.status_code == 302
     dept.refresh_from_db()
     assert dept.manager == head
-    assert "head: Hana Head" in client.get(reverse("manage:departments")).content.decode()
+    assert "Head: Hana Head" in client.get(reverse("manage:departments")).content.decode()
 
 
 # --- training -----------------------------------------------------------------------------

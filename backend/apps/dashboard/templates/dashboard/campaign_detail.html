@@ -44,7 +44,7 @@
         <li class="funnel__row">
           <span>{{ step.label }}</span>
           <progress max="{{ step.max }}" value="{{ step.value }}"{% if step.label == "Submitted data" or step.label == "Clicked the link" %} class="progress--high"{% elif step.label == "Reported the email" %} class="progress--low"{% endif %} aria-label="{{ step.label }}: {{ step.value }} of {{ step.max }}"></progress>
-          <span class="funnel__value">{{ step.value }}<small>{{ step.percent|percent }}</small></span>
+          <span class="funnel__value">{{ step.percent|percent }}<small>({{ step.value }})</small></span>
         </li>
         {% endfor %}
       </ol>
@@ -134,7 +134,7 @@
             <tr>
               <td><a href="{% url 'dashboard:employee-detail' f.employee.pk %}">{{ f.employee.full_name }}</a><span class="cell-meta">{{ f.employee.department|default:"No department" }}</span></td>
               <td><span class="badge {% if f.outcome == "Submitted data" %}badge--high{% else %}badge--medium{% endif %}">{{ f.outcome }}</span></td>
-              <td>{{ f.at|date:"M j, Y, H:i" }}</td>
+              <td>{{ f.at|date:"M j, Y H:i" }}</td>
             </tr>
             {% endfor %}
           </tbody>

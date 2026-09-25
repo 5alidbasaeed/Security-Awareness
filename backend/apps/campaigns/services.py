@@ -24,6 +24,47 @@ class CampaignLaunchError(Exception):
     """Raised for any reason a launch can't proceed — caller decides how to surface it."""
 
 
+def approval_blocked_reason(campaign: Campaign, user) -> str | None:
+    """
+    Segregation of duties (ISO 27001 A.5.3): with REQUIRE_SEPARATE_APPROVER on (the default), the
+    person who submitted a campaign can't also approve it. Both approval paths (the console and the
+    Django admin) ask this one function. Turning the setting off is the documented break-glass for a
+    single-admin deployment, and is shown on the governance page.
+    """
+    if getattr(settings, "REQUIRE_SEPARATE_APPROVER", True) and campaign.submitted_by_id == user.pk:
+        return "You submitted this campaign, so someone else has to approve it (separation of duties)."
+    return None
+
+
+def reset_approvals_using(*, actor, email_template: str | None = None, landing_page: str | None = None, via: str = "manage") -> int:
+    """
+    An approval covers the content that was reviewed. Email templates and landing pages are shared by
+    name, so changing one after a campaign using it was submitted or approved would send something the
+    approver never saw. Every content save calls this: those campaigns go back to Draft (audited).
+    Launched campaigns are history and are left alone. Returns how many were reset.
+    """
+    from django.db.models import Q
+
+    match = Q()
+    if email_template:
+        match |= Q(template_name=email_template)
+    if landing_page:
+        match |= Q(landing_page_name=landing_page)
+    if not match:
+        return 0
+    affected = list(Campaign.objects.filter(match, status__in=[Campaign.Status.PENDING_APPROVAL, Campaign.Status.APPROVED]))
+    for campaign in affected:
+        previous = campaign.status
+        campaign.status = Campaign.Status.DRAFT
+        campaign.submitted_by = campaign.submitted_at = None
+        campaign.approved_by = campaign.approved_at = None
+        campaign.save(update_fields=["status", "submitted_by", "submitted_at", "approved_by", "approved_at"])
+        log_action(actor=actor, action="campaign_approval_reset", target_description=str(campaign),
+                   reason="content changed after " + previous, email_template=email_template or "",
+                   landing_page=landing_page or "", via=via)
+    return len(affected)
+
+
 def create_draft_campaign(*, actor, name, template_name, landing_page_name, landing_page_url,
                           target_department=None, training_module=None, scheduled_at=None) -> Campaign:
     """

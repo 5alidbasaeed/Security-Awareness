@@ -1,14 +1,13 @@
 {% extends "manage/base.html" %}
 {% block title %}Departments · Manage{% endblock %}
 {% block content %}
-{% include "manage/_subnav.html" with manage_section="departments" %}
 <header class="page-header"><div><h1>Departments</h1></div>
 {% if perms.employees.add_department %}<a class="button" href="{% url 'manage:department-new' %}">New department</a>{% endif %}</header>
 <div class="card"><ul class="list">
   {% for d in departments %}
-  <li class="list__item"><span>{{ d.name }} <span class="cell-meta">{{ d.employee_total }} employee{{ d.employee_total|pluralize }}{% if d.exempt_total %} · {{ d.exempt_total }} exempt{% endif %} · head: {{ d.manager.full_name|default:"not set" }}</span></span>
-    <span class="actions">{% if can_edit %}<a href="{% url 'manage:department-edit' d.pk %}">Edit</a>{% endif %}
-      {% if perms.employees.delete_department and not d.employee_total %}<form class="inline-form" method="post" hx-boost="true" hx-confirm="Delete department “{{ d.name }}”?" action="{% url 'manage:department-delete' d.pk %}">{% csrf_token %}<button class="button button--quiet" type="submit">Delete</button></form>{% endif %}</span></li>
+  <li class="list__item"><span>{{ d.name }} <span class="cell-meta">{{ d.employee_total }} employee{{ d.employee_total|pluralize }}{% if d.exempt_total %} · {{ d.exempt_total }} exempt{% endif %} · Head: {{ d.manager.full_name|default:"not set" }}</span></span>
+    <span class="row-actions row-actions--2">{% if can_edit %}<a href="{% url 'manage:department-edit' d.pk %}">Edit</a>{% else %}<span></span>{% endif %}
+      {% if perms.employees.delete_department and not d.employee_total %}<form class="inline-form" method="post" hx-boost="true" hx-confirm="Delete department “{{ d.name }}”?" action="{% url 'manage:department-delete' d.pk %}">{% csrf_token %}<button class="button button--danger" type="submit">Delete</button></form>{% endif %}</span></li>
   {% empty %}<li class="list__item"><span class="cell-meta">No departments.</span></li>{% endfor %}
 </ul></div>
 {% endblock %}

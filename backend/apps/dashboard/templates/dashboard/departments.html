@@ -13,7 +13,7 @@
 <div class="card">
   {% if rows %}
   <div class="table-wrap">
-    <table class="table">
+    <table class="table table--dense">
       <caption class="visually-hidden">Departments with risk, simulation results and training compliance for {{ period.label }}</caption>
       <thead>
         <tr>
@@ -22,12 +22,10 @@
           <th scope="col" class="num">Trend</th>
           <th scope="col" class="num">High risk</th>
           <th scope="col" class="num" aria-sort="{% sort_state 'failure' %}"><a href="{% sort_link 'failure' %}">Failure rate</a></th>
-          <th scope="col" class="num">Vs organisation</th>
           <th scope="col" class="num" aria-sort="{% sort_state 'report' %}"><a href="{% sort_link 'report' %}">Report rate</a></th>
           <th scope="col" class="num" aria-sort="{% sort_state 'coverage' %}"><a href="{% sort_link 'coverage' %}">Coverage</a></th>
           <th scope="col" class="num">Repeat failures</th>
-          <th scope="col" class="num" aria-sort="{% sort_state 'training' %}"><a href="{% sort_link 'training' %}">Training complete</a></th>
-          <th scope="col" class="num">Overdue</th>
+          <th scope="col" class="num" aria-sort="{% sort_state 'training' %}"><a href="{% sort_link 'training' %}">Training done</a></th>
         </tr>
       </thead>
       <tbody>
@@ -35,15 +33,13 @@
         <tr>
           <td><a href="{% url 'dashboard:department-detail' d.department_id %}">{{ d.name }}</a><span class="cell-meta">{{ d.employees_scored }} of {{ d.employees }} scored</span></td>
           <td>{% include "dashboard/_risk_badge.html" with value=d.average_score %}</td>
-          <td class="num">{% if d.delta is None %}—{% else %}<span class="trend--{{ d.delta_direction }}">{% if d.delta < 0 %}▼{% elif d.delta > 0 %}▲{% else %}▬{% endif %} {{ d.delta|signed }}</span><span class="cell-meta">{{ d.delta_direction|trend_label }}</span>{% endif %}</td>
+          <td class="num">{% if d.delta is None %}—{% else %}<span class="trend--{{ d.delta_direction }}">{% with arrow=d.delta_direction|trend_arrow %}{% if arrow %}<span aria-hidden="true">{{ arrow }}</span> {% endif %}{% endwith %}{{ d.delta|signed }}</span><span class="cell-meta">{{ d.delta_direction|trend_label }}</span>{% endif %}</td>
           <td class="num">{{ d.high_risk_employees }}</td>
-          <td class="num">{{ d.metrics.failure_rate|percent }}<span class="cell-meta">{{ d.metrics.failed }} of {{ d.metrics.tested }}</span></td>
-          <td class="num">{% if d.failure_vs_org is None %}—{% else %}<span class="{% if d.failure_vs_org > 0 %}overdue{% endif %}">{{ d.failure_vs_org|points }}</span>{% endif %}</td>
+          <td class="num">{{ d.metrics.failure_rate|percent }}<span class="cell-meta">{{ d.metrics.failed }} of {{ d.metrics.tested }}{% if d.failure_vs_org is not None %} · <span class="{% if d.failure_vs_org > 0 %}overdue{% elif d.failure_vs_org < 0 %}trend--improving{% endif %}">{{ d.failure_vs_org|points }} vs org</span>{% endif %}</span></td>
           <td class="num">{{ d.metrics.report_rate|percent }}</td>
           <td class="num">{{ d.metrics.coverage_percent|percent }}<span class="cell-meta">{{ d.metrics.covered }} of {{ d.metrics.eligible }}</span></td>
           <td class="num">{{ d.metrics.repeat_offenders }}</td>
-          <td class="num">{{ d.training.completion_rate_percent|percent }}</td>
-          <td class="num">{% if d.training.overdue %}<span class="overdue">{{ d.training.overdue }}</span>{% else %}0{% endif %}</td>
+          <td class="num">{{ d.training.completion_rate_percent|percent }}{% if d.training.overdue %}<span class="cell-meta overdue">{{ d.training.overdue }} overdue</span>{% endif %}</td>
         </tr>
         {% endfor %}
       </tbody>
@@ -53,11 +49,10 @@
           <th scope="row">Organisation</th>
           <td></td><td></td><td></td>
           <td class="num">{{ org.failure_rate|percent }}<span class="cell-meta">{{ org.failed }} of {{ org.tested }}</span></td>
-          <td></td>
           <td class="num">{{ org.report_rate|percent }}</td>
           <td class="num">{{ org.coverage_percent|percent }}<span class="cell-meta">{{ org.covered }} of {{ org.eligible }}</span></td>
           <td class="num">{{ org.repeat_offenders }}</td>
-          <td></td><td></td>
+          <td></td>
         </tr>
       </tfoot>
       {% endif %}

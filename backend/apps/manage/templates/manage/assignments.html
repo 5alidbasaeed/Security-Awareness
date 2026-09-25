@@ -18,19 +18,19 @@
   </select>
   <label class="visually-hidden" for="module">Module</label>
   <select class="select" id="module" name="module"><option value="">All modules</option>{% for m in modules %}<option value="{{ m.pk }}"{% if module == m.pk|stringformat:"s" %} selected{% endif %}>{{ m.title }}</option>{% endfor %}</select>
-  <button class="button" type="submit">Filter</button>
+  <button class="button button--secondary toolbar__submit" type="submit">Filter</button>
 </form>
 <div class="card"><div class="table-wrap"><table class="table">
   <thead><tr><th>Person</th><th>Module</th><th>Due</th><th>Status</th>{% if can_change %}<th class="num">Actions</th>{% endif %}</tr></thead>
   <tbody>
     {% for a in page %}
-    <tr><td>{{ a.employee.full_name }}<span class="cell-meta">{{ a.employee.department|default:"No department" }}</span></td>
+    <tr><td>{% if perms.risk_scoring.view_riskscoresnapshot %}<a href="{% url 'dashboard:employee-detail' a.employee.pk %}">{{ a.employee.full_name }}</a>{% else %}{{ a.employee.full_name }}{% endif %}<span class="cell-meta">{{ a.employee.department|default:"No department" }}</span></td>
       <td>{{ a.module.title }}</td>
-      <td>{{ a.due_at|date:"d M Y"|default:"—" }}{% with n=a.extensions.all|length %}{% if n %}<span class="cell-meta">Extended {{ n }} time{{ n|pluralize }}</span>{% endif %}{% endwith %}</td>
+      <td>{{ a.due_at|date:"M j, Y"|default:"—" }}{% with n=a.extensions.all|length %}{% if n %}<span class="cell-meta">Extended {{ n }} time{{ n|pluralize }}</span>{% endif %}{% endwith %}</td>
       <td>{% if a.waived_at %}<span class="badge">Waived</span><span class="cell-meta">{{ a.waiver_reason }}</span>
-        {% elif a.completed_at %}<span class="badge badge--low">Completed {{ a.completed_at|date:"d M" }}</span>
+        {% elif a.completed_at %}<span class="badge badge--low">Completed {{ a.completed_at|date:"M j" }}</span>
         {% elif a.due_at and a.due_at < now %}<span class="badge badge--high">Overdue</span>
-        {% elif a.started_at %}<span class="badge badge--accent">In progress</span>{% else %}<span class="badge">To do</span>{% endif %}</td>
+        {% elif a.started_at %}<span class="badge badge--accent">In progress</span>{% else %}<span class="badge">Not started</span>{% endif %}</td>
       {% if can_change %}<td class="num actions">{% if not a.completed_at and not a.waived_at %}<a href="{% url 'manage:assignment-extend' a.pk %}">Extend</a><a href="{% url 'manage:assignment-waive' a.pk %}">Waive</a>{% endif %}</td>{% endif %}</tr>
     {% empty %}<tr><td colspan="5"><div class="empty"><strong>Nothing matches</strong>Try another status, or clear the search.</div></td></tr>{% endfor %}
   </tbody>

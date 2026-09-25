@@ -92,18 +92,19 @@
     </div>
   </section>
 
-  {% if improvement.delta is not None %}<p class="flash{% if improvement.delta > 0 %} flash--warning{% endif %}" role="status">Compared with about 6 months ago, average risk went from {{ improvement.baseline }} to {{ improvement.current }} — {% if improvement.delta < 0 %}an improvement{% elif improvement.delta > 0 %}higher, which is worse{% else %}unchanged{% endif %}. Lower is better.</p>{% endif %}
+  {% if improvement.delta is not None %}<p class="flash{% if improvement.delta > 0 %} flash--warning{% endif %}" role="status">Since the week ending {{ improvement.since|date:"M j, Y" }}, average risk went from {{ improvement.baseline|score_fmt }} to {{ improvement.current|score_fmt }} — {% if improvement.delta < 0 %}an improvement{% elif improvement.delta > 0 %}higher, which is worse{% else %}unchanged{% endif %}. Lower is better.{% if improvement.baseline_scored != improvement.current_scored %} <span class="muted">{{ improvement.baseline_scored }} {{ improvement.baseline_scored|pluralize:"person was,people were" }} scored then, {{ improvement.current_scored }} now.</span>{% endif %}</p>{% endif %}
 
   <div class="grid-2">
     <section class="card" aria-labelledby="dist-heading">
       <div class="card__header"><h2 id="dist-heading">Risk distribution</h2><span class="card__note">{{ distribution.total }} employee{{ distribution.total|pluralize }}</span></div>
       <div class="card__body">
+        {% if distribution.suppressed %}<p class="muted">Hidden: fewer people than the minimum reporting cohort.</p>{% else %}
         <ul class="funnel">
           {% include "dashboard/_dist_row.html" with label="High risk" value=distribution.high total=distribution.total cls="progress--high" %}
           {% include "dashboard/_dist_row.html" with label="Medium risk" value=distribution.medium total=distribution.total cls="progress--medium" %}
           {% include "dashboard/_dist_row.html" with label="Low risk" value=distribution.low total=distribution.total cls="progress--low" %}
-          {% include "dashboard/_dist_row.html" with label="Not scored yet" value=distribution.unscored total=distribution.total cls="" %}
-        </ul>
+          {% include "dashboard/_dist_row.html" with label="Not scored yet" value=distribution.unscored total=distribution.total cls="progress--none" %}
+        </ul>{% endif %}
       </div>
     </section>
 
@@ -131,7 +132,7 @@
       <div class="card__body card--flush">
         {% if departments %}
         <div class="table-wrap">
-          <table class="table">
+          <table class="table table--dense">
             <thead><tr><th scope="col">Department</th><th scope="col">Average risk</th><th scope="col" class="num">High risk</th></tr></thead>
             <tbody>
               {% for d in departments %}

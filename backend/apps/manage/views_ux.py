@@ -5,7 +5,7 @@ real permissions, row scoping through core.scoping, an audit entry for every cha
 """
 
 from django.contrib import messages
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
@@ -17,31 +17,46 @@ from apps.employees.models import Employee
 from apps.engine.factory import get_client
 from apps.training.models import Quiz, QuizChoice, QuizQuestion, TrainingModule, TrainingSlide
 
-from .access import manage_access
+from .access import manage_access, org_wide_content
 
 NAME_MAX = 200
 
 
 def module_readiness(module, slide_count, question_count):
     """(label, level, detail) for a training module: can an employee actually take it?"""
-    has_course = bool(slide_count) or bool(module.content_url)
-    if not has_course:
-        return ("No content", "high", "It has no slides and no link, so an employee would open an empty page.")
     if not module.is_active:
         return ("Retired", "", "Not offered to anyone new.")
+    if not (slide_count or module.content_url):
+        return ("No content", "high", "It has no slides and no link, so an employee would open an empty page.")
     if hasattr(module, "quiz") and not question_count:
         return ("Quiz is empty", "medium", "A quiz with no questions is skipped: people only confirm completion.")
     return ("Ready", "low", "")
 
 
 def _unique_name(model, base, field="name"):
-    """'Copy of X', then 'Copy of X (2)', ... within the field's length limit and unique."""
-    stem = f"Copy of {base}"[: NAME_MAX - 6]
-    candidate, n = stem, 1
+    """'Copy of X', then 'Copy of X (2)', ... unique, and always within the field's length limit
+    (the stem is shortened to make room for the suffix, however many digits it has)."""
+    stem = f"Copy of {base}"
+    candidate, n = stem[:NAME_MAX], 1
     while model.objects.filter(**{field: candidate}).exists():
         n += 1
-        candidate = f"{stem} ({n})"
+        suffix = f" ({n})"
+        candidate = stem[: NAME_MAX - len(suffix)] + suffix
     return candidate
+
+
+def _save_copy(copy, model, source_name):
+    """Save a duplicated draft under a fresh unique name. Two people duplicating the same item at once
+    can pick the same name; the unique constraint catches it and the loser simply tries the next one."""
+    for _ in range(5):
+        copy.name = _unique_name(model, source_name)
+        try:
+            with transaction.atomic():
+                copy.save()
+            return copy
+        except IntegrityError:
+            continue
+    raise IntegrityError(f"Could not find a free name for a copy of {source_name}")
 
 
 # --- campaign form: live summary --------------------------------------------------------
@@ -63,8 +78,7 @@ def _audience_summary(user, value):
         group = SmartGroup.objects.filter(pk=int(ident)).select_related("department").first()
         if group is None:
             return None
-        pool = Employee.objects.filter(department=group.department) if group.department_id else Employee.objects.all()
-        label, eligible = group.name, resolve_smart_group(group).count()
+        return {"label": group.name, "recipients": resolve_smart_group(group).count(), "inactive": None, "exempt": None}
     else:
         return None
     inactive = pool.filter(is_active=False).count()
@@ -87,7 +101,7 @@ def campaign_summary(request):
     page = LandingDraft.objects.filter(name=page_name).first() if page_name else None
     audience = _audience_summary(request.user, request.GET.get("audience", ""))
     module_id = request.GET.get("training_module", "")
-    module = TrainingModule.objects.filter(pk=int(module_id), is_active=True).first() if module_id.isdigit() else None
+    module = TrainingModule.objects.filter(pk=int(module_id)).first() if module_id.isdigit() else None
 
     problems = []
     if not email_name:
@@ -117,12 +131,12 @@ def campaign_summary(request):
 
 
 @manage_access("campaigns.change_campaign", methods=("POST",))
+@org_wide_content
 def email_duplicate(request, pk):
     source = get_object_or_404(EmailDraft, pk=pk)
     copy = EmailDraft.objects.get(pk=source.pk)
     copy.pk, copy.id = None, None
-    copy.name = _unique_name(EmailDraft, source.name)
-    copy.save()
+    _save_copy(copy, EmailDraft, source.name)
     try:
         get_client().upsert_email_template(name=copy.name, subject=copy.subject, html=copy.render_html(), text=copy.render_text())
     except Exception as exc:  # noqa: BLE001 — keep the copy; only the engine push failed
@@ -134,12 +148,12 @@ def email_duplicate(request, pk):
 
 
 @manage_access("campaigns.change_campaign", methods=("POST",))
+@org_wide_content
 def landing_duplicate(request, pk):
     source = get_object_or_404(LandingDraft, pk=pk)
     copy = LandingDraft.objects.get(pk=source.pk)
     copy.pk, copy.id = None, None
-    copy.name = _unique_name(LandingDraft, source.name)
-    copy.save()
+    _save_copy(copy, LandingDraft, source.name)
     html = copy.custom_html if copy.layout == LandingDraft.Layout.CLONED else copy.render_html()
     try:
         get_client().upsert_landing_page(name=copy.name, html=html, capture_credentials=True, redirect_url=copy.engine_redirect_url())
@@ -181,6 +195,9 @@ def module_toggle(request, pk):
     module.save(update_fields=["is_active"])
     log_action(actor=request.user, action="training_module_activated" if module.is_active else "training_module_retired",
                target_description=module.title)
-    state = "active again" if module.is_active else "retired: nobody new is assigned it"
-    messages.success(request, f"“{module.title}” is {state}. Existing assignments are unaffected.")
+    if module.is_active:
+        messages.success(request, f"“{module.title}” is active again. Reminders resume for open assignments.")
+    else:
+        messages.success(request, f"“{module.title}” is retired: nobody new is assigned it, and open assignments stay "
+                                  "open but get no more reminders or manager escalations.")
     return redirect("manage:training")

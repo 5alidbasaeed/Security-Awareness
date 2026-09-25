@@ -9,7 +9,7 @@
   <section class="card"><div class="card__header"><h2>1. Take the course</h2>{% if slide_count %}<span class="card__note">{{ slide_count }} slides</span>{% endif %}</div><div class="card__body">
     {% if item.module.description %}<p>{{ item.module.description }}</p>{% endif %}
     {% if slide_count %}
-    <a class="button" href="{% url 'portal:course' item.pk %}">{% if item.started_at %}Review the course{% else %}Start the course{% endif %}</a>
+    <a class="button" href="{% url 'portal:course' item.pk %}">{% if item.completed_at %}Review the course{% elif item.started_at %}Continue the course{% else %}Start the course{% endif %}</a>
     {% elif item.module.content_url %}
     <form class="inline-form" method="post">{% csrf_token %}<input type="hidden" name="action" value="start">
       <a class="button" href="{{ item.module.content_url }}" target="_blank" rel="noopener noreferrer">Open training</a>
@@ -24,7 +24,7 @@
   <section class="card"><div class="card__header"><h2>2. Quiz</h2><span class="card__note">Pass mark {{ quiz.passing_score_percent }}%</span></div><div class="card__body">
     <p>The quiz comes straight after the course.</p>
     <a class="button{% if not item.started_at %} button--quiet{% endif %}" href="{% url 'portal:submit-quiz' item.pk %}">Take the quiz</a>
-    {% if attempts %}<p class="footnote">Previous attempts: {% for a in attempts %}{{ a.score_percent }}%{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+    {% include "portal/_attempts.html" %}
   </div></section>
   {% elif quiz %}
   <section class="card"><div class="card__header"><h2>2. Quiz</h2><span class="card__note">Pass mark {{ quiz.passing_score_percent }}%</span></div><div class="card__body">
@@ -32,11 +32,13 @@
       {% include "portal/_quiz_form.html" %}
       <div class="form-actions"><button class="button" type="submit">Submit answers</button></div>
     </form>
-    {% if attempts %}<p class="footnote">Previous attempts: {% for a in attempts %}{{ a.score_percent }}%{% if not forloop.last %}, {% endif %}{% endfor %}</p>{% endif %}
+    {% include "portal/_attempts.html" %}
   </div></section>
   {% else %}
   <section class="card"><div class="card__header"><h2>2. Finish</h2></div><div class="card__body">
-    <form method="post">{% csrf_token %}<input type="hidden" name="action" value="complete"><button class="button" type="submit">I've completed this training</button></form>
+    {% if no_content %}<p class="cell-meta">This training isn't ready yet. You don't need to do anything; it will appear here once the security team adds the content.</p>
+    {% elif slide_count and not item.started_at %}<p class="cell-meta">Open the course first, then come back here to finish.</p>
+    {% else %}<form method="post">{% csrf_token %}<input type="hidden" name="action" value="complete"><button class="button" type="submit">I've completed this training</button></form>{% endif %}
   </div></section>
   {% endif %}
 </div>

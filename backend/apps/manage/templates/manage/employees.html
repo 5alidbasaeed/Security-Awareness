@@ -1,11 +1,10 @@
 {% extends "manage/base.html" %}
 {% block title %}Employees · Manage{% endblock %}
 {% block content %}
-{% include "manage/_subnav.html" with manage_section="employees" %}
 <header class="page-header"><div><h1>Employees</h1></div>
 <div class="header-actions">
   {% if perms.employees.add_employee %}<a class="button" href="{% url 'manage:employee-new' %}">New employee</a>{% endif %}
-  {% if perms.employees.add_employee %}<a class="button button--quiet" href="{% url 'manage:employee-import' %}">Import CSV</a>{% endif %}
+  {% if perms.employees.add_employee %}<a class="button button--secondary" href="{% url 'manage:employee-import' %}">Import CSV</a>{% endif %}
 </div></header>
 <form class="toolbar" method="get">
   <label class="visually-hidden" for="q">Search</label><input class="field" id="q" type="search" name="q" value="{{ q }}" placeholder="Search name or email">
@@ -19,24 +18,24 @@
     <option value="exempt"{% if state == "exempt" %} selected{% endif %}>Exempt from simulations</option>
     <option value="no_department"{% if state == "no_department" %} selected{% endif %}>No department</option>
   </select>
-  <button class="button" type="submit">Filter</button>
+  <button class="button button--secondary toolbar__submit" type="submit">Filter</button>
   {% if q or department or state %}<a class="button button--quiet" href="{% url 'manage:employees' %}">Clear</a>{% endif %}
 </form>
 {% if can_export %}
 <form class="header-actions" method="post" action="{% url 'manage:employee-export' %}">{% csrf_token %}
   <input type="hidden" name="q" value="{{ q }}"><input type="hidden" name="department" value="{{ department }}"><input type="hidden" name="state" value="{{ state }}">
-  <button class="button button--quiet" type="submit">Export this list (CSV)</button>
+  <button class="button button--secondary" type="submit">Export this list (CSV)</button>
 </form>
 {% endif %}
 <div class="card"><div class="table-wrap"><table class="table">
-  <thead><tr><th>Name</th><th>Email</th><th>Department</th><th>Exempt</th><th class="num">Actions</th></tr></thead>
+  <thead><tr><th scope="col">Person</th><th scope="col">Department</th><th scope="col">Simulations</th><th scope="col" class="num">Actions</th></tr></thead>
   <tbody>
     {% for e in page %}
-    <tr><td>{{ e.full_name }}{% if not e.is_active %} <span class="badge">Inactive</span>{% endif %}</td><td>{{ e.email }}</td><td>{{ e.department|default:"—" }}</td>
-      <td>{% if e.is_exempt %}Yes<span class="cell-meta">{{ e.exempt_reason|default:"No reason recorded" }}{% if e.exempt_until %} · until {{ e.exempt_until|date:"d M Y" }}{% endif %}</span>{% else %}No{% endif %}</td>
+    <tr><td class="col-name">{{ e.full_name }}{% if not e.is_active %} <span class="badge">Inactive</span>{% endif %}<span class="cell-meta">{{ e.email }}</span></td><td>{{ e.department|default:"—" }}</td>
+      <td>{% if e.is_exempt %}<span class="badge badge--medium">Exempt</span><span class="cell-meta">{{ e.exempt_reason|default:"No reason recorded" }}{% if e.exempt_until %} · until {{ e.exempt_until|date:"M j, Y" }}{% endif %}</span>{% else %}<span class="muted">Included</span>{% endif %}</td>
       <td class="num actions">{% if perms.employees.change_employee %}<a href="{% url 'manage:employee-edit' e.pk %}">Edit</a>
-        <form class="inline-form" method="post" action="{% url 'manage:employee-toggle-active' e.pk %}">{% csrf_token %}<button class="button button--quiet" type="submit">{% if e.is_active %}Deactivate{% else %}Reactivate{% endif %}</button></form>{% endif %}</td></tr>
-    {% empty %}<tr><td colspan="5"><div class="empty"><strong>No employees found</strong>{% if q or department or state %}Try a different search or clear the filters.{% else %}Add people one by one or import a CSV.{% endif %}</div></td></tr>{% endfor %}
+        <form class="inline-form" method="post"{% if e.is_active %} hx-boost="true" hx-confirm="Deactivate {{ e.full_name }}? They leave simulations and training; their history is kept."{% endif %} action="{% url 'manage:employee-toggle-active' e.pk %}">{% csrf_token %}<button class="button {% if e.is_active %}button--danger{% else %}button--quiet{% endif %}" type="submit">{% if e.is_active %}Deactivate{% else %}Reactivate{% endif %}</button></form>{% endif %}</td></tr>
+    {% empty %}<tr><td colspan="4"><div class="empty"><strong>No employees found</strong>{% if q or department or state %}Try a different search or clear the filters.{% else %}Add people one by one or import a CSV.{% endif %}</div></td></tr>{% endfor %}
   </tbody>
 </table></div>{% include "dashboard/_pagination.html" %}</div>
 {% endblock %}

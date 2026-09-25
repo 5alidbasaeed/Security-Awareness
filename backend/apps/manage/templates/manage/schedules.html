@@ -1,7 +1,6 @@
 {% extends "manage/base.html" %}
 {% block title %}Scheduled reports · Manage{% endblock %}
 {% block content %}
-{% include "manage/_subnav.html" with manage_section="schedules" %}
 <header class="page-header"><div><h1>Scheduled reports</h1>
 <p class="page-header__sub">Aggregate reports emailed automatically. Reports that name individuals can't be scheduled.</p></div>
 {% if perms.reporting.change_reportschedule %}<a class="button" href="{% url 'manage:schedule-new' %}">New schedule</a>{% endif %}</header>

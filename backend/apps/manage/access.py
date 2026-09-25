@@ -31,3 +31,22 @@ def manage_access(*perms, methods=("GET", "POST")):
         return wrapper
 
     return decorator
+
+
+def org_wide_content(func):
+    """
+    Email templates, landing pages, images, the template catalog and smart groups are shared by the
+    whole organisation. A row-scoped Department Manager may read them (to pick one for their own
+    campaign) but not change them: an edit would alter other departments' campaigns and, since an
+    approval covers content, send those back to Draft. Reads pass through; changes are a 403.
+    """
+
+    @wraps(func)
+    def wrapper(request, *args, **kwargs):
+        from apps.core.scoping import managed_departments
+
+        if request.method not in ("GET", "HEAD") and managed_departments(request.user) is not None:
+            return render(request, "dashboard/403.html", status=403)
+        return func(request, *args, **kwargs)
+
+    return wrapper

@@ -12,7 +12,13 @@ skip this because "Gophish already handles it."
 import json
 import re
 
-_SENSITIVE_KEY_PATTERN = re.compile(r"pass(word)?|credential|secret", re.IGNORECASE)
+# Substrings (password, passwd, passcode, pwd, credential, secret) plus short names that are only
+# sensitive as a whole word — pw, pin, otp, totp, mfa, 2fa — matched on word/_/bracket boundaries so
+# "user_pin" or "login[otp]" are caught but "spinner" or "shipping" are not. Cloned login pages use
+# names like WordPress's "pwd", which the substring rule alone used to miss.
+_SENSITIVE_KEY_PATTERN = re.compile(
+    r"pass|pwd|credential|secret|(?:^|[_\W])(?:pw|pin|otp|totp|mfa|2fa)(?:[_\W]|$)", re.IGNORECASE
+)
 
 
 def strip_sensitive_fields(data):

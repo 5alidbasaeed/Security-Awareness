@@ -14,7 +14,7 @@ from django.utils import timezone
 from apps.campaigns.models import Campaign, CampaignTemplate
 from apps.events.models import Event
 from apps.intake.models import ReportedEmail
-from apps.risk_scoring import analytics, program_metrics
+from apps.risk_scoring import analytics, program_metrics, scoring
 from apps.risk_scoring.models import RiskScoreSnapshot
 from apps.training.models import TrainingAssignment, TrainingModule
 
@@ -30,6 +30,11 @@ TREND_WEEKS = 12
 
 def _is_htmx(request) -> bool:
     return request.headers.get("HX-Request") == "true"
+
+
+def _query(request) -> str:
+    """The search box text: NUL bytes crash PostgreSQL text comparisons, and nobody searches 200+ characters."""
+    return request.GET.get("q", "").replace("\x00", "").strip()[:200]
 
 
 def _page(request, queryset, per_page=25):
@@ -52,15 +57,31 @@ def _sorted_employees(queryset, sort: str):
     return queryset.order_by(f"-{column}" if descending else column, "full_name")
 
 
-def _lines_chart(labels, datasets, *, unit="%", y_max=100):
-    """Multi-series line chart (rates per campaign, response speed). Series alternate solid/dashed so colour never stands alone."""
+def _lines_chart(labels, datasets, *, unit="%", y_max=100, style="line"):
+    """
+    Multi-series chart (rates per campaign, response speed). Series alternate solid/dashed (or
+    solid/hatched-by-border for bars) so colour never stands alone. `style` is "bar" for separate
+    categories (a line between two campaigns would claim data that doesn't exist) or "step" for a
+    cumulative count sampled at buckets (a curve would show rises between samples that never happened).
+    """
     return {
         "kind": "lines",
+        "style": style,
         "labels": labels,
         "datasets": datasets,
         "unit": unit,
         "y_max": y_max,
         "has_data": any(v is not None for d in datasets for v in d["values"]),
+    }
+
+
+def _scoring_weights():
+    return {
+        "submitted": scoring.FAILURE_WEIGHTS[Event.EventType.CREDENTIAL_ATTEMPT],
+        "clicked": scoring.FAILURE_WEIGHTS[Event.EventType.LINK_CLICKED],
+        "reported": scoring.REPORT_CREDIT,
+        "repeat": scoring.REPEAT_FAILURE_PENALTY,
+        "half_life_days": scoring.HALF_LIFE_DAYS,
     }
 
 
@@ -107,6 +128,7 @@ def _rates_chart(series):
             {"label": "Failure rate", "values": [c["failure_rate"] for c in series], "color": "--risk-high", "dashed": False},
             {"label": "Report rate", "values": [c["report_rate"] for c in series], "color": "--risk-low", "dashed": True},
         ],
+        style="bar",
     )
 
 
@@ -119,15 +141,18 @@ def overview(request):
     employees = visible_employees(user)
     period = _period(request)
     summary = analytics.scope_summary(employees)
+    # Today's posture: offboarded people keep their history (event log, campaign rates), not a place in the
+    # headcount, the lists or the trend — so the trend's latest point matches the headline average.
+    current = employees.filter(is_active=True)
     series = analytics.trend_series(
-        RiskScoreSnapshot.objects.filter(employee__in=employees), weeks=TREND_WEEKS
+        RiskScoreSnapshot.objects.filter(employee__in=current), weeks=TREND_WEEKS
     )
     departments = [analytics.department_summary(d) for d in visible_departments(user).order_by("name")]
     departments.sort(key=lambda d: (d["average_score"] is None, -(d["average_score"] or 0)))
-    highest_risk = _with_scores(employees).filter(current_score__isnull=False).order_by("-current_score", "full_name")[:5]
+    highest_risk = _with_scores(current).filter(current_score__isnull=False).order_by("-current_score", "full_name")[:5]
     from apps.engagement.points import leaderboard
-    top_reporters = leaderboard(employees, limit=5)
-    improvement = analytics.program_improvement(RiskScoreSnapshot.objects.filter(employee__in=employees))
+    top_reporters = leaderboard(current, limit=5)
+    improvement = analytics.program_improvement(RiskScoreSnapshot.objects.filter(employee__in=current))
     recent = visible_campaigns(user).filter(gophish_campaign_id__isnull=False).order_by("-launched_at", "-id")[:5]
 
     program = program_metrics.analyse(employees, _all_campaigns(), period["since"])["org"]
@@ -174,7 +199,7 @@ def campaigns(request):
     queryset = visible_campaigns(user).select_related("target_department").order_by("-launched_at", "-id")
     status = request.GET.get("status", "")
     department = request.GET.get("department", "")
-    query = request.GET.get("q", "").strip()
+    query = _query(request)
     if status:
         queryset = queryset.filter(status=status)
     if department.isdigit():
@@ -269,6 +294,7 @@ def campaign_detail(request, campaign_id):
                     {"label": "Clicked or submitted", "values": timeline["failed"], "color": "--risk-high", "dashed": False},
                     {"label": "Reported", "values": timeline["reported"], "color": "--risk-low", "dashed": True},
                 ],
+                style="step",
             ),
             "template_info": CampaignTemplate.objects.filter(template_name=campaign.template_name).first(),
             "follow_up": program_metrics.follow_up_training(campaign, employees),
@@ -279,7 +305,7 @@ def campaign_detail(request, campaign_id):
 @dashboard_access
 def employees(request):
     user = request.user
-    query = request.GET.get("q", "").strip()
+    query = _query(request)
     department = request.GET.get("department", "")
     sort = request.GET.get("sort") or "-score"
     focus = request.GET.get("focus", "")
@@ -333,6 +359,9 @@ def employee_detail(request, employee_id):
             "active": "employees",
             "employee": employee,
             "trend": analytics.trend_direction(history),
+            "trend_delta": analytics.trend_delta(history),
+            # Per-campaign weights, shown only when they are the ones that produced this snapshot.
+            "weights": _scoring_weights() if latest and latest.algorithm_version == scoring.ALGORITHM_VERSION else None,
             "metrics": latest.contributing_metrics if latest else None,
             "algorithm_version": latest.algorithm_version if latest else None,
             "chart": _chart(labels, [h["score"] for h in history], title="Risk score"),
@@ -397,7 +426,7 @@ def department_detail(request, department_id):
     period = _period(request)
     summary = analytics.department_summary(department)
     series = analytics.department_trend(department, weeks=TREND_WEEKS)
-    members = _sorted_employees(_with_scores(department.employees.all()), "-score")[:10]
+    members = _sorted_employees(_with_scores(department.employees.filter(is_active=True)), "-score")[:10]
     analysis = program_metrics.analyse(visible_employees(user), _all_campaigns(), period["since"])
     org = analysis["org"]
     metrics = analysis["departments"].get(department.pk, program_metrics.EMPTY)
@@ -433,16 +462,17 @@ def department_detail(request, department_id):
     )
 
 
-@dashboard_access
+@dashboard_access(also=("training.view_trainingassignment",))
 def training(request):
     user = request.user
     status = request.GET.get("status", "outstanding")
-    query = request.GET.get("q", "").strip()
+    query = _query(request)
     department = request.GET.get("department", "")
     module = request.GET.get("module", "")
     now = timezone.now()
 
-    base = visible_assignments(user)
+    # Training owed today: offboarded people's open assignments aren't owed (same rule as the Overview card).
+    base = visible_assignments(user).filter(employee__is_active=True)
     if department.isdigit():
         base = base.filter(employee__department_id=int(department))
     if module.isdigit():
@@ -450,12 +480,16 @@ def training(request):
     compliance = analytics.training_compliance(base)
 
     queryset = base.select_related("employee", "employee__department", "module")
+    # Waived assignments are documented exceptions: never owed, never done (analytics.training_compliance).
+    owed = queryset.filter(waived_at__isnull=True)
     if status == "completed":
-        queryset = queryset.filter(completed_at__isnull=False)
+        queryset = owed.filter(completed_at__isnull=False)
     elif status == "overdue":
-        queryset = queryset.filter(completed_at__isnull=True, due_at__lt=now)
+        queryset = owed.filter(completed_at__isnull=True, due_at__lt=now)
     elif status == "outstanding":
-        queryset = queryset.filter(completed_at__isnull=True)
+        queryset = owed.filter(completed_at__isnull=True)
+    elif status == "waived":
+        queryset = queryset.filter(waived_at__isnull=False)
     if query:
         queryset = queryset.filter(Q(employee__full_name__icontains=query) | Q(employee__email__icontains=query))
     page = _page(request, queryset.order_by("due_at", "-assigned_at"))
@@ -473,6 +507,9 @@ def training(request):
         "modules": TrainingModule.objects.order_by("title"),
         "target": program_metrics.targets()["training_completion"],
     }
-    if not _is_htmx(request):
+    # Only a swap of the results table gets the bare partial; a filter that changes the figures above it
+    # (department, module) asks for the whole page so the stat cards and breakdowns never go stale.
+    partial = _is_htmx(request) and request.headers.get("HX-Target") == "training-results"
+    if not partial:
         context["breakdown"] = program_metrics.training_breakdown(base, now=now)
-    return render(request, "dashboard/_training_table.html" if _is_htmx(request) else "dashboard/training.html", context)
+    return render(request, "dashboard/_training_table.html" if partial else "dashboard/training.html", context)

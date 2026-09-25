@@ -1,0 +1,53 @@
+{% extends "manage/base.html" %}
+{% block title %}Review “{{ campaign.name }}” · Manage{% endblock %}
+{% block content %}
+<p class="breadcrumb"><a href="{% url 'manage:campaigns' %}">Campaigns</a></p>
+<header class="page-header"><div><h1>Review “{{ campaign.name }}”</h1>
+<p class="page-header__sub">Check what will be sent, to whom and when. Approving authorises exactly this; any later change to the email, landing page, audience or schedule sends it back for approval.</p></div></header>
+
+<div class="stack">
+<section class="card"><div class="card__body">
+  <dl class="facts">
+    <dt>Status</dt><dd>{{ campaign.get_status_display }}{% if campaign.submitted_by %}<span class="cell-meta">Submitted by {{ campaign.submitted_by.get_username }}{% if campaign.submitted_at %} on {{ campaign.submitted_at|date:"d M Y H:i" }}{% endif %}</span>{% endif %}</dd>
+    <dt>Recipients</dt>
+    <dd>{% if audience %}<strong>{{ audience.recipients }}</strong> {{ audience.label }}
+      {% if audience.exempt or audience.inactive %}<span class="cell-meta">Left out: {% if audience.exempt %}{{ audience.exempt }} exempt{% endif %}{% if audience.exempt and audience.inactive %}, {% endif %}{% if audience.inactive %}{{ audience.inactive }} inactive{% endif %}</span>{% endif %}
+      {% else %}<span class="cell-meta">No audience set</span>{% endif %}</dd>
+    <dt>When</dt><dd>{% if campaign.scheduled_at %}Scheduled for {{ campaign.scheduled_at|date:"d M Y H:i" }}{% else %}When someone presses Launch after approval{% endif %}</dd>
+    <dt>Email</dt><dd>{{ campaign.template_name|default:"—" }}{% if email %}<span class="cell-meta">Subject: {{ email.subject }}</span>{% endif %}</dd>
+    <dt>Landing page</dt><dd>{{ campaign.landing_page_name|default:"—" }}</dd>
+    <dt>If someone falls for it</dt><dd>{% if campaign.training_module %}They are assigned “{{ campaign.training_module.title }}”.{% else %}<span class="cell-meta">No training is assigned.</span>{% endif %}</dd>
+    {% if campaign.copy_to %}<dt>Copies also go to</dt><dd>{{ campaign.copy_to }}</dd>{% endif %}
+  </dl>
+</div></section>
+
+<div class="grid-2">
+  <section class="card"><div class="card__header"><h2>The email</h2></div><div class="card__body">
+    {% if email_preview %}<iframe class="preview-frame" src="{{ email_preview }}" title="Email preview"></iframe>{% else %}<p class="cell-meta">No email chosen.</p>{% endif %}
+  </div></section>
+  <section class="card"><div class="card__header"><h2>The landing page</h2></div><div class="card__body">
+    {% if page_preview %}<iframe class="preview-frame" src="{{ page_preview }}" title="Landing page preview"></iframe>{% else %}<p class="cell-meta">No landing page chosen.</p>{% endif %}
+  </div></section>
+</div>
+
+{% if pending %}
+<section class="card"><div class="card__header"><h2>Decision</h2></div><div class="card__body">
+  {% if blocked %}<p class="form-error" role="alert">{{ blocked }}</p>
+  {% else %}
+  <form class="inline-form" method="post" action="{% url 'manage:campaign-approve' campaign.pk %}">{% csrf_token %}<button class="button" type="submit">Approve</button></form>
+  {% endif %}
+  <form class="form-stack" method="post" action="{% url 'manage:campaign-reject' campaign.pk %}">{% csrf_token %}
+    <div class="form-row"><label class="label" for="reason">Or send it back, and say why</label>
+      <input class="field" id="reason" name="reason" maxlength="300" required></div>
+    <div class="form-actions"><button class="button button--secondary" type="submit">Send back to draft</button></div>
+  </form>
+</div></section>
+{% endif %}
+
+{% if history %}
+<section class="card"><div class="card__header"><h2>History</h2></div>
+  <ul class="list">{% for h in history %}<li class="list__item"><span>{{ h.action }}<span class="cell-meta">{{ h.actor.get_username|default:"System" }}</span></span><span class="cell-meta">{{ h.occurred_at|date:"d M Y H:i" }}</span></li>{% endfor %}</ul>
+</section>
+{% endif %}
+</div>
+{% endblock %}

@@ -363,7 +363,7 @@ def test_departments_page_compares_with_the_organisation(client, django_user_mod
 
     body = client.get(reverse("dashboard:departments"), {"sort": "-failure", "period": "all"}).content.decode()
 
-    assert "Vs organisation" in body and "Organisation" in body and "Coverage" in body
+    assert "vs org" in body and "Organisation" in body and "Coverage" in body
     assert body.index("Finance") < body.index("Legal")  # the department with data sorts above the one without
 
 
@@ -390,7 +390,7 @@ def test_training_page_filters_by_department_and_module(client, django_user_mode
     body = client.get(reverse("dashboard:training"), {"department": dept_a.pk, "module": module.pk}).content.decode()
 
     assert "Ann in A" in body and "Bob in B" not in body
-    assert "Overdue ageing" in body and "Completed on time" in body
+    assert "Overdue ageing" in body and "Finished on time" in body
 
 
 def test_department_manager_never_sees_other_departments_in_the_new_metrics(client, django_user_model):
@@ -407,3 +407,37 @@ def test_department_manager_never_sees_other_departments_in_the_new_metrics(clie
         assert "Outsider" not in body and "Theirs" not in body, name
     assert client.get(reverse("dashboard:department-detail", args=[theirs.pk])).status_code == 404
     assert client.get(reverse("dashboard:campaign-detail", args=[campaign.pk])).status_code == 404
+
+
+# --- review round 2 regressions -----------------------------------------------
+
+
+@pytest.mark.parametrize("name", ["campaigns", "employees", "training"])
+def test_a_nul_byte_in_the_search_box_is_harmless(client, django_user_model, name):
+    """PostgreSQL rejects NUL in text comparisons; that used to be a 500."""
+    _seed_program()
+    _login(client, django_user_model)
+
+    assert client.get(reverse(f"dashboard:{name}"), {"q": "a\x00b"}).status_code == 200
+    assert client.get(reverse(f"dashboard:{name}"), {"q": "x" * 5000}).status_code == 200
+
+
+def test_training_filters_that_change_the_figures_get_the_whole_page_back(client, django_user_model):
+    TrainingAssignmentFactory()
+    _login(client, django_user_model)
+    url = reverse("dashboard:training")
+
+    table_only = client.get(url, HTTP_HX_REQUEST="true", HTTP_HX_TARGET="training-results").content.decode()
+    whole_main = client.get(url, HTTP_HX_REQUEST="true", HTTP_HX_TARGET="main").content.decode()
+
+    assert "Overdue ageing" not in table_only and 'id="training-results"' in table_only
+    assert "Overdue ageing" in whole_main  # stat cards and breakdowns are refreshed too
+
+
+def test_risk_distribution_is_hidden_for_a_too_small_cohort(settings):
+    settings.MIN_REPORTING_COHORT = 5
+    EmployeeFactory(department=DepartmentFactory())
+
+    result = pm.risk_distribution(Employee.objects.all())
+
+    assert result["suppressed"] and result["high"] == result["low"] == 0

@@ -9,6 +9,7 @@ import re
 
 from django import forms
 from django.conf import settings
+from django.db.models import Q
 
 from apps.campaigns.models import Campaign, EmailDraft, LandingDraft, SmartGroup
 from apps.core.scoping import managed_departments, visible_departments
@@ -19,8 +20,20 @@ _TEXT = {"class": "field"}
 _AREA = {"class": "field", "rows": 4}
 
 
+def _friendly_empty_label(field):
+    """Django's raw '---------' means nothing to the person choosing. A required dropdown asks for a
+    choice; an optional one says what leaving it empty means."""
+    blank = "Choose…" if field.required else "None"
+    if isinstance(field, forms.ModelChoiceField):
+        if field.empty_label == "---------":
+            field.empty_label = blank
+    elif isinstance(field, forms.ChoiceField):
+        field.choices = [(value, blank if value == "" and label == "---------" else label) for value, label in field.choices]
+
+
 def _style(form):
     for field in form.fields.values():
+        _friendly_empty_label(field)
         widget = field.widget
         if isinstance(widget, forms.Select):
             widget.attrs.setdefault("class", "select")
@@ -89,10 +102,15 @@ class CampaignForm(forms.ModelForm):
         choices = [("", "Choose...")]
         if managed is None:  # org-wide roles can also target everyone or a smart group
             choices.append(("all", "Everyone (all active staff)"))
-            choices.append(("Smart groups", [("smart:%d" % g.pk, g.name) for g in SmartGroup.objects.exclude(rule=SmartGroup.Rule.ALL)]))
+            choices.append(("Dynamic audiences", [("smart:%d" % g.pk, g.name) for g in SmartGroup.objects.exclude(rule=SmartGroup.Rule.ALL)]))
         choices.append(("Departments", groups))
         self.fields["audience"].choices = choices
-        self.fields["training_module"].queryset = TrainingModule.objects.filter(is_active=True)
+        # Keep a module that was retired after this campaign chose it, or saving the form would silently
+        # drop the campaign's follow-up training (same reason as with_current above).
+        current_module = campaign.training_module_id if campaign else None
+        self.fields["training_module"].queryset = TrainingModule.objects.filter(
+            Q(is_active=True) | Q(pk=current_module) if current_module else Q(is_active=True)
+        )
         self.fields["training_module"].required = False
         self.fields["training_module"].empty_label = "No training"
         self.fields["scheduled_at"].required = False
@@ -246,7 +264,7 @@ class EmailDraftForm(forms.ModelForm):
             "name": "Only used in this app to tell your emails apart.",
             "brand_name": "Shown in the coloured bar of the branded styles, e.g. IT Service Desk.",
         }
-        widgets = {"body_html": forms.Textarea(attrs={"class": "compose-source", "rows": 1})}
+        widgets = {"body_html": forms.Textarea(attrs={"class": "compose-source", "rows": 1, "aria-label": "Message (rich-text editor)"})}
 
     UPLOADS = ()  # pictures are placed in the message from the composer, not attached to the form
 
@@ -346,6 +364,7 @@ class TrainingPolicyForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.fields["module"].queryset = TrainingModule.objects.filter(is_active=True)
         _style(self)
+        self.fields["department"].empty_label = "Everyone"
 
 
 class ReportScheduleForm(forms.ModelForm):

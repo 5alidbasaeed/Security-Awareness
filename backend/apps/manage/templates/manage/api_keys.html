@@ -1,7 +1,6 @@
 {% extends "manage/base.html" %}
 {% block title %}API keys · Manage{% endblock %}
 {% block content %}
-{% include "manage/_subnav.html" with manage_section="api-keys" %}
 <header class="page-header"><div><h1>API keys</h1>
 <p class="page-header__sub">Keys let an external tool draft training and campaign content. A key can never launch or send, and never exceeds your own permissions.</p></div></header>
 
@@ -25,7 +24,7 @@
         <p class="cell-meta">Only scopes your own role allows are shown.</p>
       </div>
       <div class="form-row"><label class="label" for="expires_at">Expires (optional)</label><input class="field" id="expires_at" name="expires_at" type="date"></div>
-      <button class="button" type="submit">Create key</button>
+      <div class="form-actions"><button class="button" type="submit">Create key</button></div>
     </form>
     {% else %}<p class="cell-meta">Your role can't grant any API scopes.</p>{% endif %}
   </div></section>
@@ -34,9 +33,9 @@
     <ul class="list">
       {% for k in keys %}
       <li class="list__item">
-        <span>{{ k.name }} <span class="cell-meta">{{ k.prefix }}… · {{ k.scopes|join:", " }}{% if k.revoked_at %} · revoked{% elif k.expires_at %} · expires {{ k.expires_at|date:"Y-m-d" }}{% endif %}</span>
-          <span class="cell-meta">{% if oversight %}Owner {{ k.owner.get_username }} · {% endif %}Created {{ k.created_at|date:"d M Y" }} · {% if k.last_used_at %}last used {{ k.last_used_at|date:"d M Y" }}{% else %}never used{% endif %}{% if not k.revoked_at and not k.expires_at %} · no expiry{% endif %}</span></span>
-        {% if not k.revoked_at %}<form class="inline-form" method="post" action="{% url 'manage:api-key-revoke' k.pk %}">{% csrf_token %}<button class="button button--quiet" type="submit">Revoke</button></form>{% endif %}
+        <span>{{ k.name }} <span class="cell-meta">{{ k.prefix }}… · {{ k.scopes|join:", " }}{% if k.revoked_at %} · revoked{% elif k.expires_at %} · expires {{ k.expires_at|date:"M j, Y" }}{% endif %}</span>
+          <span class="cell-meta">{% if oversight %}Owner {{ k.owner.get_username }} · {% endif %}Created {{ k.created_at|date:"M j, Y" }} · {% if k.last_used_at %}last used {{ k.last_used_at|date:"M j, Y" }}{% else %}never used{% endif %}{% if not k.revoked_at and not k.expires_at %} · no expiry{% endif %}</span></span>
+        {% if not k.revoked_at %}<form class="inline-form" method="post" hx-boost="true" hx-confirm="Revoke the key “{{ k.name }}”? Anything using it stops working immediately." action="{% url 'manage:api-key-revoke' k.pk %}">{% csrf_token %}<button class="button button--danger" type="submit">Revoke</button></form>{% endif %}
       </li>
       {% empty %}<li class="list__item"><span class="cell-meta">No keys yet.</span></li>{% endfor %}
     </ul>

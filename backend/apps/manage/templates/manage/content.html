@@ -1,30 +1,44 @@
 {% extends "manage/base.html" %}
-{% block title %}Content · Manage{% endblock %}
+{% load manage_extras %}
+{% block title %}Emails &amp; pages · Manage{% endblock %}
 {% block content %}
-{% include "manage/_subnav.html" with manage_section="content" %}
-<header class="page-header"><div><h1>Content library</h1>
-<p class="page-header__sub">Email templates and landing pages held in the phishing engine.</p></div>
-<div class="actions">{% if perms.campaigns.view_campaigntemplate %}<a class="button button--quiet" href="{% url 'manage:catalog' %}">Catalog &amp; audiences</a>{% endif %}
-<a class="button button--quiet" href="{% url 'manage:images' %}">Image library ({{ image_count }})</a>
-<a class="button button--quiet" href="{% url 'manage:deliverability' %}">Deliverability check</a></div></header>
-{% if engine_error %}<p class="flash flash--error" role="alert">Can't reach the phishing engine: {{ engine_error }}</p>{% endif %}
-<div class="grid-2">
+{% shared_content_editable user as editable %}
+<header class="page-header"><div><h1>Emails &amp; landing pages</h1>
+<p class="page-header__sub">The two things a simulation is made of: the email people receive, and the page they land on when they click. Build them here, then pick them when you create a campaign.</p></div>
+<div class="header-actions">{% if perms.campaigns.view_campaigntemplate %}<a class="button button--secondary" href="{% url 'manage:catalog' %}">Template catalog</a>{% endif %}
+<a class="button button--secondary" href="{% url 'manage:images' %}">Images ({{ image_count }})</a>
+<a class="button button--secondary" href="{% url 'manage:deliverability' %}">Deliverability check</a></div></header>
+{% if engine_error %}<p class="flash flash--error" role="alert">Can't reach the phishing engine: {{ engine_error }}. What is shown below is what is saved here.</p>{% endif %}
+<div class="grid-2 grid-2--stack">
   <section class="card">
-    <div class="card__header"><h2>Email templates</h2>{% if perms.campaigns.change_campaign %}<a href="{% url 'manage:template-new' %}">New</a>{% endif %}</div>
+    <div class="card__header"><h2>Emails <span class="tab__count">{{ drafts|length }}</span></h2>{% if editable %}<a class="button" href="{% url 'manage:template-new' %}">Write an email</a>{% endif %}</div>
     <ul class="list">
-      {% for d in drafts %}<li class="list__item"><span>{{ d.name }}<span class="cell-meta">{{ d.subject }} · {{ d.get_layout_display }}</span></span>
-        <span class="actions"><a href="{% url 'manage:email-preview' d.name %}" target="_blank" rel="noopener">Preview</a>{% if perms.campaigns.change_campaign %}<a href="{% url 'manage:template-edit' d.pk %}">Edit</a>{% endif %}</span></li>
-      {% empty %}<li class="list__item"><span class="cell-meta">None yet.</span></li>{% endfor %}
-      {% for t in engine_only %}<li class="list__item"><span>{{ t.name }}<span class="cell-meta">In the engine only (not built here)</span></span><a href="{% url 'manage:email-preview' t.name %}" target="_blank" rel="noopener">Preview</a></li>{% endfor %}
+      {% for d in drafts %}<li class="list__item"><span>{{ d.name }}<span class="cell-meta">Subject: {{ d.subject }}</span>
+          <span class="cell-meta">{{ d.get_layout_display }} · {% if d.used_by %}used in {{ d.used_by }} campaign{{ d.used_by|pluralize }}{% else %}not used yet{% endif %} · edited {{ d.updated_at|date:"M j, Y" }}</span></span>
+        <span class="row-actions"><a href="{% url 'manage:email-preview' d.name %}" target="_blank" rel="noopener">Preview</a>
+          {% if editable %}<a href="{% url 'manage:template-edit' d.pk %}">Edit</a>
+          <form class="inline-form" method="post" action="{% url 'manage:template-duplicate' d.pk %}">{% csrf_token %}<button class="link-button" type="submit">Duplicate</button></form>{% endif %}</span></li>
+      {% empty %}<li class="list__item"><div class="empty"><strong>No emails yet</strong>Write one, or start from a ready-made template.</div></li>{% endfor %}
+      {% for t in engine_only %}<li class="list__item"><span>{{ t.name }}<span class="cell-meta">Only in the phishing engine. It can be previewed but not edited here.</span></span><span class="row-actions"><a href="{% url 'manage:email-preview' t.name %}" target="_blank" rel="noopener">Preview</a></span></li>{% endfor %}
     </ul>
   </section>
   <section class="card">
-    <div class="card__header"><h2>Landing pages</h2><span class="actions">{% if perms.campaigns.change_campaign %}<a href="{% url 'manage:landing-clone' %}">Clone a page</a><a href="{% url 'manage:page-new' %}">Paste HTML</a><a href="{% url 'manage:landing-new' %}">New</a>{% endif %}</span></div>
+    <div class="card__header"><h2>Landing pages <span class="tab__count">{{ landing_drafts|length }}</span></h2>
+      <span class="actions">{% if editable %}
+        <details class="more"><summary class="button button--quiet">Other ways</summary><div class="more__menu">
+          <a href="{% url 'manage:landing-clone' %}">Copy a real login page</a>
+          <a href="{% url 'manage:page-new' %}">Paste your own HTML</a></div></details>
+        <a class="button" href="{% url 'manage:landing-new' %}">Build a page</a>{% endif %}</span></div>
     <ul class="list">
-      {% for d in landing_drafts %}<li class="list__item"><span>{{ d.name }}<span class="cell-meta">{{ d.get_layout_display }}</span></span>
-        <span class="actions"><a href="{% url 'manage:page-preview' d.name %}" target="_blank" rel="noopener">Preview</a>{% if perms.campaigns.change_campaign %}<a href="{% url 'manage:landing-edit' d.pk %}">Edit</a>{% endif %}</span></li>
-      {% empty %}<li class="list__item"><span class="cell-meta">None yet.</span></li>{% endfor %}
-      {% for p in pages_engine_only %}<li class="list__item"><span>{{ p.name }}<span class="cell-meta">In the engine only (not built here)</span></span><a href="{% url 'manage:page-preview' p.name %}" target="_blank" rel="noopener">Preview</a></li>{% endfor %}
+      {% for d in landing_drafts %}<li class="list__item"><span>{{ d.name }}
+          <span class="cell-meta">{{ d.get_layout_display }} · {% if d.used_by %}used in {{ d.used_by }} campaign{{ d.used_by|pluralize }}{% else %}not used yet{% endif %} · edited {{ d.updated_at|date:"M j, Y" }}</span></span>
+        <span class="actions"><a href="{% url 'manage:page-preview' d.name %}" target="_blank" rel="noopener">Preview</a>
+          {% if editable %}<a href="{% url 'manage:landing-edit' d.pk %}">Edit</a>
+          <details class="more"><summary class="button button--quiet">More</summary><div class="more__menu">
+            <form method="post" action="{% url 'manage:landing-duplicate' d.pk %}">{% csrf_token %}<button type="submit">Duplicate</button></form>
+          </div></details>{% endif %}</span></li>
+      {% empty %}<li class="list__item"><div class="empty"><strong>No landing pages yet</strong>Build one, or copy a real login page to imitate.</div></li>{% endfor %}
+      {% for p in pages_engine_only %}<li class="list__item"><span>{{ p.name }}<span class="cell-meta">Only in the phishing engine. It can be previewed but not edited here.</span></span><a href="{% url 'manage:page-preview' p.name %}" target="_blank" rel="noopener">Preview</a></li>{% endfor %}
     </ul>
   </section>
 </div>

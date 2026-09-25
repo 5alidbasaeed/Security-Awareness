@@ -8,6 +8,7 @@ employee can see another employee's assignments.
 import functools
 
 from django.shortcuts import redirect
+from django.views.decorators.cache import never_cache
 
 from apps.employees.models import Employee
 
@@ -31,7 +32,10 @@ def portal_logout(request):
 
 
 def portal_required(view):
+    # never_cache: an employee's pages must not be replayable from the browser cache (Back button)
+    # after they sign out on a shared laptop, exactly like the staff dashboard.
     @functools.wraps(view)
+    @never_cache
     def wrapper(request, *args, **kwargs):
         employee = current_employee(request)
         if employee is None:

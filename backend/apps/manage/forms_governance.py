@@ -94,8 +94,8 @@ class WaiveForm(forms.Form):
 class ManualAssignForm(forms.Form):
     module = forms.ModelChoiceField(queryset=TrainingModule.objects.none(), label="Training module")
     department = forms.ModelChoiceField(queryset=Department.objects.none(), required=False, label="Whole department",
-                                        empty_label="(none)")
-    email = forms.EmailField(required=False, label="or one person (email)")
+                                        empty_label="No department — assign one person instead")
+    email = forms.EmailField(required=False, label="Or one person (email)")
     due_days = forms.IntegerField(min_value=1, max_value=365, initial=14, label="Days to complete")
 
     def __init__(self, *args, departments, **kwargs):

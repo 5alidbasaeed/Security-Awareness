@@ -18,7 +18,7 @@ from django.db.models import F, Q
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.utils import timezone
+from django.utils import dateformat, timezone
 
 from apps.core import governance
 from apps.core.audit import log_action
@@ -32,6 +32,11 @@ from .access import manage_access
 from .forms_governance import ExtendForm, ManualAssignForm, UserAccessForm, WaiveForm
 
 EXPORT_ROW_CAP = 50_000
+
+
+def _day(value) -> str:
+    """The product's one date style: Sep 15, 2026."""
+    return dateformat.format(value, "M j, Y")
 
 
 def _page(request, queryset, per_page=25):
@@ -240,7 +245,7 @@ def assignments(request):
     status = request.GET.get("status", "outstanding")
     q = request.GET.get("q", "").strip()
     module = request.GET.get("module", "").strip()
-    base = visible_assignments(request.user)
+    base = visible_assignments(request.user).filter(employee__is_active=True)  # leavers owe nothing (dashboard rule)
     qs = base.select_related("employee", "employee__department", "module")
     if status == "outstanding":
         qs = qs.filter(completed_at__isnull=True, waived_at__isnull=True)
@@ -291,7 +296,7 @@ def assignment_extend(request, pk):
             assignment.save(update_fields=["due_at"])
             log_action(actor=request.user, action="training_due_date_extended", target_description=str(assignment),
                        previous_due=str(previous.date()) if previous else "", new_due=str(due.date()), reason=form.cleaned_data["reason"])
-        messages.success(request, f"Due date for {assignment.employee.full_name} moved to {due:%d %b %Y}.")
+        messages.success(request, f"Due date for {assignment.employee.full_name} moved to {_day(due)}.")
         return redirect("manage:assignments")
     return render(request, "manage/assignment_action.html", {
         "active": "manage", "form": form, "assignment": assignment, "verb": "Extend the due date",
@@ -321,7 +326,8 @@ def assignment_waive(request, pk):
 
 @manage_access("training.add_trainingassignment")
 def assignment_new(request):
-    form = ManualAssignForm(request.POST or None, departments=visible_departments(request.user))
+    initial = {"module": request.GET.get("module")} if request.GET.get("module", "").isdigit() else None
+    form = ManualAssignForm(request.POST or None, initial=initial, departments=visible_departments(request.user))
     if request.method == "POST" and form.is_valid():
         data = form.cleaned_data
         people = visible_employees(request.user).filter(is_active=True)

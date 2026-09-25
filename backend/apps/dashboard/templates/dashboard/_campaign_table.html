@@ -10,15 +10,15 @@
   <div class="card">
   {% if rows %}
   <div class="table-wrap">
-    <table class="table">
+    <table class="table table--dense">
       <caption class="visually-hidden">Campaigns and their results</caption>
       <thead>
         <tr>
-          <th scope="col">Campaign</th><th scope="col">Status</th>
+          <th scope="col" class="col-name">Campaign</th><th scope="col">Status</th>
           <th scope="col" class="num">Targeted</th><th scope="col" class="num">Failed</th>
           <th scope="col" class="num">Submitted data</th><th scope="col" class="num">Reported</th>
           <th scope="col" class="num">Reports per failure</th>
-          <th scope="col">Launched</th>
+          <th scope="col" class="nowrap">Launched</th>
         </tr>
       </thead>
       <tbody>
@@ -26,12 +26,12 @@
         <tr>
           <td><a href="{% url 'dashboard:campaign-detail' row.campaign.pk %}">{{ row.campaign.name }}</a><span class="cell-meta">{{ row.campaign.target_department|default:"No department" }}{% if row.difficulty %} · {{ row.difficulty }} difficulty{% endif %}</span></td>
           <td><span class="badge{% if row.campaign.status == "launched" %} badge--accent{% endif %}">{{ row.campaign.get_status_display }}</span></td>
-          <td class="num">{{ row.summary.targeted }}</td>
+          <td class="num">{% if row.campaign.launched_at %}{{ row.summary.targeted }}{% else %}—{% endif %}</td>
           <td class="num">{{ row.summary.failure_rate_percent|percent }}</td>
           <td class="num">{{ row.summary.submit_rate_percent|percent }}</td>
           <td class="num">{{ row.summary.report_rate_percent|percent }}</td>
           <td class="num">{{ row.resilience|ratio }}</td>
-          <td>{{ row.campaign.launched_at|date:"M j, Y"|default:"—" }}</td>
+          <td class="nowrap">{{ row.campaign.launched_at|date:"M j, Y"|default:"—" }}</td>
         </tr>
         {% endfor %}
       </tbody>

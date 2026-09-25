@@ -5,7 +5,7 @@ metric and is deliberately NOT part of the risk score (CLAUDE.md invariant #6
 and the plan's Risk Scoring section).
 """
 
-from datetime import timedelta
+from datetime import date, timedelta
 
 from django.db.models import Avg, Count, Q
 from django.utils import timezone
@@ -99,19 +99,25 @@ def meets_min_cohort(count: int) -> bool:
 
 
 def scope_summary(employees) -> dict:
-    """Summary for any set of employees: a department, or everyone a user may see."""
+    """
+    Current-posture summary for any set of employees: a department, or everyone a user may see.
+    Offboarded people (is_active=False) are left out: their history stays in the event log and in
+    per-campaign rates, but they are no longer part of today's headcount, risk or training debt.
+    """
+    employees = employees.filter(is_active=True)
     total = employees.count()
     if not meets_min_cohort(total):
         # Too few people to report without identifying them — suppress the numbers (Phase 6.4 privacy).
         return {"employees": total, "employees_scored": 0, "average_score": None, "high_risk_employees": 0,
                 "high_risk_threshold": HIGH_RISK_THRESHOLD, "suppressed": True,
-                "training": {"assigned": 0, "completed": 0, "overdue": 0, "outstanding": 0, "completion_rate_percent": None}}
+                "training": {"assigned": 0, "completed": 0, "overdue": 0, "waived": 0, "outstanding": 0,
+                             "completion_rate_percent": None}}
     scores = latest_snapshots().filter(employee__in=employees)
     stats = scores.aggregate(
         average=Avg("score"), scored=Count("id"), high=Count("id", filter=Q(score__gte=HIGH_RISK_THRESHOLD))
     )
     return {
-        "employees": employees.count(),
+        "employees": total,
         "employees_scored": stats["scored"],
         "average_score": float(stats["average"]) if stats["average"] is not None else None,
         "high_risk_employees": stats["high"],
@@ -144,16 +150,21 @@ def change_direction(delta) -> str:
     return "stagnant"
 
 
-def trend_direction(history: list[dict], now=None) -> str:
-    """Lower score is better. Compares the latest snapshot to one from ~30 days earlier."""
+def trend_delta(history: list[dict], now=None):
+    """Latest snapshot minus the one from ~30 days earlier, or None without that much history."""
     now = now or timezone.now()
     if not history:
-        return "insufficient_data"
+        return None
     baseline_cutoff = now - timedelta(days=TREND_LOOKBACK_DAYS)
     baseline = [h for h in history if h["computed_at"] <= baseline_cutoff]
     if not baseline:
-        return "insufficient_data"
-    return change_direction(history[-1]["score"] - baseline[-1]["score"])
+        return None
+    return round(float(history[-1]["score"]) - float(baseline[-1]["score"]), 1)
+
+
+def trend_direction(history: list[dict], now=None) -> str:
+    """Lower score is better. Compares the latest snapshot to one from ~30 days earlier."""
+    return change_direction(trend_delta(history, now=now))
 
 
 def trend_series(snapshots, weeks: int = 12, now=None) -> list[dict]:
@@ -205,7 +216,12 @@ def program_improvement(snapshots, now=None):
     points = [p for p in series if p["average_score"] is not None]
     if len(points) < 2:
         return {"baseline": None, "current": None, "delta": None, "improved": None}
-    baseline, current = points[0]["average_score"], points[-1]["average_score"]
+    first, last = points[0], points[-1]
+    baseline, current = first["average_score"], last["average_score"]
     delta = round(current - baseline, 2)
+    # The earliest week with data may be much newer than 180 days, and may cover far fewer people
+    # than today; callers show both so the comparison is never presented as more than it is.
     return {"baseline": baseline, "current": current, "delta": delta,
+            "since": date.fromisoformat(first["week_ending"]),
+            "baseline_scored": first["employees_scored"], "current_scored": last["employees_scored"],
             "improved_percent": round(-delta / baseline * 100, 1) if baseline else None}

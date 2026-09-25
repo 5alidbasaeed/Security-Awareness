@@ -63,3 +63,9 @@ def test_department_delete_refused_while_it_has_people(client, django_user_model
     Employee.objects.all().delete()
     client.post(reverse("manage:department-delete", args=[dept.pk]))
     assert not Department.objects.filter(pk=dept.pk).exists()
+
+
+def test_forms_never_show_djangos_raw_empty_choice(client, django_user_model):
+    login(client, django_user_model, "Security Admin")
+    for name in ("manage:employee-new", "manage:landing-new"):
+        assert "---------" not in client.get(reverse(name)).content.decode(), name

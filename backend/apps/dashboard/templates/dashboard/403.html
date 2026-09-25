@@ -4,5 +4,6 @@
 <div class="card empty">
   <strong>You don’t have access to the dashboard</strong>
   Your account needs staff access with permission to view risk data. Ask a Security Admin to add you to a role.
+  {% if user.is_staff and perms.training.view_trainingassignment %}<p><a href="{% url 'dashboard:training' %}">Go to training compliance</a></p>{% endif %}
 </div>
 {% endblock %}

@@ -66,6 +66,13 @@ def test_create_draft_then_submit_approve_launch(client, django_user_model, monk
     campaign.refresh_from_db()
     assert campaign.status == Campaign.Status.PENDING_APPROVAL
 
+    # Separation of duties: the person who submitted it can't approve it. A different Security Admin does.
+    client.post(reverse("manage:campaign-approve", args=[campaign.pk]))
+    campaign.refresh_from_db()
+    assert campaign.status == Campaign.Status.PENDING_APPROVAL
+    approver = django_user_model.objects.create_user(username="second-approver", password="x", is_staff=True)
+    approver.groups.add(Group.objects.get(name="Security Admin"))
+    client.force_login(approver)
     client.post(reverse("manage:campaign-approve", args=[campaign.pk]))
     campaign.refresh_from_db()
     assert campaign.status == Campaign.Status.APPROVED

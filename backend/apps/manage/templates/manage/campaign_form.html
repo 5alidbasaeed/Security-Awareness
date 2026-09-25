@@ -1,19 +1,43 @@
 {% extends "manage/base.html" %}
 {% block title %}{{ title }} · Manage{% endblock %}
 {% block content %}
-{% include "manage/_subnav.html" with manage_section="campaigns" %}
 <header class="page-header"><div><h1>{{ title }}</h1>
-<p class="page-header__sub">Campaigns are created as drafts. Nothing is sent until a person approves and launches it.</p></div></header>
-<div class="card"><div class="card__body">
-  <form class="form-stack" method="post" novalidate>
+<p class="page-header__sub">Campaigns are saved as drafts. Nothing is sent until a Security Admin approves it and a person launches it.</p></div></header>
+{% if campaign and campaign.status != "draft" %}
+<p class="flash flash--warning" role="status">This campaign is {{ campaign.get_status_display|lower }}. Changing what it sends or who gets it returns it to Draft and it needs approval again.</p>
+{% endif %}
+<div class="split">
+  <form id="campaign-form" class="split__main" method="post" novalidate>
     {% csrf_token %}
     {% if form.non_field_errors %}<p class="form-error" role="alert">{{ form.non_field_errors.0 }}</p>{% endif %}
-    {% include "manage/_form_fields.html" %}
+    <section class="card form-section"><div class="card__body">
+      <h2><span class="step">1</span> Name it</h2>
+      {% include "manage/_field.html" with field=form.name %}
+    </div></section>
+    <section class="card form-section"><div class="card__body">
+      <h2><span class="step">2</span> What people receive</h2>
+      {% include "manage/_field.html" with field=form.email %}
+      {% include "manage/_field.html" with field=form.landing_page %}
+      <p class="cell-meta">Need a new one? <a href="{% url 'manage:template-new' %}">Write an email</a> · <a href="{% url 'manage:landing-new' %}">Build a landing page</a>. Come back and it will be in the list.</p>
+    </div></section>
+    <section class="card form-section"><div class="card__body">
+      <h2><span class="step">3</span> Who gets it</h2>
+      {% include "manage/_field.html" with field=form.audience %}
+      {% include "manage/_field.html" with field=form.copy_to %}
+    </div></section>
+    <section class="card form-section"><div class="card__body">
+      <h2><span class="step">4</span> When, and what happens after</h2>
+      {% include "manage/_field.html" with field=form.scheduled_at %}
+      {% include "manage/_field.html" with field=form.training_module %}
+    </div></section>
     <div class="form-actions">
       <button class="button" type="submit">Save draft</button>
       <a class="button button--quiet" href="{% url 'manage:campaigns' %}">Cancel</a>
     </div>
   </form>
-</div></div>
-{% if campaign %}<p class="footnote">Status: {{ campaign.get_status_display }}. Editing approved content resets it to Draft.</p>{% endif %}
+  <aside class="split__side" aria-label="What this campaign will do"
+         hx-get="{% url 'manage:campaign-summary' %}" hx-trigger="load, change from:#campaign-form" hx-include="#campaign-form" hx-params="not csrfmiddlewaretoken" hx-target="this" hx-swap="innerHTML">
+    <div class="card"><div class="card__body"><p class="cell-meta">Loading summary…</p></div></div>
+  </aside>
+</div>
 {% endblock %}
